@@ -1,12 +1,16 @@
 swagger: "2.0"
 info:
   description: |
-    This is a prototype ChRIS server.
+    This is an initial API draft for the ChRIS server.
 
     [Learn about ChRIS](https://github.com/FNNDSC/chrisreloaded/blob/master/README.md) or join the IRC channel `#babyMRI` on irc.freenode.net.
 
-    ChRIS is a data management and processing workflow system.
-
+    ChRIS is a data management and processing workflow system. It allows for collection of (medical) data from various sources and allows for:
+    
+    * direct visualization of data types in the browser
+    * powerful real-time collaboration on visual data
+    * processing of data via a library of analysis pipelines
+    
     For this sample, you can use the api key `special-key` to test the authorization filters
 
   version: "1.0.0"
@@ -525,7 +529,6 @@ definitions:
   Feed:
     required:
       - name
-      - photoUrls
     properties:
       id:
         type: integer
@@ -534,11 +537,7 @@ definitions:
         $ref: "#/definitions/Category"
       name:
         type: string
-        example: doggie
-      photoUrls:
-        type: array
-        items:
-          type: string
+        example: SomeFeed
       tags:
         type: array
         items:
