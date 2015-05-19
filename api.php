@@ -26,17 +26,21 @@ namespace ChRIS {
     class API_handler {
 
         public $payload = null;
+	public $str_jsonFileName = '';
 
         public function __construct($URL = null) {
             if(isset($URL)) {
                 parse_str($URL, $_GET);
                 parse_str($URL, $_POST);
             }
+	    $this->str_jsonFileName = tempnam("./", "ChRIS");
             $this->payload = array(
                 'id'                => null,
                 'status'            => 'not-processed',
                 'username'          => 'unknown',
                 'userid'            => -1,
+		'tokenHash'	    => 0,
+		'tokenSeed' 	    => 0,
                 'timestamp'         => '',
                 'execution_time'    => 0,
                 'object'            => null,
@@ -47,6 +51,15 @@ namespace ChRIS {
                 'return_val'        => -1
             );
         }
+	
+	public function __destruct() {
+		$str_cmd = "rm " . $this->str_jsonFileName;
+		printf("%s\n", $str_cmd);
+	}
+	
+	public function jsonToChRIS_write() {
+		file_put_contents($this->str_jsonFileName, json_encode($this->payload));
+	}
 
         public function URL_parse($str_component) {
             if(isset($_GET[$str_component])){
@@ -82,10 +95,12 @@ namespace ChRIS {
             $this->URL_parse('object');
             $this->URL_parse('method');
             $this->URL_parse('parameters');
+	    
+	    $this->jsonToChRIS_write();
 
             $this->URL_handle();
 
-            print_r($this->payload);
+            //print_r($this->payload);
         }
 
     }
