@@ -83,6 +83,11 @@ class Feed(object):
 
         """
 
+    def __str__(self):
+        """Print
+        """
+        return str(self.stree.snode_root)
+
     @property
     def stree(self):
         """STree Getter"""
@@ -163,7 +168,7 @@ class Feed_FS(Feed):
 
 if __name__ == "__main__":
     feed    = Feed_FS('someRepo')
-    print(feed.stree)
+#    print(feed.stree)
     d = dict(feed.stree.snode_root)
-    print(d)
-    print(json.dumps(d))
+#    print(d)
+#    print(json.dumps(d))
