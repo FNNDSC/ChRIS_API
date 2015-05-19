@@ -622,11 +622,18 @@ class C_stree:
             return b_valid, al_path
 
         def cdnode(self, astr_path):
-            """
-            Change working node to astr_path.
-            The path is converted to a list, split on '/'
+            """Change working node to astr_path.
 
-            Returns the cdnode path
+            The path is converted to a list, split on '/'. By performing a 'cd'
+            all parent and derived nodes need to be updated relative to
+            new location.
+
+            Args:
+                astr_path (string): The path to cd to.
+
+            Returns:
+                l_cwd (list): The cdnode path -- if path valid
+                False (boolean): If path invalid
 
             """
 
@@ -643,7 +650,14 @@ class C_stree:
                 for node in l_absPath[1:]:
                     self.snode_current = self.snode_current.d_nodes[node]
                 self.sbranch_current.dict_branch = self.snode_current.snode_parent.d_nodes
-            return self.l_cwd
+                return self.l_cwd
+            return False
+
+        def cd(self, astr_path):
+            """Alias for cdnode()
+
+            """
+            return self.cdnode(astr_path)
 
         def ls(self, astr_path="", **kwargs):
             b_lsData    = True
