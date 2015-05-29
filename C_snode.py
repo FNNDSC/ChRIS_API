@@ -544,6 +544,12 @@ class C_stree:
             self.paths_update(al_branchNodes)
             return b_ret
 
+        def mkcd(self, astr_node):
+            """Creates a single node and cd's into that node
+            """
+            self.mknode([astr_node])
+            self.cdnode(astr_node)
+
         def cat(self, name):
             '''
             Returns the contents of the 'name'd element at this level.
