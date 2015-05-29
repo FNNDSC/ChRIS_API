@@ -29,11 +29,22 @@ a few feeds containing different data, views, results, notes, etc.
 
 """
 
+from __future__ import print_function
+
 import abc
 import json
 import hashlib
+import argparse
+import os
+import sys
+import time
+import datetime
+
+from urlparse import urlparse, parse_qs
 
 import C_snode
+import error
+import message
 import feed
 
 class ChRIS_SMUserDB(object):
@@ -47,40 +58,115 @@ class ChRIS_SMUserDB(object):
         s.cdnode('/users')
         s.mknode(['chris'])
         s.cdnode('chris')
-        s.touch("passwd", "chris1234")
+        s.touch("userName",     "chris")
+        s.touch("fullName",     "ChRIS User")
+        s.touch("passwd",       "chris1234")
+        s.mknode(['session'])
 
-    def user_login(self, astr_user, astr_passwd):
+    def user_checkAuthenticated(self, **kwargs):
+        """Check if a user is authenticated.
+
+        """
+        s = self._stree
+        str_user    = null
+        for key, value in kwargs.iteritems():
+            if key == 'user':       str_user    = value
+            if key == 'session':    str_session = value
+        if not s.cd('/users/%s/session/%s' % (str_user, str_session):
+            return False
+        d_sessionInfo = s.cat("sessionInfo")
+        return d_sessionInfo['sessionStatus']
+
+    def user_sessionAuthenticate(self, **kwargs):
+        """Authenticates (or not) the current call to the API
+        """
+        s = self._stree
+        str_user    = null
+        for key, value in kwargs.iteritems():
+            if key == 'user':           astr_user           = value
+            if key == 'session':        astr_session        = value
+            if key == 'sessionHash':    astr_sessionHash    = value
+        if not s.cd('/users/%s/session/%s' % (astr_user, astr_session):
+            return False
+        d_sessionInfo       = s.cat('sessionInfo')
+        str_sessionToken    = d_sessionInfo['sessionToken']
+        str_sessionSeed     = d_sessionInfo['sessionSeed']
+        str_hashInput       = '%s%s' % (str_sessionToken, str_sessionSeed)
+        str_sessionHash     = self._md5.md5(str_hashInput).hexdigest()
+        b_OK                = (str_sessionHash == astr_sessionHash)
+        if b_OK:
+            d_sessionInfo['sessionToken']   = str_hashInput
+            d_sessionInfo['sessionSeed']    = int(str_sessionSeed) + 1
+        d_sessionInfo['sessionStatus'] = b_OK
+        self.user_updateAuthStatus(**kwargs)
+        return b_OK
+
+    def user_updateSessionInfo(self, **kwargs):
+        """Updates the DB entry of the user
+        """
+        s           = self._stree
+
+        for key,value in kwargs.iteritems():
+            if key == 'user':           str_user            = value
+            if key == 'sessionInfo':    dict_sessionInfo    = value
+        a = dict_sessionInfo
+        s.cd('/%s/session' % str_user)
+        if not s.cd(a['sessionToken']):
+            s.mknode([a['sessionToken']])
+            s.cd(a['sessionToken'])
+        s.touch('sessionInfo', a)
+        return True
+
+    def user_login(self, **kwargs):
         """Log a user in.
 
         This method "logs" a user in, using the passwd.
 
-        Args:
-            astr_user (string): The user to login.
-            astr_passwd (string): The user passwd.
+        It also updates the DB user/session entry accordingly.
+
+        Args (kwargs):
+            user (string): The user to login.
+            passwd (string): The user passwd.
 
         Returns:
-            adict (dictionary): {'status': True/False, 'token': tokenID, 'message': str_msg}
+            adict (dictionary): dictionary of login and session info.
 
         """
+
+        for key, val in kwargs.iteritems():
+            if key == 'user':   astr_user   = val
+            if key == 'passwd': astr_passwd = val
+
         s       = self._stree
         ret     = {}
         s.cdnode('/users')
         if not s.cdnode(astr_user):
-            ret['status']  = False
-            ret['token']   = "null"
-            ret['message'] = 'User not found in database.'
+            ret['loginStatus']      = False
+            ret['loginMessage']     = 'User not found in database.'
+            ret['logoutMessage']    = ""
+            ret['sessionStatus']    = False
+            ret['sessionToken']     = "null"
+            ret['sessionSeed']      = "null"
         else:
             if s.cat('passwd') != astr_passwd:
-                ret['status']  = False
-                ret['token']   = "null"
-                ret['message'] = 'Incorrect password.'
+                ret['loginStatus']      = False
+                ret['loginMessage']     = 'Incorrect password.'
+                ret['logoutMessage']    = ""
+                ret['sessionStatus']    = False
+                ret['sessionToken']     = "null"
+                ret['sessionSeed']      = "null"
             else:
-                ret['status']  = True
-                ret['token']   = 'ABCDEFG'
-                ret['message'] = 'Successful login.'
+                ret['loginStatus']      = True
+                ret['loginMessage']     = 'Successful login at %s.' % datetime.datetime.now()
+                ret['logoutMessage']    = ""
+                ret['sessionStatus']    = False
+                ret['sessionToken']     = "ABCDEF"
+                ret['sessionSeed']      = "1"
+        self.user_updateAuthStatus(sessionInfo = ret, **kwargs)
         return ret
 
     def __init__(self):
+        self._md5       = hashlib
         self._stree     = C_snode.C_stree()
         self.DB_build()
 
@@ -95,24 +181,92 @@ class ChRIS_SMCore(object):
         self.s_tree     = C_snode.C_stree()
         self._userDB    = ChRIS_SMUserDB()
 
-    def login(self, astr_user, astr_passwd):
-        return(self._userDB.user_login(astr_user, astr_passwd))
+    def login(self, **kwargs):
+        return(self._userDB.user_login(**kwargs))
 
 class ChRIS_SM(object):
     """The ChRIS Simulated Machine
 
 
     """
+
+    #
+    # Class member variables -- if declared here are shared
+    # across all instances of this class
+    #
+    _dictErr = {
+        'subjectSpecFail'   : {
+            'action'        : 'examining command line arguments, ',
+            'error'         : 'it seems that no subjects were specified.',
+            'exitCode'      : 10},
+        'no_apiCall'   : {
+            'action'        : 'examining command line arguemnts, ',
+            'error'         : 'it seems that the required --apiCall is missing.',
+            'exitCode'      : 11},
+        'no_stateFile'   : {
+            'action'        : 'examining command line arguemnts, ',
+            'error'         : 'it seems that the required --stateFile is missing.',
+            'exitCode'      : 12},
+        'no_stateFileExist': {
+            'action'        : 'checking on the <stateFile>, ',
+            'error'         : 'a system error was encountered. Does the <stateFile> exist?',
+            'exitCode'      : 20},
+        'no_stateFileAccess': {
+            'action'        : 'attempting to access the <stateFile>, ',
+            'error'         : 'a system error was encountered. Does the <stateFile> exist?',
+            'exitCode'      : 21},
+        'no_authModuleSpec' : {
+            'action'        : 'attempting to parse the API call, ',
+            'error'         : 'the auth module was not specified',
+            'exitCode'      : 30},
+    }
+
     __metaclass__   = abc.ABCMeta
 
-    def __init__(self):
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
+
+    def __init__(self, **kwargs):
         """The CHRIS_SM constructor.
 
         """
 
-        self._feedTree          = C_snode.C_stree()
-        self._SMCore            = ChRIS_SMCore()
-        self._name              = ""
+        self.__name                     = "ChRIS_SM"
+
+        self._feedTree                  = C_snode.C_stree()
+        self._SMCore                    = ChRIS_SMCore()
+        self._name                      = ""
+        self._log                       = message.Message()
+        self._log.tee(True)
+        self._log.syslog(True)
+
+        self._str_apiCall               = ""
+        self._str_currentSessionName    = ""
+        self._l_apiCallHistory          = []
+
+        # The returnStore variables control how json objects are captured from API calls.
+        self._b_returnStore             = False
+        self._str_returnStore           = ""
+
 
     @abc.abstractmethod
     def build(self, **kwargs):
@@ -137,8 +291,10 @@ class ChRIS_SM(object):
         """STree Getter"""
         self._feedTree = value
 
-    def login(self, astr_username, astr_passwd):
-        return(self._SMCore.login(astr_username, astr_passwd))
+    def login(self, **kwargs):
+        loginStatus = self._SMCore.login(**kwargs))
+        self._str_currentSessionName = loginStatus['sessionToken']
+        return(loginStatus)
 
     def feed_nextID(self):
         """Find the next ID in the Feed database
@@ -153,7 +309,7 @@ class ChRIS_SMFS(ChRIS_SM):
 
     """
 
-    def __init__(self, astr_FeedRepo):
+    def __init__(self, **kwargs):
         """Constructor.
 
         This essentially calls up the chain to the base constructor
@@ -163,8 +319,16 @@ class ChRIS_SMFS(ChRIS_SM):
                 all the feeds.
 
         """
-        self._ChRIS_repoDir = astr_FeedRepo
-        ChRIS_SM.__init__(self)
+        ChRIS_SM.__init__(self, **kwargs)
+
+        self._str_stateFile     = ""
+        for key,val in kwargs.iteritems():
+            if key == 'stateFile':  self._str_stateFile = val
+            if key == 'APIcall':    self._str_apiCall   = val
+
+        if self._str_stateFile  == "<void>": error.fatal(self, 'no_stateFile')
+        if self._str_apiCall    == "<void>": error.fatal(self, 'no_apiCall')
+
         self.build()
 
     def build(self, **kwargs):
@@ -172,48 +336,365 @@ class ChRIS_SMFS(ChRIS_SM):
 
         """
         f = self._feedTree
-        f.mknode(['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4'])
-        for i in range(1, 5):
-            str_i = str(i)
-            f.cdnode('/Feed-%s'     % str_i)
-            f.touch("ID", "000%s"   % str_i)
-            f.touch("Feed", feed.Feed_FS('someRepo-%03i' % i))
+        l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
+        l_FID   = ['000001', '000002', '000003', '000004']
+        f.mknode(l_Feed)
+        for node, id in zip(l_Feed, l_FID):
+            f.cd('/%s' % node)
+            f.touch("ID", id)
+            f.touch("Feed", feed.Feed_FS(
+                                repo='Repo-%s' % node,
+                                desc='Node Object Name: %s; Node FID: %s' % (node, id)))
 
-    def feed_get(self, astr_feedID):
-        """Get a feed.
+    def API_readCallHistory(self):
+        """Reads the (parsed) API calls stored in the stateful file.
+
+        Since the ChRIS_SM effectively only executes *one* API
+        call before terminating, it needs some mechanism for restoring
+        state. This is done by replaying all previous API calls
+        pertinent to this session.
+
+        If the stateFile does not exist, this method will create an
+        empty stateFile.
+
+        Returns:
+            state (boolean): True if all previous commands haven been read.
+        """
+
+        if not os.path.isfile(self._str_stateFile):
+            open(self._str_stateFile, 'a').close()
+            return False
+        with open(self._str_stateFile) as f:
+            self._l_apiCallHistory = f.read().splitlines()
+        return True
+
+    def API_parseCurrentCall(self, **kwargs):
+        """Parses the apiCall and updates the stateFile.
+
+        This method parses the <apiCall>, executes it, and updates
+        the call to the stateFile, also adding the parsed call to
+        the self._l_apiCallHistory list.
+
+        Also parses the authentication
+
+        Returns:
+            state (boolean): True if <apiCall> parsed
+
+        """
+
+        str_auth        = ""
+        for key,value in kwargs.iteritems():
+            if key == 'authmodule': auth    = value
+
+        if not len(auth._name): error.fatal(self, 'no_authModuleSpec')
+
+        str_auth        = auth._name
+        str_ret         = ""
+        str_object      = ""
+        str_method      = ""
+        str_parameters  = ""
+        d_component     = parse_qs(urlparse(self._str_apiCall).query)
+        if 'returnstore' in d_component:
+            str_ret                 = d_component['returnstore'][0]
+            self._b_returnStore     = True
+            self._str_returnStore   = str_ret
+        else:
+            self._b_returnStore     = False
+            self._str_returnStore   = "APIreturn"
+        if 'object'      in d_component: str_object      = d_component['object'][0]
+        str_method      = d_component['method'][0]
+        str_parameters  = d_component['parameters'][0]
+        if len(str_ret):    str_ret     = "%s="   % str_ret
+        if len(str_object): str_object  = "%s(lambda: %s."     % (str_auth, str_object)
+        str_eval    = "%s%s%s(%s)" % (
+                                     str_ret,
+                                     str_object,
+                                     str_method,
+                                     str_parameters
+                                    )
+        if len(str_object): str_eval += ")"
+        self._l_apiCallHistory.append(str_eval)
+        #print(d_component)
+        with open(self._str_stateFile, 'a') as f:
+            f.write("# %s %s\n" % (datetime.datetime.now(), self._str_apiCall))
+            f.write("%s\n" % str_eval)
+
+    def API_replayCalls(self):
+        """Play back calls stored in the internal list buffer.
+
+        Since this effectively just "runs" the python commands in the
+        statefile, this should typically execute at the highest level/scope
+        of the program, i.e. at the __main__ level!
+
+        The "current" API call is the last entry. All previous entries
+        are replayed.
+
+        The last entry is edited so that its return value is captured and
+        printed to stdout.
+
+        Preconditions:
+            self._l_apiCallHistory is populated.
+
+        Returns:
+            state (boolean): The return value of each command as executed
+        """
+
+        # Play out the previous API calls to restore state up to current call
+        for cmd in self._l_apiCallHistory[0:-1]:
+            if cmd[0] != "#": exec(cmd)
+        # Now play the current call.
+        cmd = self._l_apiCallHistory[-1]
+        if self._b_returnStore:
+            cmd = "%s; print(%s)" % (cmd, self._str_returnStore)
+        else:
+            cmd = "%s = %s; print(%s)" % (self._str_returnStore, cmd, self._str_returnStore)
+        # print(cmd)
+        exec(cmd)
+
+    def feed_existObjectName(self, astr_feedObjectName):
+        """Check if a feed exists.
+
+        Simply checks if a given feed with passed feedObjectName exists. The
+        feedObjectName is the actual object record name in the snode tree.
+        Searching on feed object name is much quicker than querying
+        each feed for its ID.
+
+        Args:
+            astr_feedObjectName (string): The Feed Object Name.
+
+        Returns:
+            exists (boolean): True if exists, False if not.
+
+        """
+        f = self._feedTree
+        f.cd('/')
+        if f.cd(astr_feedObjectName):
+            return True
+        else:
+            return False
+
+    def feed_existFeedID(self, astr_feedID):
+        """Check if a feed exists.
+
+        Simply checks if a given feed with passed ID exists. This method needs
+        to loop over all feeds and check their internal ID string.
+
+        Args:
+            astr_feedID (string): The Feed ID.
+
+        Returns:
+            exists (boolean): True if exists, False if not.
+
+        """
+        f = self._feedTree
+        l_feed = f.lstr_lsnode('/')
+        for feedNode in f.lstr_lsnode('/'):
+            f.cd('/%s' % feedNode)
+            str_ID = f.cat('ID')
+            if str_ID == astr_feedID:
+                return True
+        return False
+
+    def feed_getFromObjectName(self, astr_feedObjectName, **kwargs):
+        """Get a feed from its internal object name
+
+        This returns a feed by directly returning the object
+        in the snode tree with the given feedObjectName.
+
+        Args:
+            astr_feedObjectName (string): The Feed Object Name.
+
+        Returns:
+            Feed (Feed): The Feed itself if it exists, False if not.
+        """
+
+        b_returnAsDict = False
+
+        for key,val in kwargs.iteritems():
+            if key == "returnAsDict":   b_returnAsDict = val
+
+        f = self._feedTree
+        f.cd('/')
+        if f.cd(astr_feedObjectName):
+            if b_returnAsDict:
+                return dict(f.cat('Feed'))
+            else:
+                return f.cat('Feed')
+        else:
+            return False
+
+    def feed_getFromID(self, astr_feedID):
+        """Get a feed from its internal ID string.
 
         :param astr_feedID: The ID of the Feed to get
         :return: False if not found, otherwise the Feed object
         """
         f = self._feedTree
         l_feed = f.lstr_lsnode('/')
-        print l_feed
         for feedNode in f.lstr_lsnode('/'):
             f.cd('/%s' % feedNode)
-            print feedNode
             str_ID = f.cat('ID')
-            print str_ID
             if str_ID == astr_feedID:
                 return f.cat('Feed')
         return False
 
+    def __call__(self, f):
+        """The wrapper around actual method calls -- allows for
+        authentication checking.
+
+        This method is the main "gatekeeper" between external API
+        calls and actual methods in ChRIS system. It serves as a
+        central entry point for each call so that user token
+        authentication can be verified, as well as any additional
+        parsing on the actual attempt to exec code.
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        print("In ChRIS_SM.__call__()")
+        return f()
+
+class ChRIS_authenticate(object):
+    """The ChRIS_authenticate object is responsible for authenticated valid
+        access to the API
+
+        This method is the main "gatekeeper" between external API
+        calls and actual methods in ChRIS system. It serves as a
+        central entry point for each call so that user token
+        authentication can be verified, as well as any additional
+        parsing on the actual attempt to exec code.
+
+        Since this method calls the passed "function" without regard for
+        scope, the called object must actually exist at the scope at which
+        this auth is being wrapped.
+
+    """
+
+    def __init__(self, achris_instance, aself_name):
+        """Constructor.
+
+        Builds a ChRIS_authenticate object. This object acts as a functor that calls
+        into a ChRIS object after checking the authentication of the caller.
+
+        Args:
+            achris_instance (ChRIS):    the chris instance to authenticate against
+        """
+        self._chris         = achris_instance
+        self._name          = aself_name
+
+    def __call__(self, f):
+        """Call the object/method
+
+        This functor actually wraps around the call, and is the main entry point to
+        calling ANYTHING from ChRIS. It is here where the authentication of the
+        caller/hash is verified before executing the actual object.method call
+
+        Args:
+            f (object.method):  The object.method to call.
+
+        Returns:
+            Whatever is returned by the call is returned back.
+        """
+        #print("In auth.__call__()")
+        return f()
+
+
+def synopsis(ab_shortOnly = False):
+    scriptName = os.path.basename(sys.argv[0])
+    shortSynopsis =  '''
+    SYNOPSIS
+
+            %s                                     \\
+                            --stateFile <stateFile>         \\
+                            --APIcall <apiCall>
+
+
+    ''' % scriptName
+
+    description =  '''
+    DESCRIPTION
+
+        `%s' simulates a ChRIS machine, and specifically the
+        web service interface to the machine.
+
+    ARGS
+
+       --stateFile <stateFile> (required)
+       The file that tracks calls pertinent to a specific session.
+       API calls are logged to <stateFile> and replayed back when
+       ChRIS_SM is instantiated. In this manner the machine state
+       can be rebuilt. The current <apiCall> is appended to the
+       <stateFile>.
+
+       --apiCall <apiCall> (required)
+       The actual API call to make.
+
+    EXAMPLES
+
+
+    ''' % (scriptName)
+    if ab_shortOnly:
+        return shortSynopsis
+    else:
+        return shortSynopsis + description
 
 
 if __name__ == "__main__":
     """Simulated session interacting with the ChRIS_SM
 
+    Once logged in, the client and service use a hash to authenticate.
+    Essentially, on first login, the system returns a token to the client
+    and an initial seed. The client hashes the token and seed when
+    communicating with the service. For each communication, the service
+    returns a new seed that must be used in the next comms.
+
+    State is preserved in the SM by tracking all "api" calls  to a
+    stateful file, and replaying them in order on subsequent runs.
+    The current "api" call is appended to this stateful file.
+
     """
 
-    m        = hashlib
+    if len(sys.argv) == 1:
+        print(synopsis())
+        sys.exit(1)
 
-    chris    = ChRIS_SMFS('someRepo')
+    parser      = argparse.ArgumentParser(description = synopsis(True))
+    parser.add_argument(
+        '-s', '--stateFile',
+        help    =   "The <stateFile> keeps track of ChRIS state.",
+        dest    =   'str_stateFileName',
+        action  =   'store',
+        default =   "<void>"
+    )
+    parser.add_argument(
+        '-a', '--APIcall',
+        help    =   "The actual API call to make.",
+        dest    =   'str_apiCall',
+        action  =   'store',
+        default =   "<void>"
+    )
 
-    d        = chris.login('chris', 'chris1234')
-    print d
-    str_hash = m.md5(d['token']).hexdigest()
-    print str_hash
+    args        = parser.parse_args()
 
-    print chris._feedTree.snode_root
-    print dict(chris._feedTree.snode_root)
+    chris       = ChRIS_SMFS(
+                        stateFile   = args.str_stateFileName,
+                        APIcall     = args.str_apiCall
+    )
 
-    if chris.feed_get('0001'): print chris.feed_get('0001')
+    auth        = ChRIS_authenticate(chris, 'auth')
+
+    chris.API_readCallHistory()
+    chris.API_parseCurrentCall(authmodule = auth)
+    chris.API_replayCalls()
+
+
+    # login
+#    d        = chris.login('chris', 'chris1234')
+#    print d
+#    str_hash = m.md5(d['token']).hexdigest()
+#    print str_hash
+
+#    print(chris.feed_getFromObjectName('Feed-3'))
+
+
