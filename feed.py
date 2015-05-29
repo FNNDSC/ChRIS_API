@@ -39,7 +39,7 @@ class Feed(object):
     """
     __metaclass__   = abc.ABCMeta
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """Example of docstring on the __init__ method.
 
         The __init__ method may be documented in either the class level
@@ -65,6 +65,9 @@ class Feed(object):
         self._dataviewComponet  = []
         self._noteComponent     = {}
         self._dateComponent     = []
+
+    def __iter__(self):
+        yield('Feed', dict(self._stree.snode_root))
 
     @abc.abstractmethod
     def create(self, **kwargs):
@@ -121,7 +124,7 @@ class Feed_FS(Feed):
 
     """
 
-    def __init__(self, astr_FeedRepo):
+    def __init__(self, **kwargs):
         """Constructor.
 
         This essentially calls up the chain to the base constructor
@@ -131,9 +134,8 @@ class Feed_FS(Feed):
                 all the feeds.
 
         """
-        self._FeedRepoDir = astr_FeedRepo
-        Feed.__init__(self)
-        self.create()
+        Feed.__init__(self, **kwargs)
+        self.create(**kwargs)
 
     def create(self, **kwargs):
         """Create a new feed.
@@ -159,16 +161,21 @@ class Feed_FS(Feed):
           True if successful, False otherwise.
 
         """
+        s = self.stree
         self._stree.mknode(['title', 'note', 'data', 'comment'])
         self._stree.cdnode('/data')
         self._stree.mknode(['visualView', 'fileView'])
         self._stree.cdnode('/comment')
-        self._stree.touch("contents", "Hello, world!")
+        self._stree.touch("contents", "Hello, world.")
+
+        for key, value in kwargs.iteritems():
+            if key == 'desc':
+                s.cd('/')
+                s.touch('desc', value)
+                s.cd('/comment')
+                s.append('contents', ' Greetings and salutations from %s!' % value)
 
 
 if __name__ == "__main__":
-    feed    = Feed_FS('someRepo')
-#    print(feed.stree)
-    d = dict(feed.stree.snode_root)
-#    print(d)
-#    print(json.dumps(d))
+    feed    = Feed_FS()
+    d       = dict(feed.stree.snode_root)
