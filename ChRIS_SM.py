@@ -54,67 +54,63 @@ class ChRIS_SMUserDB(object):
 
     def DB_build(self):
         s               = self._stree
-        s.mknode(['users'])
-        s.cdnode('/users')
-        s.mknode(['chris'])
-        s.cdnode('chris')
+        s.cd('/')
+        s.mkcd('users')
+        s.mkcd('chris')
         s.touch("userName",     "chris")
         s.touch("fullName",     "ChRIS User")
         s.touch("passwd",       "chris1234")
-        s.mknode(['session'])
+        s.mkcd('login')
 
-    def user_checkAuthenticated(self, **kwargs):
-        """Check if a user is authenticated.
-
-        """
-        s = self._stree
-        str_user    = null
-        for key, value in kwargs.iteritems():
-            if key == 'user':       str_user    = value
-            if key == 'session':    str_session = value
-        if not s.cd('/users/%s/session/%s' % (str_user, str_session):
-            return False
-        d_sessionInfo = s.cat("sessionInfo")
-        return d_sessionInfo['sessionStatus']
-
-    def user_sessionAuthenticate(self, **kwargs):
+    def user_checkAPIcanCall(self, **kwargs):
         """Authenticates (or not) the current call to the API
         """
-        s = self._stree
-        str_user    = null
+        s                   = self._stree
+        astr_user           = ""
+        astr_sessionHash    = ""
         for key, value in kwargs.iteritems():
             if key == 'user':           astr_user           = value
-            if key == 'session':        astr_session        = value
-            if key == 'sessionHash':    astr_sessionHash    = value
-        if not s.cd('/users/%s/session/%s' % (astr_user, astr_session):
-            return False
-        d_sessionInfo       = s.cat('sessionInfo')
-        str_sessionToken    = d_sessionInfo['sessionToken']
-        str_sessionSeed     = d_sessionInfo['sessionSeed']
-        str_hashInput       = '%s%s' % (str_sessionToken, str_sessionSeed)
-        str_sessionHash     = self._md5.md5(str_hashInput).hexdigest()
-        b_OK                = (str_sessionHash == astr_sessionHash)
+            if key == 'callHash':       astr_sessionHash    = value
+        if not s.cd('/users/%s/login' % (astr_user)):       return False
+        d_activeSessionInfo     = s.cat('activeSessionInfo')
+        print("**********")
+        print(d_activeSessionInfo)
+        print(s.snode_root)
+        if not s.cd(d_activeSessionInfo['login']): return False
+
+        d_currentSessionInfo    = s.cat(d_activeSessionInfo['session'])
+        print(d_currentSessionInfo)
+        if not d_currentSessionInfo['loginStatus']:         return False
+        str_sessionToken        = d_currentSessionInfo['sessionToken']
+        str_sessionSeed         = d_currentSessionInfo['sessionSeed']
+        str_hashInput           = '%s%s' % (str_sessionToken, str_sessionSeed)
+        str_sessionHash         = self._md5.md5(str_hashInput).hexdigest()
+        b_OK                    = (str_sessionHash == astr_sessionHash)
         if b_OK:
-            d_sessionInfo['sessionToken']   = str_hashInput
-            d_sessionInfo['sessionSeed']    = int(str_sessionSeed) + 1
-        d_sessionInfo['sessionStatus'] = b_OK
-        self.user_updateAuthStatus(**kwargs)
+            d_currentSessionInfo['sessionToken']    = str_hashInput
+            d_currentSessionInfo['sessionSeed']     = int(str_sessionSeed) + 1
+        d_currentSessionInfo['APIcanCall']      = b_OK
+        self.user_updateSessionInfo(sessionInfo = d_currentSessionInfo, **kwargs)
         return b_OK
 
     def user_updateSessionInfo(self, **kwargs):
         """Updates the DB entry of the user
         """
-        s           = self._stree
+        s                   = self._stree
+        b_createSession     = False
 
         for key,value in kwargs.iteritems():
             if key == 'user':           str_user            = value
             if key == 'sessionInfo':    dict_sessionInfo    = value
+            if key == 'createSession':  b_createSession     = value
         a = dict_sessionInfo
-        s.cd('/%s/session' % str_user)
-        if not s.cd(a['sessionToken']):
-            s.mknode([a['sessionToken']])
-            s.cd(a['sessionToken'])
-        s.touch('sessionInfo', a)
+        s.cd('/users/%s/login' % str_user)
+        if b_createSession:
+            s.mknode([a['loginTimeStamp']])
+            d_sessionLookup = {'login' : a['loginTimeStamp'], 'session' : a['sessionToken']}
+            s.touch('activeSessionInfo', d_sessionLookup)
+        if not s.cd(a['loginTimeStamp']): return False
+        s.touch(a['sessionToken'], a)
         return True
 
     def user_login(self, **kwargs):
@@ -137,32 +133,34 @@ class ChRIS_SMUserDB(object):
             if key == 'user':   astr_user   = val
             if key == 'passwd': astr_passwd = val
 
-        s       = self._stree
-        ret     = {}
+        # login/session/canCall structuer
+        ret                     = {}
+        now                     = datetime.datetime.today()
+        ret['loginTimeStamp']   = now.strftime('%Y-%m-%d_%H:%M:%S.%f')
+#        ret['loginTimeStamp']   = now.strftime('%Y%m%d%H%M%S%f')
+        ret['loginStatus']      = False
+        ret['loginMessage']     = ""
+        ret['logoutMessage']    = ""
+        ret['sessionStatus']    = False
+        ret['sessionToken']     = "ABCDEF"
+        ret['sessionSeed']      = "1"
+        ret['APIcanCall']       = False
+
+        s = self._stree
         s.cdnode('/users')
         if not s.cdnode(astr_user):
-            ret['loginStatus']      = False
             ret['loginMessage']     = 'User not found in database.'
-            ret['logoutMessage']    = ""
-            ret['sessionStatus']    = False
-            ret['sessionToken']     = "null"
-            ret['sessionSeed']      = "null"
         else:
             if s.cat('passwd') != astr_passwd:
-                ret['loginStatus']      = False
                 ret['loginMessage']     = 'Incorrect password.'
-                ret['logoutMessage']    = ""
-                ret['sessionStatus']    = False
-                ret['sessionToken']     = "null"
-                ret['sessionSeed']      = "null"
             else:
                 ret['loginStatus']      = True
                 ret['loginMessage']     = 'Successful login at %s.' % datetime.datetime.now()
                 ret['logoutMessage']    = ""
-                ret['sessionStatus']    = False
+                ret['sessionStatus']    = True
                 ret['sessionToken']     = "ABCDEF"
                 ret['sessionSeed']      = "1"
-        self.user_updateAuthStatus(sessionInfo = ret, **kwargs)
+        self.user_updateSessionInfo(sessionInfo = ret, createSession = True, **kwargs)
         return ret
 
     def __init__(self):
@@ -260,7 +258,6 @@ class ChRIS_SM(object):
         self._log.syslog(True)
 
         self._str_apiCall               = ""
-        self._str_currentSessionName    = ""
         self._l_apiCallHistory          = []
 
         # The returnStore variables control how json objects are captured from API calls.
@@ -292,8 +289,8 @@ class ChRIS_SM(object):
         self._feedTree = value
 
     def login(self, **kwargs):
-        loginStatus = self._SMCore.login(**kwargs))
-        self._str_currentSessionName = loginStatus['sessionToken']
+        loginStatus = self._SMCore.login(**kwargs)
+        self._str_loginTimeStamp = loginStatus['loginTimeStamp']
         return(loginStatus)
 
     def feed_nextID(self):
@@ -375,7 +372,7 @@ class ChRIS_SMFS(ChRIS_SM):
         the call to the stateFile, also adding the parsed call to
         the self._l_apiCallHistory list.
 
-        Also parses the authentication
+        Also parses the authentication.
 
         Returns:
             state (boolean): True if <apiCall> parsed
@@ -388,11 +385,17 @@ class ChRIS_SMFS(ChRIS_SM):
 
         if not len(auth._name): error.fatal(self, 'no_authModuleSpec')
 
+        # The main URL components
         str_auth        = auth._name
         str_ret         = ""
         str_object      = ""
         str_method      = ""
         str_parameters  = ""
+
+        # Additional "auth" components
+        str_user        = ""
+        str_authHash    = ""
+
         d_component     = parse_qs(urlparse(self._str_apiCall).query)
         if 'returnstore' in d_component:
             str_ret                 = d_component['returnstore'][0]
@@ -406,13 +409,26 @@ class ChRIS_SMFS(ChRIS_SM):
         str_parameters  = d_component['parameters'][0]
         if len(str_ret):    str_ret     = "%s="   % str_ret
         if len(str_object): str_object  = "%s(lambda: %s."     % (str_auth, str_object)
+
+        # Parse the "auth" components
+        if 'auth'       in d_component:
+            str_authSpec    = d_component['auth'][0]
+            str_authUrl     = "?%s" % str_authSpec.replace(',', '&')
+            d_auth          = parse_qs(urlparse(str_authUrl).query)
+            str_user        = d_auth['user'][0]
+            str_hash        = d_auth['hash'][0]
+
         str_eval    = "%s%s%s(%s)" % (
                                      str_ret,
                                      str_object,
                                      str_method,
                                      str_parameters
                                     )
-        if len(str_object): str_eval += ")"
+        if len(str_object):
+            if str_method == 'login':
+                str_eval += ")"
+            else:
+                str_eval += ", user=%s, hash=%s)" % (str_user, str_hash)
         self._l_apiCallHistory.append(str_eval)
         #print(d_component)
         with open(self._str_stateFile, 'a') as f:
@@ -579,11 +595,12 @@ class ChRIS_authenticate(object):
 
         Args:
             achris_instance (ChRIS):    the chris instance to authenticate against
+            aself_name (string):        this object's string name
         """
         self._chris         = achris_instance
         self._name          = aself_name
 
-    def __call__(self, f):
+    def __call__(self, f, **kwargs):
         """Call the object/method
 
         This functor actually wraps around the call, and is the main entry point to
@@ -597,8 +614,20 @@ class ChRIS_authenticate(object):
             Whatever is returned by the call is returned back.
         """
         #print("In auth.__call__()")
+
+        str_user    = ""
+        str_hash    = ""
+        for key,value in kwargs.iteritems():
+            if key == 'user':       str_user    = value
+            if key == 'hash':       str_hash    = value
+
+        db = self._chris._SMCore._userDB
+        db.user_checkAPIcanCall(**kwargs)
         return f()
 
+
+def warn(*objs):
+    print("WARNING: ", *objs, file=sys.stderr)
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
