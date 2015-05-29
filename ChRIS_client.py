@@ -149,5 +149,5 @@ if __name__ == "__main__":
     API         = ChRIS_client(stateMachine = './ChRIS_SM.py', stateFile = args.str_stateFileName)
 
     API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'\"")
-    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=False\"")
-    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True\"")
+    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=False&auth=user='chris',hash='dabcdef1234'\"")
+    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
