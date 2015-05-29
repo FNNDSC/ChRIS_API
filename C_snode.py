@@ -183,7 +183,6 @@ class C_snode:
             self.b_printPre             = False
 
         def __iter__(self):
-
             yield('meta', dict(self.meta))
             if len(self.d_data):
                 for key in self.d_data.keys():
@@ -553,7 +552,7 @@ class C_stree:
 
         def touch(self, name, data):
             '''
-            Append 'data' to the current node d_data dictionary under key 'name'
+            Put 'data' to the current node d_data dictionary under key 'name'
             '''
             b_OK = True
             # print("here!")
@@ -562,6 +561,20 @@ class C_stree:
             self.snode_current.d_data[name] = data
             # print(self.snode_current)
             return b_OK
+
+        def append(self, name, data):
+            '''Append 'data' to the current node d_data
+
+            This method appends 'data' to the current contents in the
+            key named 'name'. The append assumes that the operation
+            makes sense and that the data types can be appended to
+            each other.
+
+            '''
+            b_OK = True
+            self.snode_current.d_data[name] = self.snode_current.d_data[name] + data
+            return b_OK
+
 
         def b_pathOK(self, al_path):
             """
