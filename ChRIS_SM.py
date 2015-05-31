@@ -718,12 +718,4 @@ if __name__ == "__main__":
     chris.API_replayCalls()
 
 
-    # login
-#    d        = chris.login('chris', 'chris1234')
-#    print d
-#    str_hash = m.md5(d['token']).hexdigest()
-#    print str_hash
-
-#    print(chris.feed_getFromObjectName('Feed-3'))
-
 
