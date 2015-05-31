@@ -50,15 +50,15 @@ class C_stringCore:
                 # Member variables
                 #
                 #       - Core variables
-                self.str_obj    = 'C_stringCore';       # name of object class
-                self.str_name   = 'void';               # name of object variable
-                self._id        = -1;                   # id of agent
-                self._iter      = 0;                    # current iteration in an
+                self.str_obj    = 'C_stringCore'        # name of object class
+                self.str_name   = 'void'                # name of object variable
+                self._id        = -1                    # id of agent
+                self._iter      = 0                     # current iteration in an
                                                         #       arbitrary processing 
                                                         #       scheme
-                self._verbosity = 0;                    # debug related value for 
+                self._verbosity = 0                     # debug related value for
                                                         #       object
-                self._warnings  = 0;                    # show warnings 
+                self._warnings  = 0                     # show warnings
                                                         #       (and warnings level)
                 
                 #
@@ -102,5 +102,3 @@ class C_stringCore:
             self.StringIO.write(astr_text)
             self.str            = self.strget()
             return astr_text
-            
-                
