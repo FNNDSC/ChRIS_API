@@ -43,7 +43,7 @@ class C_meta:
 
         def __init__(self, al_mustInclude          = [],
                            al_mustNotInclude       = []):
-            self._hitCount              = 0;
+            self._hitCount              = 0
             self.l_canInclude           = []
             self.l_mustInclude          = al_mustInclude
             self.l_mustNotInclude       = al_mustNotInclude
@@ -112,8 +112,9 @@ class C_meta:
             self.sCore.write('%s   +--hitCount......... %d\n' % (self.str_pre, self._hitCount))
             self.sCore.write('%s   +--mustInclude...... %s\n' % (self.str_pre, self.l_mustInclude))
             self.sCore.write('%s   +--mustNotInclude... %s\n' % (self.str_pre, self.l_mustNotInclude))
-            return self.sCore.strget()
-
+            str_ret = self.sCore.strget()
+            self.sCore.reset()
+            return str_ret
 
 class C_snode:
         """
@@ -137,13 +138,13 @@ class C_snode:
             #       - Core variables
             self.str_obj        = 'C_snode'      # name of object class
             self.str_name       = 'void'         # name of object variable
-            self._id            = -1;            # id of agent
-            self._iter          = 0;             # current iteration in an
+            self._id            = -1             # id of agent
+            self._iter          = 0              # current iteration in an
                                                  #       arbitrary processing
                                                  #       scheme
-            self._verbosity     = 0;             # debug related value for
+            self._verbosity     = 0              # debug related value for
                                                  #       object
-            self._warnings      = 0;             # show warnings
+            self._warnings      = 0              # show warnings
 
             self.sCore          = C_stringCore()
 
