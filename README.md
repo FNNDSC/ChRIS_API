@@ -2,21 +2,35 @@
 
 ## The API specification of ChRIS
 
-This repository contains python set of example code to create, interact with, and manipulate ChRIS feeds.
+This repository contains a set of mostly python code that creates a simulated ChRIS machine that serves as a test bed for the interacting with and developing the ChRIS REST API.
 
-### <tt>api.php</tt>
+### Quick-n-Dirty Test
 
-The main entry point for interacting with the ChRIS web service. Calls to <tt>api.php</tt> return JSON objects.
+The simplest way to interact with the service, is to fire up the ChRIS Web Service, <tt>ChRIS_WS.py</tt> and connect to the server port (default '5555', specify alternate port with <tt>--port <port></tt>:
 
-For example
+```
+./ChRIS_WS.py
+```
 
-````
-php api.php 'object=Feed&method=new'
-````
+Perhaps the quickest way to test an interaction with the web service is to use Google Chrome with the Advanced Rest Client extension. In the Query parameters you can add "key, value" pairs.
 
-returns
+| key             | Value    |
+|-----------------|----------|
+| returnstore     | d        |
+| object          | chris    |
+| method          | login    |
+| parameters      | user='chris',passwd='chris1234' |
+| sessionFile     | session.py |
 
-````
- {"note": {"meta": {"_depth": 1}}, "comment": {"meta": {"_depth": 1}, "contents": "Hello, world!"}, "meta": {"_depth": 0}, "data": {"meta": {"_depth": 1}, "visualView": {"meta": {"_depth": 2}}, "fileView": {"meta": {"_depth": 2}}}, "title": {"meta": {"_depth": 1}}}
-````
+On hittend "Send", you should see:
 
+{
+ "sessionSeed": "1", 
+ "APIcanCall": false, 
+ "loginStatus": true, 
+ "loginTimeStamp": "2015-06-01_16:13:04.503956", 
+ "loginMessage": "Successful login at 2015-06-01 16:13:04.503992.", 
+ "logoutMessage": "", 
+ "sessionStatus": true, 
+ "sessionToken": "ABCDEF"
+}
