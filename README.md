@@ -36,3 +36,14 @@ On hitting "Send", you should see:
  "sessionToken": "ABCDEF"
 }
 ```
+
+#### Behind the scenes
+
+The <tt>sessionFile</tt> acts as a persistent store between calls of the ChRIS Simulated Machine. The above API call is in fact parsed and assembled into a python class/method contruct directly:
+
+```
+# 2015-06-01 16:13:04.502564 ?returnstore=d&object=chris&method=login&parameters=user=%27chris%27,passwd=%27chris1234%27&sessionFile=session.py
+d=auth(lambda: chris.login(user='chris',passwd='chris1234'))
+```
+
+where we can clearly see how the URL args map to a function call in ChRIS.
