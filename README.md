@@ -6,7 +6,7 @@ This repository contains a set of mostly python code that creates a simulated Ch
 
 ### Quick-n-Dirty Test
 
-The simplest way to interact with the service, is to fire up the ChRIS Web Service, <tt>ChRIS_WS.py</tt> and connect to the server port (default '5555', specify alternate port with <tt>--port <port></tt>:
+The simplest way to interact with the service, is to fire up the ChRIS Web Service, <tt>ChRIS_WS.py</tt> and connect to the server port (default '5555', specify alternate port with <tt>--port \<port\></tt>:
 
 ```
 ./ChRIS_WS.py
@@ -22,8 +22,9 @@ Perhaps the quickest way to test an interaction with the web service is to use G
 | parameters      | user='chris',passwd='chris1234' |
 | sessionFile     | session.py |
 
-On hittend "Send", you should see:
+On hitting "Send", you should see:
 
+```
 {
  "sessionSeed": "1", 
  "APIcanCall": false, 
@@ -34,3 +35,4 @@ On hittend "Send", you should see:
  "sessionStatus": true, 
  "sessionToken": "ABCDEF"
 }
+```
