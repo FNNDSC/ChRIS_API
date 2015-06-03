@@ -63,7 +63,11 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             Returns:
                 a string of client parameters.
         """
-        return "?" + al_inputRaw[7]
+        str_GET         = al_inputRaw[0]
+        l_URLargSpec    = str_GET.split('/')
+        str_URLargs     = l_URLargSpec[1].split()[0]
+        return str_URLargs
+        #return "?" + al_inputRaw[7]
 
     def URL_clientParamsGET(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
