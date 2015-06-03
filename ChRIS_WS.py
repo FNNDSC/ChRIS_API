@@ -44,6 +44,7 @@ import  json
 import  argparse
 import  os
 import  sys
+import  datetime
 
 
 class TCPServer(SocketServer.ThreadingTCPServer):
@@ -96,8 +97,8 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         shell.echoStdErr(True)
         shell.echo(False)
 
-        #print("astr_URLargs     = %s" % astr_URLargs)
-        #print("astr_sessionFIle = %s" % astr_sessionFile)
+        print("astr_URLargs     = %s" % astr_URLargs)
+        print("astr_sessionFIle = %s" % astr_sessionFile)
         shell('ChRIS_SM.py --APIcall \"%s\" --stateFile %s' % (astr_URLargs, astr_sessionFile))
         #return {'message' : 'ok'}
         return eval(shell.stdout())
@@ -120,18 +121,23 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         return str_res
 
     def handle(self):
+        str_raw         = self.request.recv(1024).strip()
+        now             = datetime.datetime.today()
+        str_timeStamp   = now.strftime('%Y-%m-%d %H:%M:%S.%f')
+        print("%s incoming data stream\n%s\n" % (str_timeStamp, str_raw) )
+        l_raw       = str_raw.split('\n')
+        print(l_raw)
+        FORMtype    = l_raw[0].split('/')[0]
+        str_URLargs = eval('self.URL_clientParams%s(l_raw)' % FORMtype)
+
+        # process the data:
+        d_component     = parse_qs(urlparse(str_URLargs).query)
+        print(d_component)
+        str_sessionFile = d_component['sessionFile'][0]
+        print('sessionFile = %s\n' % str_sessionFile)
+        str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
+        print(str_reply)
         try:
-            str_raw     = self.request.recv(1024).strip()
-            l_raw       = str_raw.split('\n')
-            FORMtype    = l_raw[0].split('/')[0]
-            str_URLargs = eval('self.URL_clientParams%s(l_raw)' % FORMtype)
-
-            # process the data:
-            d_component     = parse_qs(urlparse(str_URLargs).query)
-            str_sessionFile = d_component['sessionFile'][0]
-            print('sessionFile = %s\n' % str_sessionFile)
-            str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
-
             self.request.sendall(self.HTTPresponse_sendClient(json.dumps(str_reply),
                                                               ContentType = 'application/json'))
         except Exception, e:
@@ -188,7 +194,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(str_desc)
-    print('Starting Simple ChRIS Web Service on port %s...\n' % args.port)
+    print('Starting Simple ChRIS Web Service on port %s.' % args.port)
+    print('To exit/kill this server, hit <ctrl>-c.\n')
     print("Send GET/POST requests to the service port.")
     server = TCPServer(('127.0.0.1', args.port), TCPServerHandler)
     server.serve_forever()
