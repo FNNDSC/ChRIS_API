@@ -137,7 +137,6 @@ class ChRIS_SMUserDB(object):
         ret                     = {}
         now                     = datetime.datetime.today()
         ret['loginTimeStamp']   = now.strftime('%Y-%m-%d_%H:%M:%S.%f')
-#        ret['loginTimeStamp']   = now.strftime('%Y%m%d%H%M%S%f')
         ret['loginStatus']      = False
         ret['loginMessage']     = ""
         ret['logoutMessage']    = ""
@@ -318,6 +317,7 @@ class ChRIS_SMFS(ChRIS_SM):
         """
         ChRIS_SM.__init__(self, **kwargs)
 
+        self._b_clearStateFile  = False
         self._str_stateFile     = ""
         for key,val in kwargs.iteritems():
             if key == 'stateFile':  self._str_stateFile = val
@@ -381,7 +381,8 @@ class ChRIS_SMFS(ChRIS_SM):
 
         str_auth        = ""
         for key,value in kwargs.iteritems():
-            if key == 'authmodule': auth    = value
+            if key == 'authmodule':         auth                    = value
+            if key == 'clearSessionFile':   self._b_clearStateFile  = value
 
         if not len(auth._name): error.fatal(self, 'no_authModuleSpec')
 
@@ -431,7 +432,9 @@ class ChRIS_SMFS(ChRIS_SM):
                 str_eval += ", user=%s, hash=%s)" % (str_user, str_hash)
         self._l_apiCallHistory.append(str_eval)
         #print(d_component)
-        with open(self._str_stateFile, 'a') as f:
+        str_mode = 'a'
+        if self._b_clearStateFile: str_mode = 'w'
+        with open(self._str_stateFile, str_mode) as f:
             f.write("# %s %s\n" % (datetime.datetime.now(), self._str_apiCall))
             f.write("%s\n" % str_eval)
 
