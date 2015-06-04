@@ -66,6 +66,12 @@ class ChRIS_client(object):
         """Entry point mimicking the external call to the web service
         """
         self._shell("%s --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
+        print("stdout from shell call...")
+        print(self.stdout())
+        job = eval(self.stdout())
+        print("vvvv")
+        print(job)
+        print("^^^^")
 
     def stdout(self):
         return self._shell.stdout()
@@ -148,6 +154,9 @@ if __name__ == "__main__":
     m           = hashlib
     API         = ChRIS_client(stateMachine = './ChRIS_SM.py', stateFile = args.str_stateFileName)
 
-    API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'\"")
-    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=False&auth=user='chris',hash='dabcdef1234'\"")
+    # First login...
+    API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"")
+
+    # Now do something...
+    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
     API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
