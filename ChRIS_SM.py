@@ -73,13 +73,13 @@ class ChRIS_SMUserDB(object):
             if key == 'callHash':       astr_sessionHash    = value
         if not s.cd('/users/%s/login' % (astr_user)):       return False
         d_activeSessionInfo     = s.cat('activeSessionInfo')
-        print("**********")
-        print(d_activeSessionInfo)
-        print(s.snode_root)
+        # print("**********")
+        # print(d_activeSessionInfo)
+        # print(s.snode_root)
         if not s.cd(d_activeSessionInfo['login']): return False
 
         d_currentSessionInfo    = s.cat(d_activeSessionInfo['session'])
-        print(d_currentSessionInfo)
+        # print(d_currentSessionInfo)
         if not d_currentSessionInfo['loginStatus']:         return False
         str_sessionToken        = d_currentSessionInfo['sessionToken']
         str_sessionSeed         = d_currentSessionInfo['sessionSeed']
@@ -472,6 +472,10 @@ class ChRIS_SMFS(ChRIS_SM):
             cmd = "%s = %s; print(%s)" % (self._str_returnStore, cmd, self._str_returnStore)
         # print(cmd)
         exec(cmd)
+        #
+        # EDIT HERE! For more full return!!
+        #
+
 
     def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
