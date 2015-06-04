@@ -153,6 +153,7 @@ def synopsis(ab_shortOnly = False):
     SYNOPSIS
 
             %s                                     \\
+                            --hostIP <hostIP>       \\
                             --port <port>
 
 
@@ -195,11 +196,20 @@ if __name__ == "__main__":
         default =   5555
     )
 
+    parser.add_argument(
+        '-i', '--host',
+        help    =   "The <host> name/IP on which to start the server.",
+        dest    =   'host',
+        action  =   'store',
+        default =   "127.0.0.1"
+    )
+
+
     args = parser.parse_args()
 
     print(str_desc)
-    print('Starting Simple ChRIS Web Service on port %s.' % args.port)
+    print('Starting Simple ChRIS Web Service on %s:%s.' % (args.host, args.port))
     print('To exit/kill this server, hit <ctrl>-c.\n')
-    print("Send GET/POST requests to the service port.")
-    server = TCPServer(('127.0.0.1', args.port), TCPServerHandler)
+    print("Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
+    server = TCPServer((args.host, args.port), TCPServerHandler)
     server.serve_forever()

@@ -382,7 +382,6 @@ class ChRIS_SMFS(ChRIS_SM):
         str_auth        = ""
         for key,value in kwargs.iteritems():
             if key == 'authmodule':         auth                    = value
-            if key == 'clearSessionFile':   self._b_clearStateFile  = value
 
         if not len(auth._name): error.fatal(self, 'no_authModuleSpec')
 
@@ -398,6 +397,9 @@ class ChRIS_SMFS(ChRIS_SM):
         str_authHash    = ""
 
         d_component     = parse_qs(urlparse(self._str_apiCall).query)
+
+        if 'clearSessionFile' in d_component:
+            self._b_clearStateFile = int(d_component['clearSessionFile'][0])
         if 'returnstore' in d_component:
             str_ret                 = d_component['returnstore'][0]
             self._b_returnStore     = True
@@ -433,6 +435,7 @@ class ChRIS_SMFS(ChRIS_SM):
         self._l_apiCallHistory.append(str_eval)
         #print(d_component)
         str_mode = 'a'
+        #print("clear state file = %d" % self._b_clearStateFile)
         if self._b_clearStateFile: str_mode = 'w'
         with open(self._str_stateFile, str_mode) as f:
             f.write("# %s %s\n" % (datetime.datetime.now(), self._str_apiCall))
