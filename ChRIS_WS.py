@@ -97,14 +97,11 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         """
         shell = crun.crun()
         shell.waitForChild(True)
-        shell.echoStdOut(True)
-        shell.echoStdErr(True)
+        shell.echoStdOut(False)
+        shell.echoStdErr(False)
         shell.echo(False)
 
-        print("astr_URLargs     = %s" % astr_URLargs)
-        print("astr_sessionFIle = %s" % astr_sessionFile)
         shell('ChRIS_SM.py --APIcall \"%s\" --stateFile %s' % (astr_URLargs, astr_sessionFile))
-        #return {'message' : 'ok'}
         return eval(shell.stdout())
 
     def HTTPresponse_sendClient(self, str_payload, **kwargs):
@@ -120,27 +117,38 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
 
         str_HTTPpre = "HTTP 1.1 "
         str_res     = "%s %s" % (str_HTTPpre, str(res))
-
-        #print(str_res)
         return str_res
 
     def handle(self):
         str_raw         = self.request.recv(1024).strip()
         now             = datetime.datetime.today()
         str_timeStamp   = now.strftime('%Y-%m-%d %H:%M:%S.%f')
-        print("%s incoming data stream\n%s\n" % (str_timeStamp, str_raw) )
+        print("\n\n***********************************************")
+        print("***********************************************")
+        print("%s incoming data stream" % (str_timeStamp) )
+        print("***********************************************")
+        print("raw input:")
+        print("***********************************************")
+        print("%s\n" % (str_raw) )
+        print("***********************************************")
         l_raw       = str_raw.split('\n')
-        print(l_raw)
+        #print(l_raw)
         FORMtype    = l_raw[0].split('/')[0]
         str_URLargs = eval('self.URL_clientParams%s(l_raw)' % FORMtype)
 
         # process the data:
         d_component     = parse_qs(urlparse(str_URLargs).query)
+        print("parsed input:")
+        print("***********************************************")
         print(d_component)
         str_sessionFile = d_component['sessionFile'][0]
-        print('sessionFile = %s\n' % str_sessionFile)
+        print("\n***********************************************")
         str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
+        print("reply:")
+        print("***********************************************")
         print(str_reply)
+        print("***********************************************")
+        print("***********************************************")
         try:
             self.request.sendall(self.HTTPresponse_sendClient(json.dumps(str_reply),
                                                               ContentType = 'application/json'))
