@@ -41,7 +41,7 @@ import time
 import datetime
 
 from urlparse import urlparse, parse_qs
-
+import shlex
 import C_snode
 import error
 import message
@@ -75,7 +75,6 @@ class ChRIS_SMUserDB(object):
         d_activeSessionInfo     = s.cat('activeSessionInfo')
         # print("**********")
         # print(d_activeSessionInfo)
-        # print(s.snode_root)
         if not s.cd(d_activeSessionInfo['login']): return False
 
         d_currentSessionInfo    = s.cat(d_activeSessionInfo['session'])
@@ -92,6 +91,34 @@ class ChRIS_SMUserDB(object):
         d_currentSessionInfo['APIcanCall']      = b_OK
         self.user_updateSessionInfo(sessionInfo = d_currentSessionInfo, **kwargs)
         return b_OK
+
+    def user_getAuthInfo(self, **kwargs):
+        """Gets the DB auth info of the user
+        """
+        s                   = self._stree
+
+        for key,value in kwargs.iteritems():
+            if key == 'user':           str_user            = value
+        s.cd('/users/%s/login' % str_user)
+        d_activeSessionInfo = s.cat('activeSessionInfo')
+        if not s.cd(d_activeSessionInfo['login']):          return False
+        d_authSession   = s.cat(d_activeSessionInfo['session'])
+        rd_authInfo     = {}
+        rd_authInfo['sessionStatus']    = d_authSession['sessionStatus']
+        rd_authInfo['sessionSeed']      = d_authSession['sessionSeed']
+        return rd_authInfo
+
+    def user_getSessionInfo(self, **kwargs):
+        """Gets the DB session entry of the user
+        """
+        s                   = self._stree
+
+        for key,value in kwargs.iteritems():
+            if key == 'user':           str_user            = value
+        s.cd('/users/%s/login' % str_user)
+        d_activeSessionInfo = s.cat('activeSessionInfo')
+        if not s.cd(d_activeSessionInfo['login']):          return False
+        return s.cat(d_activeSessionInfo['session'])
 
     def user_updateSessionInfo(self, **kwargs):
         """Updates the DB entry of the user
@@ -256,13 +283,18 @@ class ChRIS_SM(object):
         self._log.tee(True)
         self._log.syslog(True)
 
+        # Convenience members
+        self.DB                         = self._SMCore._userDB
+
         self._str_apiCall               = ""
         self._l_apiCallHistory          = []
 
-        # The returnStore variables control how json objects are captured from API calls.
+        # The returnStore variables control how json objects are
+        # captured from API calls. Essentially the python exec
+        # stores the return value in _str_returnStore and then
+        # print()s it to stdout.
         self._b_returnStore             = False
         self._str_returnStore           = ""
-
 
     @abc.abstractmethod
     def build(self, **kwargs):
@@ -289,7 +321,7 @@ class ChRIS_SM(object):
 
     def login(self, **kwargs):
         loginStatus = self._SMCore.login(**kwargs)
-        self._str_loginTimeStamp = loginStatus['loginTimeStamp']
+        #self._str_loginTimeStamp = loginStatus['loginTimeStamp']
         return(loginStatus)
 
     def feed_nextID(self):
@@ -464,18 +496,36 @@ class ChRIS_SMFS(ChRIS_SM):
         # Play out the previous API calls to restore state up to current call
         for cmd in self._l_apiCallHistory[0:-1]:
             if cmd[0] != "#": exec(cmd)
-        # Now play the current call.
-        cmd = self._l_apiCallHistory[-1]
+
+        # Now process the current call.
+        # First, we capture the API call itself from the client to return
+        # in the 'APIcall' field of the return structure
+        str_API     = self._str_apiCall
+        d_API       = {'APIcall': str_API}
+
+        # And similarly for the actual python call
+        cmd         = self._l_apiCallHistory[-1]
+        d_cmd       = {'pycode': cmd}
+
         if self._b_returnStore:
-            cmd = "%s; print(%s)" % (cmd, self._str_returnStore)
+            cmd = "%s; strout = str(%s); print(\"{'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (cmd, self._str_returnStore)
         else:
-            cmd = "%s = %s; print(%s)" % (self._str_returnStore, cmd, self._str_returnStore)
+            cmd = "%s = %s; strout = (%s); print(\"{'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (self._str_returnStore, cmd, self._str_returnStore)
         # print(cmd)
         exec(cmd)
-        #
-        # EDIT HERE! For more full return!!
-        #
 
+        # Get the user's auth data
+        d_component = parse_qs(urlparse(str_API).query)
+        if 'auth' in d_component:
+            str_userSpec    = d_component['auth'][0]
+        if d_component['method'][0] == 'login':
+            str_userSpec    = d_component['parameters'][0]
+        d_params    = dict(token.split('=') for token in shlex.split(str_userSpec.replace(',', ' ')))
+        str_user    = d_params['user']
+        d_auth      = self.DB.user_getAuthInfo(user=str_user)
+        print("'auth': %s," % d_auth)
+        print("'API': %s,"  % d_API)
+        print("'cmd': %s}"  % d_cmd)
 
     def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
