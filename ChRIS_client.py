@@ -66,12 +66,12 @@ class ChRIS_client(object):
         """Entry point mimicking the external call to the web service
         """
         self._shell("%s --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
-        print("stdout from shell call...")
+        # print("stdout from shell call...")
         print(self.stdout())
-        job = eval(self.stdout())
-        print("vvvv")
-        print(job)
-        print("^^^^")
+        # job = eval(self.stdout())
+        # print("vvvv")
+        # print(job)
+        # print("^^^^")
 
     def stdout(self):
         return self._shell.stdout()
