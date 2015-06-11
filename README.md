@@ -21,20 +21,40 @@ Perhaps the quickest way to test an interaction with the web service is to use G
 | method          | login    |
 | parameters      | user='chris',passwd='chris1234' |
 | sessionFile     | session.py |
+| clearSessionFile| 1 |
+
+Or, alternatively, as one HTTP formatted request:
+
+````
+http://127.0.0.1:5555?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1&sessionFile=session.py
+````
 
 On hitting "Send", you should see:
 
-```
+```json
 {
- "sessionSeed": "1", 
- "APIcanCall": false, 
- "loginStatus": true, 
- "loginTimeStamp": "2015-06-01_16:13:04.503956", 
- "loginMessage": "Successful login at 2015-06-01 16:13:04.503992.", 
- "logoutMessage": "", 
- "sessionStatus": true, 
- "sessionToken": "ABCDEF"
+ "cmd": {
+     "pycode": "d=auth(lambda: chris.login(user='chris',passwd='chris1234'))" 
+        },
+ "API": {
+     "APIcall": "?returnstore=d&object=chris&method=login&parameters=user=%27chris%27,passwd=%27chris1234%27&clearSessionFile=1&sessionFile=session.py"
+        },
+ "auth": {
+      "sessionSeed": "1",
+      "sessionStatus": true
+         },
+ "exec": {
+      "sessionSeed": "1",
+      "APIcanCall": false,
+      "loginStatus": true,
+      "loginTimeStamp": "2015-06-11_18:41:48.610569",
+      "loginMessage": "Successful login at 2015-06-11 18:41:48.610600.",
+      "logoutMessage": "",
+      "sessionStatus": true,
+      "sessionToken": "ABCDEF"
+        }
 }
+
 ```
 
 #### Behind the scenes
