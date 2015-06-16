@@ -101,22 +101,6 @@ class Feed(object):
         """STree Getter"""
         self._stree = value
 
-    def example_method(self, param1, param2):
-        """Class methods are similar to regular functions.
-
-        Note:
-          Do not include the `self` parameter in the ``Args`` section.
-
-        Args:
-          param1: The first parameter.
-          param2: The second parameter.
-
-        Returns:
-          True if successful, False otherwise.
-
-        """
-        return True
-
 class Feed_FS(Feed):
     """The Feed_FS subclass implements Feed operations against a File System
 
@@ -175,7 +159,132 @@ class Feed_FS(Feed):
                 s.cd('/comment')
                 s.append('contents', ' Greetings and salutations from %s!' % value)
 
+class FeedTree(object):
+    '''
+    Implements various operations on a collection (tree) of feed objects -- mostly access and
+    search.
+    '''
+
+    def __init__(self, **kwargs):
+        '''Construct a tree -- typically there is one tree per user
+
+        '''
+        self._feedTree  = C_snode.C_stree()
+
+    def existObjectName(self, astr_feedObjectName):
+        """Check if a feed exists.
+
+        Simply checks if a given feed with passed feedObjectName exists. The
+        feedObjectName is the actual object record name in the snode tree.
+        Searching on feed object name is much quicker than querying
+        each feed for its ID.
+
+        Args:
+            astr_feedObjectName (string): The Feed Object Name.
+
+        Returns:
+            exists (boolean): True if exists, False if not.
+
+        """
+        f = self._feedTree
+        f.cd('/')
+        if f.cd(astr_feedObjectName):
+            return True
+        else:
+            return False
+
+    def existFeedID(self, astr_feedID):
+        """Check if a feed exists.
+
+        Simply checks if a given feed with passed ID exists. This method needs
+        to loop over all feeds and check their internal ID string.
+
+        Args:
+            astr_feedID (string): The Feed ID.
+
+        Returns:
+            exists (boolean): True if exists, False if not.
+
+        """
+        f = self._feedTree
+        l_feed = f.lstr_lsnode('/')
+        for feedNode in f.lstr_lsnode('/'):
+            f.cd('/%s' % feedNode)
+            str_ID = f.cat('ID')
+            if str_ID == astr_feedID:
+                return True
+        return False
+
+    def getFromObjectName(self, astr_feedObjectName, **kwargs):
+        """Get a feed from its internal object name
+
+        This returns a feed by directly returning the object
+        in the snode tree with the given feedObjectName.
+
+        Args:
+            astr_feedObjectName (string): The Feed Object Name.
+
+        Returns:
+            Feed (Feed): The Feed itself if it exists, False if not.
+        """
+
+        b_returnAsDict = False
+
+        for key,val in kwargs.iteritems():
+            if key == "returnAsDict":   b_returnAsDict = val
+
+        f = self._feedTree
+        f.cd('/')
+        if f.cd(astr_feedObjectName):
+            if b_returnAsDict:
+                return dict(f.cat('Feed'))
+            else:
+                return f.cat('Feed')
+        else:
+            return False
+
+    def getFromID(self, astr_feedID):
+        """Get a feed from its internal ID string.
+
+        :param astr_feedID: The ID of the Feed to get
+        :return: False if not found, otherwise the Feed object
+        """
+        f = self._feedTree
+        l_feed = f.lstr_lsnode('/')
+        for feedNode in f.lstr_lsnode('/'):
+            f.cd('/%s' % feedNode)
+            str_ID = f.cat('ID')
+            if str_ID == astr_feedID:
+                return f.cat('Feed')
+        return False
+
+class FeedTree_chrisUser(FeedTree):
+    '''
+    A Feed Tree for a hypothetical user on the ChRIS system. Each user will
+    have identical trees under this scenario.
+    '''
+
+    def __init__(self, **kwargs):
+        '''
+        Build the tree.
+
+        :return:
+        '''
+        FeedTree.__init__(self, **kwargs)
+        f       = self._feedTree
+        l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
+        l_FID   = ['000001', '000002', '000003', '000004']
+        f.mknode(l_Feed)
+        for node, id in zip(l_Feed, l_FID):
+            f.cd('/%s' % node)
+            f.touch("ID", id)
+            f.touch("Feed", Feed_FS(
+                                repo='Repo-%s' % node,
+                                desc='Node Object Name: %s; Node FID: %s' % (node, id)))
+
+
 
 if __name__ == "__main__":
     feed    = Feed_FS()
-    d       = dict(feed.stree.snode_root)
+    T       = FeedTree_chrisUser()
+    print(T._feedTree.snode_root)
