@@ -60,6 +60,7 @@ class ChRIS_SMUserDB(object):
         s.touch("userName",     "chris")
         s.touch("fullName",     "ChRIS User")
         s.touch("passwd",       "chris1234")
+        s.mknode(['feed'])
         s.mkcd('login')
 
     def user_checkAPIcanCall(self, **kwargs):
@@ -145,7 +146,8 @@ class ChRIS_SMUserDB(object):
 
         This method "logs" a user in, using the passwd.
 
-        It also updates the DB user/session entry accordingly.
+        It also updates the DB user/session entry accordingly, and creates the
+        "tree" of feeds for that user.
 
         Args (kwargs):
             user (string): The user to login.
@@ -160,7 +162,7 @@ class ChRIS_SMUserDB(object):
             if key == 'user':   astr_user   = val
             if key == 'passwd': astr_passwd = val
 
-        # login/session/canCall structuer
+        # login/session/canCall structure
         ret                     = {}
         now                     = datetime.datetime.today()
         ret['loginTimeStamp']   = now.strftime('%Y-%m-%d_%H:%M:%S.%f')
@@ -186,6 +188,9 @@ class ChRIS_SMUserDB(object):
                 ret['sessionStatus']    = True
                 ret['sessionToken']     = "ABCDEF"
                 ret['sessionSeed']      = "1"
+                feedTree                = feed.FeedTree_chrisUser()
+                s.cd('/users/%s/feed' % astr_user)
+                s.touch('tree', feedTree)
         self.user_updateSessionInfo(sessionInfo = ret, createSession = True, **kwargs)
         return ret
 
@@ -507,10 +512,11 @@ class ChRIS_SMFS(ChRIS_SM):
         cmd         = self._l_apiCallHistory[-1]
         d_cmd       = {'pycode': cmd}
 
+        print("{")
         if self._b_returnStore:
-            cmd = "%s; strout = str(%s); print(\"{'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (cmd, self._str_returnStore)
+            cmd = "%s; strout = str(%s); print(\"'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (cmd, self._str_returnStore)
         else:
-            cmd = "%s = %s; strout = (%s); print(\"{'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (self._str_returnStore, cmd, self._str_returnStore)
+            cmd = "%s = %s; strout = (%s); print(\"'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (self._str_returnStore, cmd, self._str_returnStore)
         # print(cmd)
         exec(cmd)
 
@@ -523,9 +529,12 @@ class ChRIS_SMFS(ChRIS_SM):
         d_params    = dict(token.split('=') for token in shlex.split(str_userSpec.replace(',', ' ')))
         str_user    = d_params['user']
         d_auth      = self.DB.user_getAuthInfo(user=str_user)
+        s_auth      = "'auth': %s," % d_auth
+        # print(s_auth.strip())
         print("'auth': %s," % d_auth)
         print("'API': %s,"  % d_API)
-        print("'cmd': %s}"  % d_cmd)
+        print("'cmd': %s"   % d_cmd)
+        print("}")
 
     def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
