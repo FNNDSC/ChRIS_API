@@ -27,9 +27,10 @@ str_desc = """
                            ______
                           |______|
 
-'ChRIS_WS' is a simple server that parses raw socket input for the
-/GET /xxx HTTP/ string, dispatches this to a ChRIS_SM instance,
-parses the resultant stdout, and transmits this back to the caller.
+'ChRIS_WS' -- ChRIS Web Service -- is a simple server that parses
+raw socket input for /GET /xxx HTTP/ strings, dispatches input to
+a ChRIS_SM instance, parses the resultant stdout, and transmits this
+back to the caller.
 
 Parts of the server infrastructure were adapted from:
 http://thomasfischer.biz/python-simple-json-tcp-server-and-client/
