@@ -43,6 +43,8 @@ class ChRIS_client(object):
 
     """
 
+    callCounter     = 0
+
     def __init__(self, **kwargs):
         """Constructor
         """
@@ -52,26 +54,48 @@ class ChRIS_client(object):
         self._str_token         = ""
         self._str_seed          = ""
 
+        self._b_formatAllJSON   = False
+
         self._shell             = crun.crun()
         self._shell.waitForChild(True)
-        self._shell.echoStdOut(True)
-        self._shell.echoStdErr(True)
+        self._shell.echoStdOut(False)
+        self._shell.echoStdErr(False)
         self._shell.echo(False)
 
         for key, val in kwargs.iteritems():
             if key == "stateMachine":   self._str_executable    = val
             if key == "stateFile":      self._str_stateFile     = val
+            if key == "formatAllJSON":  self._b_formatAllJSON   = val
 
     def __call__(self, *args, **kwargs):
         """Entry point mimicking the external call to the web service
         """
+        str_jwrap       = ""
+        b_jwrapStart    = False
+        b_jwrapEnd      = False
+        for key, val in kwargs.iteritems():
+            if key == "jwrap" and val == "start":   b_jwrapStart    = True
+            if key == "jwrap" and val == "end":     b_jwrapEnd      = True
+
+        ChRIS_client.callCounter += 1
+
+        if self._b_formatAllJSON:
+            if b_jwrapStart:
+                print("{\"call_%03d\": " % ChRIS_client.callCounter, end="")
+            else:
+                print(",\"call_%03d\": " % ChRIS_client.callCounter, end="")
+
         self._shell("%s --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
-        # print("stdout from shell call...")
-        print(self.stdout())
-        # job = eval(self.stdout())
+        # print(self.stdout())
+        # print(json.dumps(self.stdout()))
+        # print(json.dumps(self.stdout(), sort_keys = True,
+        #       indent=4, separators=(',', ': ')))
+        job = eval(self.stdout())
         # print("vvvv")
-        # print(job)
+        print(json.dumps(job), end="")
         # print("^^^^")
+        if self._b_formatAllJSON and b_jwrapEnd:
+            print("}")
 
     def stdout(self):
         return self._shell.stdout()
@@ -100,7 +124,7 @@ def synopsis(ab_shortOnly = False):
     shortSynopsis =  '''
     SYNOPSIS
 
-            %s --stateFile <stateFile>
+            %s --stateFile <stateFile> [--formatAllJSON]
 
 
     ''' % scriptName
@@ -118,6 +142,10 @@ def synopsis(ab_shortOnly = False):
        ChRIS_SM is instantiated. In this manner the machine state
        can be rebuilt. The current <apiCall> is appended to the
        <stateFile>.
+
+       --formatAllJSON
+       If specified, format the entire set of output responses as a "meta"
+       JSON string. Useful for downstream parsing with "|python -m json.tool"
 
     EXAMPLES
 
@@ -149,14 +177,24 @@ if __name__ == "__main__":
         action  =   'store',
         default =   "<void>"
     )
+    parser.add_argument(
+        '-f', '--formatAllJSON',
+        help    =   "If specified, wrap *all* output in a JSON object, useful for downsteam parsing.",
+        dest    =   'formatAllJSON',
+        action  =   'store_true',
+        default =   False
+    )
 
     args        = parser.parse_args()
     m           = hashlib
-    API         = ChRIS_client(stateMachine = './ChRIS_SM.py', stateFile = args.str_stateFileName)
+    API         = ChRIS_client(stateMachine = './ChRIS_SM.py',  stateFile       = args.str_stateFileName,
+                                                                formatAllJSON   = args.formatAllJSON)
 
     # First login...
-    API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"")
+    API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
 
     # Now do something...
     API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
-    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+
+    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"",jwrap="end")
+
