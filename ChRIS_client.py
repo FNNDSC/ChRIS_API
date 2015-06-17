@@ -194,7 +194,12 @@ if __name__ == "__main__":
     API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
 
     # Now do something...
-    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
 
-    API("\"http://chris_service?object=chris&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"",jwrap="end")
+    # Get a list of feeds for the homepage
+    API("\"http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+
+    # Get details about specific feeds
+    API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+
+    API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"",jwrap="end")
 
