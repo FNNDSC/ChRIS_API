@@ -188,15 +188,21 @@ class ChRIS_SMUserDB(object):
                 ret['sessionStatus']    = True
                 ret['sessionToken']     = "ABCDEF"
                 ret['sessionSeed']      = "1"
+
+                # Get he user's feed tree structure
                 feedTree                = feed.FeedTree_chrisUser()
+                # and attach it to the stree of this object
                 s.cd('/users/%s/feed' % astr_user)
                 s.touch('tree', feedTree)
+                self._userTree          = feedTree
+
         self.user_updateSessionInfo(sessionInfo = ret, createSession = True, **kwargs)
         return ret
 
     def __init__(self):
         self._md5       = hashlib
         self._stree     = C_snode.C_stree()
+        self._userTree  = None
         self.DB_build()
 
 class ChRIS_SMCore(object):
@@ -290,6 +296,7 @@ class ChRIS_SM(object):
 
         # Convenience members
         self.DB                         = self._SMCore._userDB
+        self.homePage                   = None
 
         self._str_apiCall               = ""
         self._l_apiCallHistory          = []
@@ -325,8 +332,8 @@ class ChRIS_SM(object):
         self._feedTree = value
 
     def login(self, **kwargs):
-        loginStatus = self._SMCore.login(**kwargs)
-        #self._str_loginTimeStamp = loginStatus['loginTimeStamp']
+        loginStatus     = self._SMCore.login(**kwargs)
+        self.homePage   = self._SMCore._userDB._userTree
         return(loginStatus)
 
     def feed_nextID(self):
@@ -535,110 +542,6 @@ class ChRIS_SMFS(ChRIS_SM):
         print("'API': %s,"  % d_API)
         print("'cmd': %s"   % d_cmd)
         print("}")
-
-    def feed_existObjectName(self, astr_feedObjectName):
-        """Check if a feed exists.
-
-        Simply checks if a given feed with passed feedObjectName exists. The
-        feedObjectName is the actual object record name in the snode tree.
-        Searching on feed object name is much quicker than querying
-        each feed for its ID.
-
-        Args:
-            astr_feedObjectName (string): The Feed Object Name.
-
-        Returns:
-            exists (boolean): True if exists, False if not.
-
-        """
-        f = self._feedTree
-        f.cd('/')
-        if f.cd(astr_feedObjectName):
-            return True
-        else:
-            return False
-
-    def feed_existFeedID(self, astr_feedID):
-        """Check if a feed exists.
-
-        Simply checks if a given feed with passed ID exists. This method needs
-        to loop over all feeds and check their internal ID string.
-
-        Args:
-            astr_feedID (string): The Feed ID.
-
-        Returns:
-            exists (boolean): True if exists, False if not.
-
-        """
-        f = self._feedTree
-        l_feed = f.lstr_lsnode('/')
-        for feedNode in f.lstr_lsnode('/'):
-            f.cd('/%s' % feedNode)
-            str_ID = f.cat('ID')
-            if str_ID == astr_feedID:
-                return True
-        return False
-
-    def feed_getFromObjectName(self, astr_feedObjectName, **kwargs):
-        """Get a feed from its internal object name
-
-        This returns a feed by directly returning the object
-        in the snode tree with the given feedObjectName.
-
-        Args:
-            astr_feedObjectName (string): The Feed Object Name.
-
-        Returns:
-            Feed (Feed): The Feed itself if it exists, False if not.
-        """
-
-        b_returnAsDict = False
-
-        for key,val in kwargs.iteritems():
-            if key == "returnAsDict":   b_returnAsDict = val
-
-        f = self._feedTree
-        f.cd('/')
-        if f.cd(astr_feedObjectName):
-            if b_returnAsDict:
-                return dict(f.cat('Feed'))
-            else:
-                return f.cat('Feed')
-        else:
-            return False
-
-    def feed_getFromID(self, astr_feedID):
-        """Get a feed from its internal ID string.
-
-        :param astr_feedID: The ID of the Feed to get
-        :return: False if not found, otherwise the Feed object
-        """
-        f = self._feedTree
-        l_feed = f.lstr_lsnode('/')
-        for feedNode in f.lstr_lsnode('/'):
-            f.cd('/%s' % feedNode)
-            str_ID = f.cat('ID')
-            if str_ID == astr_feedID:
-                return f.cat('Feed')
-        return False
-
-    def __call__(self, f):
-        """The wrapper around actual method calls -- allows for
-        authentication checking.
-
-        This method is the main "gatekeeper" between external API
-        calls and actual methods in ChRIS system. It serves as a
-        central entry point for each call so that user token
-        authentication can be verified, as well as any additional
-        parsing on the actual attempt to exec code.
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        print("In ChRIS_SM.__call__()")
-        return f()
 
 class ChRIS_authenticate(object):
     """The ChRIS_authenticate object is responsible for authenticated valid
