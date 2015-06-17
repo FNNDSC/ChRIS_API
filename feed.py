@@ -171,7 +171,31 @@ class FeedTree(object):
         '''
         self._feedTree  = C_snode.C_stree()
 
-    def existObjectName(self, astr_feedObjectName):
+    def feeds_organize(self, **kwargs):
+        """Basically "gets" the feed tree, possibly (re)organized according
+        to kwargs.
+
+        :param kwargs:
+        :return:
+        """
+        b_returnAsDict  = False
+        str_schema      = "default"
+
+        for key,val in kwargs.iteritems():
+            if key == "returnAsDict":   b_returnAsDict  = val
+            if key == 'schema':         str_schema      = val
+
+        l_keys = []
+
+        # More logic needed here to possibly reorganize
+        if str_schema == "default":
+            # Generate a list of feed elements
+            d_tree = dict(self._feedTree.snode_root)
+            l_keys = d_tree.keys()
+
+        return l_keys
+
+    def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
 
         Simply checks if a given feed with passed feedObjectName exists. The
@@ -193,7 +217,7 @@ class FeedTree(object):
         else:
             return False
 
-    def existFeedID(self, astr_feedID):
+    def feed_existFeedID(self, astr_feedID):
         """Check if a feed exists.
 
         Simply checks if a given feed with passed ID exists. This method needs
@@ -215,7 +239,7 @@ class FeedTree(object):
                 return True
         return False
 
-    def getFromObjectName(self, astr_feedObjectName, **kwargs):
+    def feed_getFromObjectName(self, astr_feedObjectName, **kwargs):
         """Get a feed from its internal object name
 
         This returns a feed by directly returning the object
@@ -243,7 +267,7 @@ class FeedTree(object):
         else:
             return False
 
-    def getFromID(self, astr_feedID):
+    def feed_getFromID(self, astr_feedID):
         """Get a feed from its internal ID string.
 
         :param astr_feedID: The ID of the Feed to get
