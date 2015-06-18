@@ -16,13 +16,12 @@ Perhaps the quickest way to test an interaction with the web service is to use G
 
 | key             | Value    |
 |-----------------|----------|
-| returnstore     | d        |
-| object          | chris    |
-| method          | login    |
-| parameters      | user='chris',passwd='chris1234' |
-| sessionFile     | session.py |
-| clearSessionFile| 1 |
-
+| <tt>returnstore</tt>     | <tt>d</tt>        |
+| <tt>object</tt>          | <tt>chris</tt>    |
+| <tt>method</tt>          | <tt>login</tt>    |
+| <tt>parameters</tt>      | <tt>user='chris',passwd='chris1234'</tt> |
+| <tt>sessionFile</tt>     | <tt>session.py</tt> |
+| <tt>clearSessionFile</tt>| <tt>1</tt> |
 Or, alternatively, as one HTTP formatted request:
 
 ````
