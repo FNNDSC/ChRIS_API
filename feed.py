@@ -170,6 +170,7 @@ class FeedTree(object):
 
         '''
         self._feedTree  = C_snode.C_stree()
+        self.feed       = None
 
     def feeds_organize(self, **kwargs):
         """Basically "gets" the feed tree, possibly (re)organized according
@@ -260,6 +261,7 @@ class FeedTree(object):
         f = self._feedTree
         f.cd('/')
         if f.cd(astr_feedObjectName):
+            self._feed = f.cat('Feed')
             if b_returnAsDict:
                 return dict(f.cat('Feed'))
             else:
