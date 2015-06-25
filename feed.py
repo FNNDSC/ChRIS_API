@@ -23,6 +23,7 @@ import abc
 import json
 
 import C_snode
+import plugin
 
 class Feed(object):
     """The summary line for a class docstring should fit on one line.
@@ -171,6 +172,7 @@ class FeedTree(object):
         '''
         self._feedTree  = C_snode.C_stree()
         self.feed       = None
+        self.plugin     = plugin.Plugin_homePage()
 
     def feeds_organize(self, **kwargs):
         """Basically "gets" the feed tree, possibly (re)organized according
@@ -261,7 +263,7 @@ class FeedTree(object):
         f = self._feedTree
         f.cd('/')
         if f.cd(astr_feedObjectName):
-            self._feed = f.cat('Feed')
+            self.feed = f.cat('Feed')
             if b_returnAsDict:
                 return dict(f.cat('Feed'))
             else:
@@ -314,3 +316,7 @@ if __name__ == "__main__":
     feed    = Feed_FS()
     T       = FeedTree_chrisUser()
     print(T._feedTree.snode_root)
+
+    print(T.plugin.getList())
+    print(T.plugin.set('file_browser'))
+    print(T.plugin.run())
