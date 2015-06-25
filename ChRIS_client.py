@@ -86,11 +86,19 @@ class ChRIS_client(object):
                 print(",\"call_%03d\": " % ChRIS_client.callCounter, end="")
 
         self._shell("%s --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
-        # print(self.stdout())
+        # print("\n-->%s<--" % self.stdout())
         # print(json.dumps(self.stdout()))
         # print(json.dumps(self.stdout(), sort_keys = True,
         #       indent=4, separators=(',', ': ')))
-        job = eval(self.stdout())
+        try:
+            job = eval(self.stdout())
+        except:
+            print("\n\nShell job failure!")
+            print("Attempting to execute:")
+            print(self._shell._str_shellCmd)
+            print("Returned:")
+            print(self._shell.stderr())
+            sys.exit(1)
         # print("vvvv")
         print(json.dumps(job), end="")
         # print("^^^^")
@@ -196,7 +204,18 @@ if __name__ == "__main__":
     # Now do something...
 
     # Get a list of feeds for the homepage
-    API("\"http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+    API("\"http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default'&auth=user='chris',hash='dabcdef1234'\"")
+
+    # Get a list of plugins that are valid at the scope of the homepage
+    API("\"http://chris_service?object=chris.homePage.plugin&method=getList&auth=user='chris',hash='dabcdef1234'\"")
+
+    # Choose a specific plugin
+    API("\"http://chris_service?object=chris.homePage.plugin&method=set&parameters='file_browser'&auth=user='chris',hash='dabcdef1234'\"")
+
+    # Run it...
+    API("\"http://chris_service?object=chris.homePage.plugin&method=run&auth=user='chris',hash='dabcdef1234'\"")
+
+    # This creates a new feed ... the client needs to request a new list of Feeds and render it.
 
     # Get details about specific feeds
     API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
