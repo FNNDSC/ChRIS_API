@@ -47,6 +47,7 @@ import  os
 import  sys
 import  datetime
 
+import  ChRIS_GET
 
 class TCPServer(SocketServer.ThreadingTCPServer):
     allow_reuse_address = True
@@ -56,7 +57,8 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
     def URL_clientParamsPOST(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
 
-            This method handles POST calls from client.
+            This method handles POST calls from client, i.e. calls that
+            push information TO the backend.
 
             Args:
                 al_inputRaw (list): The raw socket data as list split on '\n'
@@ -73,7 +75,8 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
     def URL_clientParamsGET(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
 
-            This method handles GET calls from client.
+            This method handles GET calls from client, i.e. calls that
+            get information FROM the backend.
 
             Args:
                 al_inputRaw (list): The raw socket data as list split on '\n'
@@ -82,6 +85,13 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                 a string of client parameters.
         """
         str_GET         = al_inputRaw[0]
+        str_REST        = str_GET.split()[1]
+
+        GET             = ChRIS_GET.ChRIS_GET(RESTcall = str_REST)
+        print(GET._str_REST)
+
+        print(str_REST)
+        sys.exit(0)
         l_URLargSpec    = str_GET.split('/')
         str_URLargs     = l_URLargSpec[1].split()[0]
         return str_URLargs
