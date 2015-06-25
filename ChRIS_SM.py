@@ -32,20 +32,17 @@ a few feeds containing different data, views, results, notes, etc.
 from __future__ import print_function
 
 import abc
-import json
 import hashlib
 import argparse
 import os
 import sys
-import time
 import datetime
 
-from urlparse import urlparse, parse_qs
-import shlex
+
 import C_snode
-import error
 import message
 import feed
+import ChRIS_RPCAPI
 
 class ChRIS_SMUserDB(object):
     """A "DB" of users and passwords.
@@ -189,7 +186,7 @@ class ChRIS_SMUserDB(object):
                 ret['sessionToken']     = "ABCDEF"
                 ret['sessionSeed']      = "1"
 
-                # Get he user's feed tree structure
+                # Get the user's feed tree structure
                 feedTree                = feed.FeedTree_chrisUser()
                 # and attach it to the stree of this object
                 s.cd('/users/%s/feed' % astr_user)
@@ -298,29 +295,6 @@ class ChRIS_SM(object):
         self.DB                         = self._SMCore._userDB
         self.homePage                   = None
 
-        self._str_apiCall               = ""
-        self._l_apiCallHistory          = []
-
-        # The returnStore variables control how json objects are
-        # captured from API calls. Essentially the python exec
-        # stores the return value in _str_returnStore and then
-        # print()s it to stdout.
-        self._b_returnStore             = False
-        self._str_returnStore           = ""
-
-    @abc.abstractmethod
-    def build(self, **kwargs):
-        """Build a ChRIS_SM instance.
-
-
-        Args:
-            **kwargs (user=): The user who is creating the feed
-
-        Returns:
-          True if successful, False otherwise.
-
-        """
-
     @property
     def feedTree(self):
         """STree Getter"""
@@ -343,8 +317,8 @@ class ChRIS_SM(object):
             nextID (string): The next ID to use for a Feed.
         """
 
-class ChRIS_SMFS(ChRIS_SM):
-    """The ChRIS_SMFS subclass implements a ChRIS_SM using the filesystem as persistent state.
+class ChRIS_SM_RPC(ChRIS_SM):
+    """The ChRIS_SM_RPC subclass implements a ChRIS_SM using an RPC type API paradigm.
 
 
     """
@@ -355,193 +329,12 @@ class ChRIS_SMFS(ChRIS_SM):
         This essentially calls up the chain to the base constructor
 
         Args:
-            astr_FeedRepo (string): A location on the file system that houses
-                all the feeds.
 
         """
         ChRIS_SM.__init__(self, **kwargs)
 
-        self._b_clearStateFile  = False
-        self._str_stateFile     = ""
-        for key,val in kwargs.iteritems():
-            if key == 'stateFile':  self._str_stateFile = val
-            if key == 'APIcall':    self._str_apiCall   = val
+        self.API    = ChRIS_RPCAPI.ChRIS_RPCAPI(**kwargs)
 
-        if self._str_stateFile  == "<void>": error.fatal(self, 'no_stateFile')
-        if self._str_apiCall    == "<void>": error.fatal(self, 'no_apiCall')
-
-        self.build()
-
-    def build(self, **kwargs):
-        """Build a ChRIS_SM instance.
-
-        """
-        f = self._feedTree
-        l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
-        l_FID   = ['000001', '000002', '000003', '000004']
-        f.mknode(l_Feed)
-        for node, id in zip(l_Feed, l_FID):
-            f.cd('/%s' % node)
-            f.touch("ID", id)
-            f.touch("Feed", feed.Feed_FS(
-                                repo='Repo-%s' % node,
-                                desc='Node Object Name: %s; Node FID: %s' % (node, id)))
-
-    def API_readCallHistory(self):
-        """Reads the (parsed) API calls stored in the stateful file.
-
-        Since the ChRIS_SM effectively only executes *one* API
-        call before terminating, it needs some mechanism for restoring
-        state. This is done by replaying all previous API calls
-        pertinent to this session.
-
-        If the stateFile does not exist, this method will create an
-        empty stateFile.
-
-        Returns:
-            state (boolean): True if all previous commands haven been read.
-        """
-
-        if not os.path.isfile(self._str_stateFile):
-            open(self._str_stateFile, 'a').close()
-            return False
-        with open(self._str_stateFile) as f:
-            self._l_apiCallHistory = f.read().splitlines()
-        return True
-
-    def API_parseCurrentCall(self, **kwargs):
-        """Parses the apiCall and updates the stateFile.
-
-        This method parses the <apiCall>, executes it, and updates
-        the call to the stateFile, also adding the parsed call to
-        the self._l_apiCallHistory list.
-
-        Also parses the authentication.
-
-        Returns:
-            state (boolean): True if <apiCall> parsed
-
-        """
-
-        str_auth        = ""
-        for key,value in kwargs.iteritems():
-            if key == 'authmodule':         auth                    = value
-
-        if not len(auth._name): error.fatal(self, 'no_authModuleSpec')
-
-        # The main URL components
-        str_auth        = auth._name
-        str_ret         = ""
-        str_object      = ""
-        str_method      = ""
-        str_parameters  = ""
-
-        # Additional "auth" components
-        str_user        = ""
-        str_authHash    = ""
-
-        d_component     = parse_qs(urlparse(self._str_apiCall).query)
-
-        if 'clearSessionFile' in d_component:
-            self._b_clearStateFile = int(d_component['clearSessionFile'][0])
-        if 'returnstore' in d_component:
-            str_ret                 = d_component['returnstore'][0]
-            self._b_returnStore     = True
-            self._str_returnStore   = str_ret
-        else:
-            self._b_returnStore     = False
-            self._str_returnStore   = "APIreturn"
-        if 'object'      in d_component: str_object      = d_component['object'][0]
-        str_method      = d_component['method'][0]
-        str_parameters  = d_component['parameters'][0]
-        if len(str_ret):    str_ret     = "%s="   % str_ret
-        if len(str_object): str_object  = "%s(lambda: %s."     % (str_auth, str_object)
-
-        # Parse the "auth" components
-        if 'auth'       in d_component:
-            str_authSpec    = d_component['auth'][0]
-            str_authUrl     = "?%s" % str_authSpec.replace(',', '&')
-            d_auth          = parse_qs(urlparse(str_authUrl).query)
-            str_user        = d_auth['user'][0]
-            str_hash        = d_auth['hash'][0]
-
-        str_eval    = "%s%s%s(%s)" % (
-                                     str_ret,
-                                     str_object,
-                                     str_method,
-                                     str_parameters
-                                    )
-        if len(str_object):
-            if str_method == 'login':
-                str_eval += ")"
-            else:
-                str_eval += ", user=%s, hash=%s)" % (str_user, str_hash)
-        self._l_apiCallHistory.append(str_eval)
-        #print(d_component)
-        str_mode = 'a'
-        #print("clear state file = %d" % self._b_clearStateFile)
-        if self._b_clearStateFile: str_mode = 'w'
-        with open(self._str_stateFile, str_mode) as f:
-            f.write("# %s %s\n" % (datetime.datetime.now(), self._str_apiCall))
-            f.write("%s\n" % str_eval)
-
-    def API_replayCalls(self):
-        """Play back calls stored in the internal list buffer.
-
-        Since this effectively just "runs" the python commands in the
-        statefile, this should typically execute at the highest level/scope
-        of the program, i.e. at the __main__ level!
-
-        The "current" API call is the last entry. All previous entries
-        are replayed.
-
-        The last entry is edited so that its return value is captured and
-        printed to stdout.
-
-        Preconditions:
-            self._l_apiCallHistory is populated.
-
-        Returns:
-            state (boolean): The return value of each command as executed
-        """
-
-        # Play out the previous API calls to restore state up to current call
-        for cmd in self._l_apiCallHistory[0:-1]:
-            if cmd[0] != "#": exec(cmd)
-
-        # Now process the current call.
-        # First, we capture the API call itself from the client to return
-        # in the 'APIcall' field of the return structure
-        str_API     = self._str_apiCall
-        d_API       = {'APIcall': str_API}
-
-        # And similarly for the actual python call
-        cmd         = self._l_apiCallHistory[-1]
-        d_cmd       = {'pycode': cmd}
-
-        print("{")
-        if self._b_returnStore:
-            cmd = "%s; strout = str(%s); print(\"'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (cmd, self._str_returnStore)
-        else:
-            cmd = "%s = %s; strout = (%s); print(\"'exec':\", end=\" \"); print(strout, end=\" \"); print(\",\", end=\" \")" % (self._str_returnStore, cmd, self._str_returnStore)
-        # print(cmd)
-        exec(cmd)
-
-        # Get the user's auth data
-        d_component = parse_qs(urlparse(str_API).query)
-        if 'auth' in d_component:
-            str_userSpec    = d_component['auth'][0]
-        if d_component['method'][0] == 'login':
-            str_userSpec    = d_component['parameters'][0]
-        d_params    = dict(token.split('=') for token in shlex.split(str_userSpec.replace(',', ' ')))
-        str_user    = d_params['user']
-        d_auth      = self.DB.user_getAuthInfo(user=str_user)
-        s_auth      = "'auth': %s," % d_auth
-        # print(s_auth.strip())
-        print("'auth': %s," % d_auth)
-        print("'API': %s,"  % d_API)
-        print("'cmd': %s"   % d_cmd)
-        print("}")
 
 class ChRIS_authenticate(object):
     """The ChRIS_authenticate object is responsible for authenticated valid
@@ -569,7 +362,7 @@ class ChRIS_authenticate(object):
             achris_instance (ChRIS):    the chris instance to authenticate against
             aself_name (string):        this object's string name
         """
-        self._chris         = achris_instance
+        self.chris          = achris_instance
         self._name          = aself_name
 
     def __call__(self, f, **kwargs):
@@ -593,7 +386,7 @@ class ChRIS_authenticate(object):
             if key == 'user':       str_user    = value
             if key == 'hash':       str_hash    = value
 
-        db = self._chris._SMCore._userDB
+        db = self.chris._SMCore._userDB
         db.user_checkAPIcanCall(**kwargs)
         return f()
 
@@ -607,7 +400,7 @@ def synopsis(ab_shortOnly = False):
     SYNOPSIS
 
             %s                                     \\
-                            --stateFile <stateFile>         \\
+                            [--stateFile <stateFile>]       \\
                             --APIcall <apiCall>
 
 
@@ -621,7 +414,7 @@ def synopsis(ab_shortOnly = False):
 
     ARGS
 
-       --stateFile <stateFile> (required)
+       --stateFile <stateFile> (required for RPC-type calling)
        The file that tracks calls pertinent to a specific session.
        API calls are logged to <stateFile> and replayed back when
        ChRIS_SM is instantiated. In this manner the machine state
@@ -663,7 +456,7 @@ if __name__ == "__main__":
     parser      = argparse.ArgumentParser(description = synopsis(True))
     parser.add_argument(
         '-s', '--stateFile',
-        help    =   "The <stateFile> keeps track of ChRIS state.",
+        help    =   "The <stateFile> keeps track of ChRIS state for RPC-type calling regimes.",
         dest    =   'str_stateFileName',
         action  =   'store',
         default =   "<void>"
@@ -676,18 +469,7 @@ if __name__ == "__main__":
         default =   "<void>"
     )
 
-    args        = parser.parse_args()
-
-    chris       = ChRIS_SMFS(
-                        stateFile   = args.str_stateFileName,
-                        APIcall     = args.str_apiCall
-    )
-
-    auth        = ChRIS_authenticate(chris, 'auth')
-
-    chris.API_readCallHistory()
-    chris.API_parseCurrentCall(authmodule = auth)
-    chris.API_replayCalls()
-
-
-
+    args            = parser.parse_args()
+    chris           = ChRIS_SM_RPC(stateFile   = args.str_stateFileName)
+    chris.API.auth  = ChRIS_authenticate(chris, 'auth')
+    chris.API(APIcall = args.str_apiCall)
