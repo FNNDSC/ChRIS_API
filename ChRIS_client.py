@@ -31,12 +31,14 @@ a few feeds containing different data, views, results, notes, etc.
 
 from __future__ import print_function
 
-import crun
-import hashlib
-import sys
-import os
-import argparse
-import json
+import  abc
+
+import  crun
+import  hashlib
+import  sys
+import  os
+import  argparse
+import  json
 
 class ChRIS_client(object):
     """Simple class that handles comms between a back end ChRIS_SM
@@ -49,7 +51,6 @@ class ChRIS_client(object):
         """Constructor
         """
         self._str_executable    = ""
-        self._str_stateFile     = ""
 
         self._str_token         = ""
         self._str_seed          = ""
@@ -63,9 +64,45 @@ class ChRIS_client(object):
         self._shell.echo(False)
 
         for key, val in kwargs.iteritems():
-            if key == "stateMachine":   self._str_executable    = val
+            if key == "simulatedMachine":   self._str_executable    = val
+            if key == "formatAllJSON":      self._b_formatAllJSON   = val
+
+    @abc.abstractmethod
+    def __call__(self, *args, **kwargs):
+        """Each sub class must define this method!
+        """
+
+    def stdout(self):
+        return self._shell.stdout()
+
+    def generateToken(self, jsonRetString):
+        """Determines the token to use in the next API call
+
+        Args:
+            jsonRetString:  The JSON payload returned from the call to the web service
+
+        Returns:
+            str_token:  The token to use for the next API call.
+
+        :param jsonRetString:
+        :return:
+        """
+        jdata   = json.loads(jsonRetString)
+        for key,val in jdata.iteritems():
+            if key == 'token':  self._str_token = val
+            if key == 'seed':   self._str_token = val
+        str_hashInput   = "%s%s" % (self._str_token, self._str_seed)
+        return m.md5(str_hash).hexdigest()
+
+class ChRIS_client_RPC(ChRIS_client):
+    '''An RPC-specialized client
+    '''
+
+    def __init__(self, **kwargs):
+        ChRIS_client.__init__(self, **kwargs)
+        self._str_stateFile     = ""
+        for key, val in kwargs.iteritems():
             if key == "stateFile":      self._str_stateFile     = val
-            if key == "formatAllJSON":  self._b_formatAllJSON   = val
 
     def __call__(self, *args, **kwargs):
         """Entry point mimicking the external call to the web service
@@ -105,34 +142,12 @@ class ChRIS_client(object):
         if self._b_formatAllJSON and b_jwrapEnd:
             print("}")
 
-    def stdout(self):
-        return self._shell.stdout()
-
-    def generateToken(self, jsonRetString):
-        """Determines the token to use in the next API call
-
-        Args:
-            jsonRetString:  The JSON payload returned from the call to the web service
-
-        Returns:
-            str_token:  The token to use for the next API call.
-
-        :param jsonRetString:
-        :return:
-        """
-        jdata   = json.loads(jsonRetString)
-        for key,val in jdata.iteritems():
-            if key == 'token':  self._str_token = val
-            if key == 'seed':   self._str_token = val
-        str_hashInput   = "%s%s" % (self._str_token, self._str_seed)
-        return m.md5(str_hash).hexdigest()
-
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
     shortSynopsis =  '''
     SYNOPSIS
 
-            %s --stateFile <stateFile> [--formatAllJSON]
+            %s [--stateFile <stateFile>] [--formatAllJSON]
 
 
     ''' % scriptName
@@ -144,12 +159,14 @@ def synopsis(ab_shortOnly = False):
 
     ARGS
 
-       --stateFile <stateFile> (required)
-       The file that tracks calls pertinent to a specific session.
-       API calls are logged to <stateFile> and replayed back when
-       ChRIS_SM is instantiated. In this manner the machine state
-       can be rebuilt. The current <apiCall> is appended to the
-       <stateFile>.
+       --stateFile <stateFile>
+       If a <stateFile> is passed, then an RPC-type client is assumed.
+       This file tracks calls pertinent to a specific session. API calls
+       are logged to <stateFile> and replayed back when ChRIS_SM is
+       instantiated. In this manner the machine state can be rebuilt.
+       The current <apiCall> is appended to the <stateFile>.
+
+       If not passed, a REST-type client is assumed.
 
        --formatAllJSON
        If specified, format the entire set of output responses as a "meta"
@@ -177,6 +194,9 @@ if __name__ == "__main__":
         print(synopsis())
         sys.exit(1)
 
+    b_REST      = False
+    B_RPC       = False
+
     parser      = argparse.ArgumentParser(description = synopsis(True))
     parser.add_argument(
         '-s', '--stateFile',
@@ -195,30 +215,32 @@ if __name__ == "__main__":
 
     args        = parser.parse_args()
     m           = hashlib
-    API         = ChRIS_client(stateMachine = './ChRIS_SM.py',  stateFile       = args.str_stateFileName,
-                                                                formatAllJSON   = args.formatAllJSON)
 
-    # First login...
-    API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
+    if len(args.str_stateFileName):
+        API         = ChRIS_client_RPC(simulatedMachine = './ChRIS_SM.py',
+                                       stateFile        = args.str_stateFileName,
+                                       formatAllJSON    = args.formatAllJSON)
+        # First login...
+        API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
 
-    # Now do something...
+        # Now do something...
 
-    # Get a list of feeds for the homepage
-    API("\"http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default'&auth=user='chris',hash='dabcdef1234'\"")
+        # Get a list of feeds for the homepage
+        API("\"http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default'&auth=user='chris',hash='dabcdef1234'\"")
 
-    # Get a list of plugins that are valid at the scope of the homepage
-    API("\"http://chris_service?object=chris.homePage.plugin&method=getList&auth=user='chris',hash='dabcdef1234'\"")
+        # Get a list of plugins that are valid at the scope of the homepage
+        API("\"http://chris_service?object=chris.homePage.plugin&method=getList&auth=user='chris',hash='dabcdef1234'\"")
 
-    # Choose a specific plugin
-    API("\"http://chris_service?object=chris.homePage.plugin&method=set&parameters='file_browser'&auth=user='chris',hash='dabcdef1234'\"")
+        # Choose a specific plugin
+        API("\"http://chris_service?object=chris.homePage.plugin&method=set&parameters='file_browser'&auth=user='chris',hash='dabcdef1234'\"")
 
-    # Run it...
-    API("\"http://chris_service?object=chris.homePage.plugin&method=run&auth=user='chris',hash='dabcdef1234'\"")
+        # Run it...
+        API("\"http://chris_service?object=chris.homePage.plugin&method=run&auth=user='chris',hash='dabcdef1234'\"")
 
-    # This creates a new feed ... the client needs to request a new list of Feeds and render it.
+        # This creates a new feed ... the client needs to request a new list of Feeds and render it.
 
-    # Get details about specific feeds
-    API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+        # Get details about specific feeds
+        API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
 
-    API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"",jwrap="end")
+        API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"",jwrap="end")
 
