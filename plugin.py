@@ -30,25 +30,39 @@ import os
 import argparse
 import json
 
+import message
+
 class Plugin(object):
     """The base Plugin class
     """
 
+    def debug_obj(self, astr_methodName):
+        """Print some debugging info..."""
+        self.debug('... %s ...\n' % astr_methodName);
+        self.debug('this:               %s\n' % str(self))
+        self.debug('plugin:             %s\n' % str(self.plugin))
+        self.debug('......\n');
+
     def getList(self, *args, **kwargs):
+        self.debug_obj('plugin.getList()');
         return {'pluginList' : self._l_plugin}
 
     def set(self, astr_pluginName):
         self.pluginName = astr_pluginName
         self.plugin     = eval('%s()' % self.pluginName)
+        self.debug_obj('plugin.set()\n');
         return {'success': True, 'pluginName': astr_pluginName, 'plugin': str(self.plugin), 'container': str(self)}
 
     def __init__(self):
-        self._l_plugin  = []
-        self.pluginName = ""
-        self.plugin     = None
+        self._l_plugin          = []
+        self.pluginName         = ""
+        self.plugin             = None
+        self.debug              = message.Message(logTo = "./debug.log")
+        self.debug._b_syslog    = True
 
     def run(self, *args, **kwargs):
         d_info = {'container': str(self), 'plugin': str(self.plugin)}
+        self.debug_obj('plugin.run()\n');
         return {'info': d_info, 'run': self.plugin()}
 
     def status(self, *args, **kwargs):
