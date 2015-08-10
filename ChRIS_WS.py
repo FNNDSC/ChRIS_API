@@ -47,7 +47,7 @@ import  os
 import  sys
 import  datetime
 
-import  ChRIS_GET
+import  ChRIS_RESTAPI
 
 class TCPServer(SocketServer.ThreadingTCPServer):
     allow_reuse_address = True
@@ -87,7 +87,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         str_GET         = al_inputRaw[0]
         str_REST        = str_GET.split()[1]
 
-        GET             = ChRIS_GET.ChRIS_GET(RESTcall = str_REST)
+        GET             = ChRIS_RESTAPI.ChRIS_GET(RESTcall = str_REST)
         print(GET._str_REST)
 
         print(str_REST)
