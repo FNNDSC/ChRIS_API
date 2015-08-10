@@ -22,17 +22,19 @@ str_desc = """
 
 
 
- _____ _    ______ _____ _____ _____  _____ _____
-/  __ \ |   | ___ \_   _/  ___|  __ \|  ___|_   _|
-| /  \/ |__ | |_/ / | | \ `--.| |  \/| |__   | |
-| |   | '_ \|    /  | |  `--. \ | __ |  __|  | |
-| \__/\ | | | |\ \ _| |_/\__/ / |_\ \| |___  | |
- \____/_| |_\_| \_|\___/\____/ \____/\____/  \_/
+
+ _____ _    ______ _____ _____ ______ _____ _____ _____ ___  ______ _____
+/  __ \ |   | ___ \_   _/  ___|| ___ \  ___/  ___|_   _/ _ \ | ___ \_   _|
+| /  \/ |__ | |_/ / | | \ `--. | |_/ / |__ \ `--.  | |/ /_\ \| |_/ / | |
+| |   | '_ \|    /  | |  `--. \|    /|  __| `--. \ | ||  _  ||  __/  | |
+| \__/\ | | | |\ \ _| |_/\__/ /| |\ \| |___/\__/ / | || | | || |    _| |_
+ \____/_| |_\_| \_|\___/\____/ \_| \_\____/\____/  \_/\_| |_/\_|    \___/
                            ______
                           |______|
 
 
-'ChRIS_GET' -- ChRIS GET handler -- processes the GET requests from
+
+'ChRIS_RESTAPI' -- ChRIS GET handler -- processes the GET requests from
 an external client.
 
 This class/module is responsible for mapping the GET formated REST requests
@@ -71,3 +73,7 @@ class ChRIS_GET(object):
             if key == "feed":       str_feed        = val
 
         if str_feed == 'Plugins':
+            print('In plugins')
+
+if __name__ == "__main__":
+    GET = ChRIS_GET()
