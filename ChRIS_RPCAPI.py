@@ -34,13 +34,14 @@ str_desc = """
 'ChRIS_RPCAPI' -- ChRIS RPC API handler -- processes the RPC API requests from
 an external client.
 
-This class/module is responsible for mapping the GET formated REST requests
+This class/module is responsible for mapping the GET formatted REST requests
 to actual ChRIS calls.
 
 """
 
 from    urlparse        import urlparse, parse_qs
 
+import  message
 import  shlex
 import  os
 import  datetime
@@ -80,6 +81,8 @@ class ChRIS_RPCAPI(object):
         self._str_apiCall               = ""
         self._l_apiCallHistory          = []
         self.auth                       = None
+        self.debug                      = message.Message(logTo = './debug.log')
+        self.debug._b_syslog            = True
 
         # The returnStore variables control how json objects are
         # captured from API calls. Essentially the python exec
@@ -240,7 +243,9 @@ class ChRIS_RPCAPI(object):
 
         # Play out the previous API calls to restore state up to current call
         for cmd in self._l_apiCallHistory[0:-1]:
-            if cmd[0] != "#": exec(cmd) in locals()
+            if cmd[0] != "#":
+                self.debug("replay cmd: %s\n" % cmd)
+                exec(cmd) in locals()
 
         # Now process the current call.
         # First, we capture the API call itself from the client to return
@@ -258,6 +263,7 @@ class ChRIS_RPCAPI(object):
         else:
             cmd = "%s = %s; strout = (%s); print(\"'exec':\", end=\" \"); print(strout, end=\"\"); print(\",\", end=\" \")" % (self._str_returnStore, cmd, self._str_returnStore)
 
+        self.debug('this cmd: %s\n' % cmd)
         exec(cmd) in locals()
 
         # Get the user's auth data
