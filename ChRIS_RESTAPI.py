@@ -45,6 +45,8 @@ to actual ChRIS calls.
 from    webob           import Response
 from    urlparse        import urlparse, parse_qs
 
+import  message
+import  error
 import  ChRIS_SM
 import  crun
 import  SocketServer
@@ -54,26 +56,185 @@ import  os
 import  sys
 import  datetime
 
-class ChRIS_GET(object):
-    '''This class processes GET verbs. Effectively it maps from the REST API
-        to actual object.method calls.'''
+class ChRIS_RESTAPI(object):
+    """This class processes GET verbs. Effectively it maps from the REST API
+        to actual object.method calls."""
+
+    #
+    # Class member variables -- if declared here are shared
+    # across all instances of this class
+    #
+    _dictErr = {
+        'no_apiCall'   : {
+            'action'        : 'examining command line arguemnts, ',
+            'error'         : 'it seems that the required --apiCall is missing.',
+            'exitCode'      : 11},
+        'no_authModuleSpec' : {
+            'action'        : 'executing API call, ',
+            'error'         : "there doesn't seem to be an auth module!",
+            'exitCode'      : 12},
+        'no_chrisModuleSpec' : {
+            'action'        : 'building API object, ',
+            'error'         : "the reference to the containing <chris> object is missing!",
+            'exitCode'      : 13}
+    }
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
 
     def __init__(self, *args, **kwargs):
-        self.RESTcall       = ""
-        self.RESTargs       = ""
-        self.ChRIS          = ChRIS_SM.ChRIS_SMFS()
+
+        # auth is the per-call authentication module
+        self.auth                       = None
+        # chris is the chris-object that contains this API
+        self.chris                      = None
+
+        self._str_apiCall               = ""
+        self.debug                      = message.Message(logTo = './debug.log')
+        self.debug._b_syslog            = True
+        self._log                       = message.Message()
+        self._log._b_syslog             = True
+        self.__name                     = "ChRIS_RESTAPI"
+
+        self.str_APIaction              = "GET" # GET or PUT
+
+        self.user                       = ""
+        self.hash                       = ""
+
+        # JSON return objects
+        self.d_call                     = {}
+        self.d_auth                     = {}
+        self.d_API                      = {}
 
         for key,val in kwargs.iteritems():
-            if key == "RESTcall":   self.RESTcall  = val
-            if key == "RESTargs":   self.RESTargs  = val
+            if key == 'auth':       self.auth           = val
+            if key == 'chris':      self.chris          = val
 
-    def Feeds(self, *args, **kwargs):
-        str_feed    = ""
+        if not self.chris:
+            error.fatal(this, 'no_chrisModuleSpec')
+
+    def __call__(self, *args, **kwargs):
+        '''
+        :param args:
+        :param kwargs:
+        :return:
+        '''
+        # print("In __call__")
         for key,val in kwargs.iteritems():
-            if key == "feed":       str_feed        = val
+            if key == 'APIcall':    self._str_apiCall   = val
+        if self._str_apiCall    == "<void>": error.fatal(self, 'no_apiCall')
+        # print(self._str_apiCall)
+        self.parseCurrentCall(authmodule = self.auth)
 
-        if str_feed == 'Plugins':
-            print('In plugins')
+
+    def parseCurrentCall(self, **kwargs):
+        """Parse the current REST call"""
+
+        for key,value in kwargs.iteritems():
+            if key == 'authmodule':         auth                    = value
+
+        try:
+            if not len(auth._name): error.fatal(self, 'no_authModuleSpec')
+        except:
+            error.fatal(self, 'no_authModuleSpec')
+
+        URL_parts       = urlparse(self._str_apiCall)
+        l_path          = URL_parts.path.split('/')[2:]     # skip the /vX/!
+        d_query         = parse_qs(URL_parts.query)
+
+        if 'auth' in d_query:
+            str_authSpec    = d_query['auth'][0]
+            str_authURL     = "?%s" % str_authSpec.replace(',', '&')
+            d_auth          = parse_qs(urlparse(str_authURL).query)
+            print(d_auth.keys())
+            self.str_user   = d_auth['user'][0]
+            if 'hash' in d_auth.keys():
+                self.str_hash   = d_auth['hash'][0]
+
+        self.parsePathSpec(l_path)
+        self.formatReturnJSON()
+
+    def parseLogin(self):
+        """
+        Parse the REST login
+        :return:
+        """
+
+
+    def parsePathSpec(self, al_path):
+        """
+        :param al_path: the path list spec
+        :return:
+        """
+
+        print(al_path)
+        print(len(al_path))
+        if al_path[0].lower() == 'login':
+            self.parseLogin()
+            return True
+        if len(al_path) <= 2 and self.str_APIaction == "GET":
+            if len(al_path) == 1:
+                self.d_call = self.auth(lambda: self.chris.homePage.feeds_organize(
+                                                        schema = 'default'),
+                                                        user   = self.str_user,
+                                                        hash   = self.str_hash)
+            if len(al_path) == 2:
+                str_feedTarget  = al_path[1]
+                l_targetType    = str_feedTarget.split('_')
+                if l_targetType[0].lower() == 'ID':
+                    self.d_call = self.auth(lambda: self.chris.homePage.feed_getFromObjectID(
+                                                        l_targetType[1]),
+                                                        user    = self.str_user,
+                                                        hash    = self.str_hash)
+                if l_targetType[0].lower() == 'name':
+                    self.d_call = self.auth(lambda: self.chris.homePage.feed_getFromObjectName(
+                                                        l_targetType[1],
+                                                        returnAsDict    = True),
+                                                        user            = self.str_user,
+                                                        hash            = self.str_hash)
+        return True
+
+
+    def formatReturnJSON(self):
+        """
+
+        :return: the formatted JSON components
+        """
+
+        d_auth  = self.chris.DB.user_getAuthInfo(user = self.user)
+        d_API   = {'APIcall':   self._str_apiCall}
+        d_exec  = {'exec':      self.d_call}
+
+        print("{")
+        print("'auth': %s,"   %     d_auth)
+        print("'API': %s"       %   d_API)
+        print("'exec': %s"      %   d_exec)
+        print("}")
 
 if __name__ == "__main__":
-    GET = ChRIS_GET()
+
+    chris               = ChRIS_SM.ChRIS_SM_REST()   # This also instantiates a chris.API object
+    chris.API.auth      = ChRIS_SM.ChRIS_authenticate(chris, 'auth')
+
+    chris.API(APIcall   = "/v1/login?auth=user=chris,passwd='chris1234'")
+    chris.API(APIcall   = "/v1/Feeds?auth=user=chris,hash=123456")
+
+    chris.API(APIcall   = "/v1/Feeds/NAME_Feed-1?auth=user=chris,hash=123456")
