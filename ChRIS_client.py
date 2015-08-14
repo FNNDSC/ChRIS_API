@@ -94,9 +94,49 @@ class ChRIS_client(object):
         str_hashInput   = "%s%s" % (self._str_token, self._str_seed)
         return m.md5(str_hash).hexdigest()
 
+class ChRIS_client_REST(ChRIS_client):
+    """A REST client"""
+
+    def __init__(self, **kwargs):
+        ChRIS_client.__init__(self, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        """Entry point mimicking the external call to the web service
+        """
+        str_jwrap       = ""
+        b_jwrapStart    = False
+        b_jwrapEnd      = False
+        for key, val in kwargs.iteritems():
+            if key == "jwrap" and val == "start":   b_jwrapStart    = True
+            if key == "jwrap" and val == "end":     b_jwrapEnd      = True
+
+        ChRIS_client.callCounter += 1
+
+        if self._b_formatAllJSON:
+            if b_jwrapStart:
+                print("{\"call_%03d\": " % ChRIS_client.callCounter, end="")
+            else:
+                print(",\"call_%03d\": " % ChRIS_client.callCounter, end="")
+
+        self._shell("%s --REST --APIcall %s" % (self._str_executable, args[0]))
+        try:
+            job = eval(self.stdout())
+        except:
+            print("\n\nShell job failure!")
+            print("Attempting to execute:")
+            print(self._shell._str_shellCmd)
+            print("Returned:")
+            print(self._shell.stderr())
+            sys.exit(1)
+        # print("vvvv")
+        print(json.dumps(job), end="")
+        # print("^^^^")
+        if self._b_formatAllJSON and b_jwrapEnd:
+            print("}")
+
 class ChRIS_client_RPC(ChRIS_client):
-    '''An RPC-specialized client
-    '''
+    """An RPC-specialized client
+    """
 
     def __init__(self, **kwargs):
         ChRIS_client.__init__(self, **kwargs)
@@ -122,7 +162,7 @@ class ChRIS_client_RPC(ChRIS_client):
             else:
                 print(",\"call_%03d\": " % ChRIS_client.callCounter, end="")
 
-        self._shell("%s --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
+        self._shell("%s --RPC --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
         # print("\n-->%s<--" % self.stdout())
         # print(json.dumps(self.stdout()))
         # print(json.dumps(self.stdout(), sort_keys = True,
@@ -147,7 +187,7 @@ def synopsis(ab_shortOnly = False):
     shortSynopsis =  '''
     SYNOPSIS
 
-            %s [--stateFile <stateFile>] [--formatAllJSON]
+            %s [--REST | --RPC --stateFile <stateFile>] [--formatAllJSON]
 
 
     ''' % scriptName
@@ -159,14 +199,17 @@ def synopsis(ab_shortOnly = False):
 
     ARGS
 
-       --stateFile <stateFile>
-       If a <stateFile> is passed, then an RPC-type client is assumed.
-       This file tracks calls pertinent to a specific session. API calls
-       are logged to <stateFile> and replayed back when ChRIS_SM is
-       instantiated. In this manner the machine state can be rebuilt.
-       The current <apiCall> is appended to the <stateFile>.
+       --REST
+       Use a REST API paradigm.
 
-       If not passed, a REST-type client is assumed.
+       --RPC --stateFile <stateFile>
+       Use an RPC API paradigm. In this case, a <stateFile> is also
+       required to track session history.
+
+       API calls are logged to <stateFile> and replayed back when
+       ChRIS_SM is instantiated. In this manner the machine state
+       can be rebuilt. The current <APIcall> is appended to the
+       <stateFile>.
 
        --formatAllJSON
        If specified, format the entire set of output responses as a "meta"
@@ -194,10 +237,21 @@ if __name__ == "__main__":
         print(synopsis())
         sys.exit(1)
 
-    b_REST      = False
-    B_RPC       = False
-
     parser      = argparse.ArgumentParser(description = synopsis(True))
+    parser.add_argument(
+        '--REST',
+        action  =   'store_true',
+        dest    =   'b_REST',
+        help    =   'Specify REST API paradigm.',
+        default =   False
+    )
+    parser.add_argument(
+        '--RPC',
+        action  =   'store_true',
+        dest    =   'b_RPC',
+        help    =   'Specify RPC API paradigm.',
+        default =   False
+    )
     parser.add_argument(
         '-s', '--stateFile',
         help    =   "The <stateFile> keeps track of ChRIS state.",
@@ -216,10 +270,10 @@ if __name__ == "__main__":
     args        = parser.parse_args()
     m           = hashlib
 
-    if len(args.str_stateFileName):
-        API         = ChRIS_client_RPC(simulatedMachine = './ChRIS_SM.py',
-                                       stateFile        = args.str_stateFileName,
-                                       formatAllJSON    = args.formatAllJSON)
+    if args.b_RPC:
+        API         = ChRIS_client_RPC(     simulatedMachine = './ChRIS_SM.py',
+                                            stateFile        = args.str_stateFileName,
+                                            formatAllJSON    = args.formatAllJSON)
         # First login...
         API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
 
@@ -243,4 +297,18 @@ if __name__ == "__main__":
         API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
 
         API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"",jwrap="end")
+
+    if args.b_REST:
+        API         = ChRIS_client_REST(    simulatedMachine = './ChRIS_SM.py',
+                                            formatAllJSON    = args.formatAllJSON)
+        # First login...
+        API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
+
+        # Now do something...
+
+        # Get a list of feeds for the homepage
+        API("\"http://chris_service?/v1/Feeds?auth=user=chris,hash=123456\"")
+
+        # Get a specific feed...
+        API("\"http://chris_service?v1/Feeds/NAME_Feed-1?auth=user=chris,hash=123456\"")
 
