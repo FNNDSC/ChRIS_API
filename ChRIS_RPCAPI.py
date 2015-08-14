@@ -47,8 +47,8 @@ import  os
 import  datetime
 
 class ChRIS_RPCAPI(object):
-    '''This class processes GET verbs. Effectively it maps from the REST API
-        to actual object.method calls.'''
+    """This class processes GET verbs. Effectively it maps from the REST API
+        to actual object.method calls."""
 
     #
     # Class member variables -- if declared here are shared
@@ -163,7 +163,7 @@ class ChRIS_RPCAPI(object):
 
         # Additional "auth" components
         str_user        = ""
-        str_authHash    = ""
+        str_hash        = ""
 
         d_component     = parse_qs(urlparse(self._str_apiCall).query)
 
@@ -177,7 +177,7 @@ class ChRIS_RPCAPI(object):
             self._b_returnStore     = False
             self._str_returnStore   = "APIreturn"
         if 'object'      in d_component: str_object      = d_component['object'][0]
-        str_method      = d_component['method'][0]
+        str_method                  = d_component['method'][0]
         if 'parameters'  in d_component: str_parameters  = d_component['parameters'][0]
         if len(str_ret):    str_ret     = "%s="   % str_ret
         if len(str_object): str_object  = "%s(lambda: %s."     % (str_auth, str_object)
@@ -277,7 +277,7 @@ class ChRIS_RPCAPI(object):
         d_auth      = chris.DB.user_getAuthInfo(user=str_user)
         s_auth      = "'auth': %s," % d_auth
         # print(s_auth.strip())
-        print("\n'auth': %s," % d_auth)
-        print("'API': %s,"  % d_API)
-        print("'cmd': %s"   % d_cmd)
+        print("\n'auth': %s,"   % d_auth)
+        print("'API': %s,"      % d_API)
+        print("'cmd': %s"       % d_cmd)
         print("}")
