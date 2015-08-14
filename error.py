@@ -53,7 +53,7 @@ def report(     callingClass,
     log( "\tSorry, some error seems to have occurred in:\n\t<" )
     log( Colors.LIGHT_GREEN + ("%s" % callingClass.name()) + Colors.NO_COLOUR + "::")
     log( Colors.LIGHT_CYAN + ("%s" % inspect.stack()[2][4][0].strip()) + Colors.NO_COLOUR)
-    log( "> called by <")
+    log( ">\n\tcalled by <")
     try:
         caller = inspect.stack()[3][4][0].strip()
     except:
@@ -62,7 +62,7 @@ def report(     callingClass,
     log( Colors.LIGHT_CYAN + ("%s" % caller) + Colors.NO_COLOUR)
     log( ">\n")
 
-    log( "\tWhile %s\n" % callingClass._dictErr[astr_key]['action'] )
+    log( "\n\tWhile %s\n" % callingClass._dictErr[astr_key]['action'] )
     log( "\t%s\n" % callingClass._dictErr[astr_key]['error'] )
     log( "\n" )
     if ab_exitToOs:
