@@ -39,10 +39,13 @@ import  sys
 import  datetime
 import  json
 
+import  error
+
 import  C_snode
 import  message
 import  feed
 import  ChRIS_RPCAPI
+import  ChRIS_RESTAPI
 
 class ChRIS_SMUserDB(object):
     """A "DB" of users and passwords.
@@ -75,7 +78,9 @@ class ChRIS_SMUserDB(object):
         try:
             d_currentSessionInfo    = json.load(open("%s-login.json" % astr_user))
         except:
-            return False
+            return {'status':   False,
+                    'code':     1,
+                    'message':  'No login for user %s detected.' % astr_user}
         if not d_currentSessionInfo['loginStatus']:         return False
         str_sessionToken        = d_currentSessionInfo['sessionToken']
         str_sessionSeed         = d_currentSessionInfo['sessionSeed']
@@ -91,7 +96,7 @@ class ChRIS_SMUserDB(object):
                                     **kwargs)
         self.user_attachFeedTree(   user        = astr_user)
         self.chris.homePage   = self._userTree
-        return b_OK
+        return {'status': b_OK}
 
     def user_getAuthInfo(self, **kwargs):
         """Gets the DB auth info of the user
@@ -103,7 +108,8 @@ class ChRIS_SMUserDB(object):
         try:
             d_authSession = json.load(open("%s-login.json" % str_user))
         except:
-            return False
+            return {'status':   False,
+                    'message':  'No login for user %s detected.' % astr_user}
         rd_authInfo     = {}
         rd_authInfo['sessionStatus']    = d_authSession['sessionStatus']
         rd_authInfo['sessionSeed']      = d_authSession['sessionSeed']
@@ -338,9 +344,8 @@ class ChRIS_SM(object):
         """
 
 class ChRIS_SM_RPC(ChRIS_SM):
-    """The ChRIS_SM_RPC subclass implements a ChRIS_SM using an RPC type API paradigm.
-
-
+    """ The ChRIS_SM_RPC subclass implements a ChRIS_SM using an RPC type
+        API paradigm.
     """
 
     def __init__(self, **kwargs):
@@ -354,6 +359,23 @@ class ChRIS_SM_RPC(ChRIS_SM):
         ChRIS_SM.__init__(self, **kwargs)
 
         self.API    = ChRIS_RPCAPI.ChRIS_RPCAPI(**kwargs)
+
+class ChRIS_SM_REST(ChRIS_SM):
+    """ The ChRIS_SM_REST subclass implements a ChRIS_SM using a REST type
+        API paradigm.
+    """
+
+    def __init__(self, **kwargs):
+        """Constructor.
+
+        This essentially calls up the chain to the base constructor
+
+        Args:
+
+        """
+        ChRIS_SM.__init__(self, **kwargs)
+
+        self.API    = ChRIS_RESTAPI.ChRIS_RESTAPI(chris = self, **kwargs)
 
 
 class ChRIS_authenticate(object):
@@ -371,6 +393,33 @@ class ChRIS_authenticate(object):
         this auth is being wrapped.
 
     """
+    _dictErr = {
+        'no_loginFound'     : {
+            'action'        : 'checking on API call, ',
+            'error'         : 'it seems that the user has not logged in.',
+            'exitCode'      : 11}
+    }
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
 
     def __init__(self, achris_instance, aself_name):
         """Constructor.
@@ -382,6 +431,11 @@ class ChRIS_authenticate(object):
             achris_instance (ChRIS):    the chris instance to authenticate against
             aself_name (string):        this object's string name
         """
+
+        self._log                       = message.Message()
+        self._log._b_syslog             = True
+        self.__name                     = "ChRIS_authenticate"
+
         self.chris              = achris_instance
         self._name              = aself_name
         self.debug              = message.Message(logTo = './debug.log')
@@ -401,7 +455,10 @@ class ChRIS_authenticate(object):
             Whatever is returned by the call is returned back.
         """
         db = self.chris._SMCore._userDB
-        db.user_checkAPIcanCall(**kwargs)
+        d_ret = db.user_checkAPIcanCall(**kwargs)
+        if not d_ret['status'] and d_ret['code'] == 1:
+            error.fatal(self, 'no_loginFound')
+
         return f()
 
 
@@ -414,8 +471,8 @@ def synopsis(ab_shortOnly = False):
     SYNOPSIS
 
             %s                                     \\
-                            [--stateFile <stateFile>]       \\
-                            --APIcall <apiCall>
+                            [--REST | --RPC --stateFile <stateFile>]       \\
+                            --APIcall <APIcall>
 
 
     ''' % scriptName
@@ -428,15 +485,25 @@ def synopsis(ab_shortOnly = False):
 
     ARGS
 
-       --stateFile <stateFile> (required for RPC-type calling)
-       The file that tracks calls pertinent to a specific session.
+       --REST
+       Use a REST API paradigm.
+
+       --RPC --stateFile <stateFile>
+       Use an RPC API paradigm. In this case, a <stateFile> is also
+       required to track session history.
+
        API calls are logged to <stateFile> and replayed back when
        ChRIS_SM is instantiated. In this manner the machine state
-       can be rebuilt. The current <apiCall> is appended to the
+       can be rebuilt. The current <APIcall> is appended to the
        <stateFile>.
 
-       --apiCall <apiCall> (required)
-       The actual API call to make.
+       --APIcall <ACPIcall> (required)
+       The actual API call to make, either REST or RPC type.
+
+    NOTE
+
+       Do not mix REST and RPC type calls in the same session, otherwise
+       behaviour might be unpredictable / undefined.
 
     EXAMPLES
 
@@ -469,6 +536,20 @@ if __name__ == "__main__":
 
     parser      = argparse.ArgumentParser(description = synopsis(True))
     parser.add_argument(
+        '--REST',
+        action  =   'store_true',
+        dest    =   'b_REST',
+        help    =   'Specify REST API paradigm.',
+        default =   False
+    )
+    parser.add_argument(
+        '--RPC',
+        action  =   'store_true',
+        dest    =   'b_RPC',
+        help    =   'Specify RPC API paradigm.',
+        default =   False
+    )
+    parser.add_argument(
         '-s', '--stateFile',
         help    =   "The <stateFile> keeps track of ChRIS state for RPC-type calling regimes.",
         dest    =   'str_stateFileName',
@@ -484,6 +565,10 @@ if __name__ == "__main__":
     )
 
     args            = parser.parse_args()
-    chris           = ChRIS_SM_RPC(stateFile   = args.str_stateFileName)
+
+    if args.b_RPC:
+        chris       = ChRIS_SM_RPC(stateFile   = args.str_stateFileName)
+    if args.b_REST:
+        chris       = ChRIS_SM_REST()
     chris.API.auth  = ChRIS_authenticate(chris, 'auth')
     chris.API(APIcall = args.str_apiCall)
