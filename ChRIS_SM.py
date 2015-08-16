@@ -96,7 +96,9 @@ class ChRIS_SMUserDB(object):
                                     **kwargs)
         self.user_attachFeedTree(   user        = astr_user)
         self.chris.homePage   = self._userTree
-        return {'status': b_OK}
+        return {'status':   b_OK,
+                'code':     0,
+                'message':  'User %s can call API.' % astr_user}
 
     def user_getAuthInfo(self, **kwargs):
         """Gets the DB auth info of the user
@@ -109,11 +111,13 @@ class ChRIS_SMUserDB(object):
             d_authSession = json.load(open("%s-login.json" % str_user))
         except:
             return {'status':   False,
-                    'message':  'No login for user %s detected.' % astr_user}
+                    'message':  'No login for user %s detected.' % str_user}
         rd_authInfo     = {}
         rd_authInfo['sessionStatus']    = d_authSession['sessionStatus']
         rd_authInfo['sessionSeed']      = d_authSession['sessionSeed']
-        return rd_authInfo
+        return {'status':   True,
+                'authInfo': rd_authInfo,
+                'message':  'User authorization info.'}
 
     def login_writePersistent(self, **kwargs):
         """Write persistent information about login to disk"""
@@ -147,8 +151,16 @@ class ChRIS_SMUserDB(object):
         astr_user   = 'nobody'
         for key,val in kwargs.iteritems():
             if key == 'user':   astr_user   = val
-
-        os.remove('%-login.json' % astr_user)
+        now                     = datetime.datetime.today()
+        logoutStamp             = now.strftime('%Y-%m-%d_%H:%M:%S.%f')
+        try:
+            os.remove('%s-login.json' % astr_user)
+        except:
+            return {'status':   False,
+                    'message':  'logout failed for %s at %s -- no prior login detected.' %
+                                (astr_user, logoutStamp)}
+        return {'status': True,
+                'message':  'Successfully logged %s out at %s.' % (astr_user, logoutStamp)}
 
     def user_login(self, **kwargs):
         """Log a user in.
@@ -203,9 +215,12 @@ class ChRIS_SMUserDB(object):
                 ret['sessionSeed']      = "1"
 
                 self.debug("in login... writing persistent for user -->%s<--.\n" % astr_user)
+                # print(ret)
                 self.login_writePersistent( sessionInfo = ret,
                                             user        = astr_user)
-        return ret
+        return {'status':   True,
+                'message':  'login credentials parsed',
+                'ret':      ret}
 
     def __init__(self, **kwargs):
         # This class contains a reference back to the chris parent object that
@@ -238,6 +253,10 @@ class ChRIS_SMCore(object):
 
     def login(self, **kwargs):
         return(self._userDB.user_login(**kwargs))
+
+    def logout(self, **kwargs):
+        return(self._userDB.user_logout(**kwargs))
+
 
 class ChRIS_SM(object):
     """The ChRIS Simulated Machine
@@ -351,7 +370,9 @@ class ChRIS_SM_RPC(ChRIS_SM):
     def __init__(self, **kwargs):
         """Constructor.
 
-        This essentially calls up the chain to the base constructor
+        This essentially calls up the chain to the base constructor.
+
+        Also, set the 'API' field of the class to the RPC handler.
 
         Args:
 
@@ -368,7 +389,9 @@ class ChRIS_SM_REST(ChRIS_SM):
     def __init__(self, **kwargs):
         """Constructor.
 
-        This essentially calls up the chain to the base constructor
+        This essentially calls up the chain to the base constructor.
+
+        Also, set the 'API' field of the class to the RESTAPI handler.
 
         Args:
 
@@ -458,7 +481,6 @@ class ChRIS_authenticate(object):
         d_ret = db.user_checkAPIcanCall(**kwargs)
         if not d_ret['status'] and d_ret['code'] == 1:
             error.fatal(self, 'no_loginFound')
-
         return f()
 
 
@@ -571,4 +593,13 @@ if __name__ == "__main__":
     if args.b_REST:
         chris       = ChRIS_SM_REST()
     chris.API.auth  = ChRIS_authenticate(chris, 'auth')
-    chris.API(APIcall = args.str_apiCall)
+
+    # Call the API and print the JSON formatted return.
+    print(
+        json.dumps(
+            chris.API(
+                APIcall = args.str_apiCall
+            )
+        )
+    )
+
