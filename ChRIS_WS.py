@@ -49,11 +49,47 @@ import  datetime
 
 import  ChRIS_SM
 import  ChRIS_RESTAPI
+import  message
+import  error
+import  pprint
 
 class TCPServer(SocketServer.ThreadingTCPServer):
     allow_reuse_address = True
 
 class TCPServerHandler(SocketServer.BaseRequestHandler):
+
+    #
+    # Class member variables -- if declared here are shared
+    # across all instances of this class
+    #
+    _dictErr = {
+        'shellFailure'   : {
+            'action'        : 'attempting to run shell job, ',
+            'error'         : 'a failure was detected.',
+            'exitCode'      : 11}
+    }
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
 
     def URL_clientParamsPOST(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
@@ -73,7 +109,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         return str_URLargs
         #return "?" + al_inputRaw[7]
 
-    def URL_clientParamsGET(self, al_inputRaw):
+    def URL_clientParamsRPCGET(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
 
             This method handles GET calls from client, i.e. calls that
@@ -94,6 +130,24 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print(str_URLargs)
         return str_URLargs
 
+    def URL_clientParams_RESTGET(self, al_inputRaw):
+        """ Returns the string of client parameters embedded in the URL.
+
+            This method handles GET calls from client, i.e. calls that
+            get information FROM the backend.
+
+            Args:
+                al_inputRaw (list): The raw socket data as list split on '\n'
+
+            Returns:
+                a string of client parameters.
+        """
+        str_GET         = al_inputRaw[0]
+        str_REST        = str_GET.split()[1]
+
+        return str_REST
+
+
     def URL_serverProcess(self, astr_URLargs, **kwargs):
         """Call the server side entry point with the URLargs and sessionFile.
 
@@ -112,6 +166,10 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         shell.echoStdErr(False)
         shell.echo(False)
 
+        self._log                       = message.Message()
+        self._log._b_syslog             = True
+        self.__name                     = "ChRIS_client"
+
         b_RPC   = False
         b_REST  = True
 
@@ -122,10 +180,24 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                 b_REST              = False
 
         if b_RPC:
-            shell('ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile))
+            try:
+                shell('ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile))
+            except:
+                error.fatal(self, 'shellFailure',
+                        '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
+                        (shell._str_cmd, sshell.stdout(), shell.stderr()))
         if b_REST:
-            shell('ChRIS_SM.py --APIcall \"%s\" --REST ' % (astr_URLargs))
-        return eval(shell.stdout())
+            try:
+                shell('ChRIS_SM.py --APIcall \"%s\" --REST ' % (astr_URLargs))
+            except:
+                error.fatal(self, 'shellFailure',
+                        '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
+                        (shell._str_cmd, shell.stdout(), shell.stderr()))
+        if shell._exitCode:
+            error.fatal(self, 'shellFailure', '\nExit code failure:\n\t%s\n%s\n%s' %
+                        (shell._exitCode, shell._str_cmd, shell.stderr()))
+
+        return(json.loads(shell.stdout()))
 
     def HTTPresponse_sendClient(self, str_payload, **kwargs):
         """Send a properly formed HTTP response back to the client.
@@ -159,22 +231,23 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         FORMtype    = l_raw[0].split('/')[0]
         print(FORMtype)
         print(l_raw[0].split())[1]
-        str_URLargs = eval('self.URL_clientParams%s(l_raw)' % FORMtype)
-        str_URLargs = l_raw[0].split('/')[0]
-        # process the data:
-        d_component     = parse_qs(urlparse(str_URLargs).query)
-        print("parsed input:")
-        print("***********************************************")
-        print(d_component)
-        print("\n***********************************************")
-        if 'sessionFile' in d_component.keys():
-            str_sessionFile = d_component['sessionFile'][0]
-            str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
-        else:
-            str_reply       = self.URL_serverProcess(str_URLargs)
+        str_URL     = eval('self.URL_clientParams_%s%s(l_raw)' % (args.API, FORMtype))
+        # str_URLargs = l_raw[0].split('/')[0]
+        # # process the data:
+        # d_component     = parse_qs(urlparse(str_URLargs).query)
+        # print("parsed input:")
+        # print("***********************************************")
+        # print(d_component)
+        # print("\n***********************************************")
+        # if 'sessionFile' in d_component.keys():
+        #     str_sessionFile = d_component['sessionFile'][0]
+        #     str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
+        # else:
+        #     str_reply       = self.URL_serverProcess(str_URL)
+        str_reply       = self.URL_serverProcess(str_URL)
         print("reply:")
         print("***********************************************")
-        print(str_reply)
+        pprint.pprint(json.dumps(str_reply))
         print("***********************************************")
         print("***********************************************")
         try:
