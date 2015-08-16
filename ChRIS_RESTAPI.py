@@ -40,6 +40,10 @@ an external client.
 This class/module is responsible for mapping the GET formated REST requests
 to actual ChRIS calls.
 
+Furthermore, this class demonstrates how to call the underlying API, modules
+and classes directly (as opposed to a system call to ChRIS_SM -- see
+ChRIS_client).
+
 """
 
 from    webob           import Response
@@ -76,7 +80,11 @@ class ChRIS_RESTAPI(object):
         'no_chrisModuleSpec' : {
             'action'        : 'building API object, ',
             'error'         : "the reference to the containing <chris> object is missing!",
-            'exitCode'      : 13}
+            'exitCode'      : 13},
+        'malformedURL' : {
+            'action'        : 'parsing REST call, ',
+            'error'         : "the URL itself didn't yield a path -- it might be malformed. Perhaps an extra '?'",
+            'exitCode'      : 14}
     }
 
     def log(self, *args):
@@ -108,6 +116,7 @@ class ChRIS_RESTAPI(object):
         self.chris                      = None
 
         self._str_apiCall               = ""
+        self.d_return                   = {}
         self.debug                      = message.Message(logTo = './debug.log')
         self.debug._b_syslog            = True
         self._log                       = message.Message()
@@ -118,6 +127,7 @@ class ChRIS_RESTAPI(object):
 
         self.user                       = ""
         self.hash                       = ""
+        self.passwd                     = ""
 
         # JSON return objects
         self.d_call                     = {}
@@ -129,7 +139,7 @@ class ChRIS_RESTAPI(object):
             if key == 'chris':      self.chris          = val
 
         if not self.chris:
-            error.fatal(this, 'no_chrisModuleSpec')
+            error.fatal(self, 'no_chrisModuleSpec')
 
     def __call__(self, *args, **kwargs):
         '''
@@ -142,8 +152,8 @@ class ChRIS_RESTAPI(object):
             if key == 'APIcall':    self._str_apiCall   = val
         if self._str_apiCall    == "<void>": error.fatal(self, 'no_apiCall')
         # print(self._str_apiCall)
-        self.parseCurrentCall(authmodule = self.auth)
-
+        self.d_return = self.parseCurrentCall(authmodule = self.auth)
+        return(self.d_return)
 
     def parseCurrentCall(self, **kwargs):
         """Parse the current REST call"""
@@ -160,24 +170,40 @@ class ChRIS_RESTAPI(object):
         l_path          = URL_parts.path.split('/')[2:]     # skip the /vX/!
         d_query         = parse_qs(URL_parts.query)
 
+        if not len(l_path):
+            error.fatal(self, 'malformedURL', 'URL: %s' % self._str_apiCall)
+
+        # print(l_path)
+        # print(d_query)
+
         if 'auth' in d_query:
             str_authSpec    = d_query['auth'][0]
             str_authURL     = "?%s" % str_authSpec.replace(',', '&')
             d_auth          = parse_qs(urlparse(str_authURL).query)
-            print(d_auth.keys())
-            self.str_user   = d_auth['user'][0]
+            # print(d_auth.keys())
+            if 'user' in d_auth.keys():
+                self.user   = d_auth['user'][0]
             if 'hash' in d_auth.keys():
-                self.str_hash   = d_auth['hash'][0]
+                self.hash   = d_auth['hash'][0]
+            if 'passwd' in d_auth.keys():
+                self.passwd = d_auth['passwd'][0]
 
         self.parsePathSpec(l_path)
-        self.formatReturnJSON()
+        return(self.formatReturnJSON())
 
     def parseLogin(self):
         """
         Parse the REST login
         :return:
         """
+        self.d_call = self.chris.DB.user_login(user = self.user, passwd = self.passwd)
 
+    def parseLogout(self):
+        """
+        Parse the REST login
+        :return:
+        """
+        self.d_call = self.chris.DB.user_logout(user = self.user)
 
     def parsePathSpec(self, al_path):
         """
@@ -185,31 +211,34 @@ class ChRIS_RESTAPI(object):
         :return:
         """
 
-        print(al_path)
-        print(len(al_path))
+        # print(al_path)
+        # print(len(al_path))
         if al_path[0].lower() == 'login':
             self.parseLogin()
+            return True
+        if al_path[0].lower() == 'logout':
+            self.parseLogout()
             return True
         if len(al_path) <= 2 and self.str_APIaction == "GET":
             if len(al_path) == 1:
                 self.d_call = self.auth(lambda: self.chris.homePage.feeds_organize(
                                                         schema = 'default'),
-                                                        user   = self.str_user,
-                                                        hash   = self.str_hash)
+                                                        user   = self.user,
+                                                        hash   = self.hash)
             if len(al_path) == 2:
                 str_feedTarget  = al_path[1]
                 l_targetType    = str_feedTarget.split('_')
                 if l_targetType[0].lower() == 'ID':
                     self.d_call = self.auth(lambda: self.chris.homePage.feed_getFromObjectID(
                                                         l_targetType[1]),
-                                                        user    = self.str_user,
-                                                        hash    = self.str_hash)
+                                                        user    = self.user,
+                                                        hash    = self.hash)
                 if l_targetType[0].lower() == 'name':
                     self.d_call = self.auth(lambda: self.chris.homePage.feed_getFromObjectName(
                                                         l_targetType[1],
                                                         returnAsDict    = True),
-                                                        user            = self.str_user,
-                                                        hash            = self.str_hash)
+                                                        user    = self.user,
+                                                        hash    = self.hash)
         return True
 
 
@@ -223,18 +252,51 @@ class ChRIS_RESTAPI(object):
         d_API   = {'APIcall':   self._str_apiCall}
         d_exec  = {'exec':      self.d_call}
 
-        print("{")
-        print("'auth': %s,"   %     d_auth)
-        print("'API': %s"       %   d_API)
-        print("'exec': %s"      %   d_exec)
-        print("}")
+        d_result   = {
+            'auth':     d_auth,
+            'API':      d_API,
+            'return':   d_exec
+        }
+
+        return d_result
+
+def JSONdump_all(al_history):
+    """
+    Prints a fully conformant JSON type object around the l_history
+    :param al_history: history of calls
+    :return:
+    """
+    print("{")
+    for i in range(0, len(al_history)):
+        if not i:
+            print(" \"call_%03d\": " % i, end="")
+        else:
+            print(",\"call_%03d\": " % i, end="")
+        print(json.dumps(al_history[i]))
+    print("}")
 
 if __name__ == "__main__":
 
     chris               = ChRIS_SM.ChRIS_SM_REST()   # This also instantiates a chris.API object
     chris.API.auth      = ChRIS_SM.ChRIS_authenticate(chris, 'auth')
 
-    chris.API(APIcall   = "/v1/login?auth=user=chris,passwd='chris1234'")
-    chris.API(APIcall   = "/v1/Feeds?auth=user=chris,hash=123456")
+    l_callHistory       = []
 
-    chris.API(APIcall   = "/v1/Feeds/NAME_Feed-1?auth=user=chris,hash=123456")
+    l_callHistory.append(
+        chris.API(APIcall   = "/v1/login?auth=user=chris,passwd=chris1234")
+    )
+
+    l_callHistory.append(
+        chris.API(APIcall   = "/v1/Feeds?auth=user=chris,hash=123456")
+    )
+
+    l_callHistory.append(
+        chris.API(APIcall   = "/v1/Feeds/NAME_Feed-1?auth=user=chris,hash=123456")
+    )
+
+    l_callHistory.append(
+        chris.API(APIcall   = "/v1/logout?auth=user=chris")
+    )
+
+
+    JSONdump_all(l_callHistory)
