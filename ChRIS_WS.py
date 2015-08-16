@@ -47,6 +47,7 @@ import  os
 import  sys
 import  datetime
 
+import  ChRIS_SM
 import  ChRIS_RESTAPI
 
 class TCPServer(SocketServer.ThreadingTCPServer):
@@ -87,16 +88,13 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         str_GET         = al_inputRaw[0]
         str_REST        = str_GET.split()[1]
 
-        GET             = ChRIS_RESTAPI.ChRIS_GET(RESTcall = str_REST)
-        print(GET._str_REST)
-
         print(str_REST)
-        sys.exit(0)
         l_URLargSpec    = str_GET.split('/')
         str_URLargs     = l_URLargSpec[1].split()[0]
+        print(str_URLargs)
         return str_URLargs
 
-    def URL_serverProcess(self, astr_URLargs, astr_sessionFile):
+    def URL_serverProcess(self, astr_URLargs, **kwargs):
         """Call the server side entry point with the URLargs and sessionFile.
 
         Args:
@@ -106,13 +104,27 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         Returns:
             string response from server process
         """
+
+
         shell = crun.crun()
         shell.waitForChild(True)
         shell.echoStdOut(False)
         shell.echoStdErr(False)
         shell.echo(False)
 
-        shell('ChRIS_SM.py --APIcall \"%s\" --stateFile %s' % (astr_URLargs, astr_sessionFile))
+        b_RPC   = False
+        b_REST  = True
+
+        for key,val in kwargs.iteritems():
+            if key == 'sessionFile':
+                astr_sessionFile    = val
+                b_RPC               = True
+                b_REST              = False
+
+        if b_RPC:
+            shell('ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile))
+        if b_REST:
+            shell('ChRIS_SM.py --APIcall \"%s\" --REST ' % (astr_URLargs))
         return eval(shell.stdout())
 
     def HTTPresponse_sendClient(self, str_payload, **kwargs):
@@ -145,16 +157,21 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         l_raw       = str_raw.split('\n')
         #print(l_raw)
         FORMtype    = l_raw[0].split('/')[0]
+        print(FORMtype)
+        print(l_raw[0].split())[1]
         str_URLargs = eval('self.URL_clientParams%s(l_raw)' % FORMtype)
-
+        str_URLargs = l_raw[0].split('/')[0]
         # process the data:
         d_component     = parse_qs(urlparse(str_URLargs).query)
         print("parsed input:")
         print("***********************************************")
         print(d_component)
-        str_sessionFile = d_component['sessionFile'][0]
         print("\n***********************************************")
-        str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
+        if 'sessionFile' in d_component.keys():
+            str_sessionFile = d_component['sessionFile'][0]
+            str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
+        else:
+            str_reply       = self.URL_serverProcess(str_URLargs)
         print("reply:")
         print("***********************************************")
         print(str_reply)
@@ -173,7 +190,8 @@ def synopsis(ab_shortOnly = False):
 
             %s                                     \\
                             --hostIP <hostIP>       \\
-                            --port <port>
+                            --port <port>           \\
+                            --API RPC|REST
 
 
     ''' % scriptName
@@ -189,8 +207,17 @@ def synopsis(ab_shortOnly = False):
 
     ARGS
 
+       --hostIP <hostIP>
+       The IP of this host. If 'localhost' then only clients on this
+       host can connect. If actual IP, then clients on other hosts
+       can connect.
+
        --port <port> (defaults to '5555')
        The port for the server to listen on.
+
+       --REST | --RPC
+       The calling paradigm.
+
 
     EXAMPLES
 
@@ -208,13 +235,19 @@ if __name__ == "__main__":
 
     parser  = argparse.ArgumentParser(description = synopsis(True))
     parser.add_argument(
+        '-a', '--API',
+        help    =   "The API paradigm to use.",
+        dest    =   'API',
+        action  =   'store',
+        default =   'REST'
+    )
+    parser.add_argument(
         '-p', '--port',
         help    =   "The <port> on which to listen.",
         dest    =   'port',
         action  =   'store',
         default =   5555
     )
-
     parser.add_argument(
         '-i', '--host',
         help    =   "The <host> name/IP on which to start the server.",
