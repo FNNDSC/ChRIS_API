@@ -117,7 +117,7 @@ class ChRIS_SMUserDB(object):
         rd_authInfo['sessionSeed']      = d_authSession['sessionSeed']
         return {'status':   True,
                 'authInfo': rd_authInfo,
-                'message':  'User authorization info.'}
+                'message':  'Authorization info for user %s.' % str_user}
 
     def login_writePersistent(self, **kwargs):
         """Write persistent information about login to disk"""
@@ -202,13 +202,13 @@ class ChRIS_SMUserDB(object):
         s = self._stree
         s.cdnode('/users')
         if not s.cdnode(astr_user):
-            ret['loginMessage']     = 'User not found in database.'
+            ret['loginMessage']     = 'User %s not found in database.' % astr_user
         else:
             if s.cat('passwd') != astr_passwd:
                 ret['loginMessage']     = 'Incorrect password.'
             else:
                 ret['loginStatus']      = True
-                ret['loginMessage']     = 'Successful login at %s.' % datetime.datetime.now()
+                ret['loginMessage']     = 'Successful login for user %s at %s.' % (astr_user, datetime.datetime.now())
                 ret['logoutMessage']    = ""
                 ret['sessionStatus']    = True
                 ret['sessionToken']     = "ABCDEF"
