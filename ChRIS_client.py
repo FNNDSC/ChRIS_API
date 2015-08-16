@@ -33,6 +33,8 @@ from __future__ import print_function
 
 import  abc
 
+import  error
+import  message
 import  crun
 import  hashlib
 import  sys
@@ -45,19 +47,57 @@ class ChRIS_client(object):
 
     """
 
+    #
+    # Class member variables -- if declared here are shared
+    # across all instances of this class
+    #
+    _dictErr = {
+        'shellFailure'   : {
+            'action'        : 'attempting to run shell job, ',
+            'error'         : 'a failure was detected.',
+            'exitCode'      : 11}
+    }
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
+
     callCounter     = 0
 
     def __init__(self, **kwargs):
         """Constructor
         """
-        self._str_executable    = ""
+        self._log                       = message.Message()
+        self._log._b_syslog             = True
+        self.__name                     = "ChRIS_client"
 
-        self._str_token         = ""
-        self._str_seed          = ""
+        self._str_executable            = ""
 
-        self._b_formatAllJSON   = False
+        self._str_token                 = ""
+        self._str_seed                  = ""
 
-        self._shell             = crun.crun()
+        self._b_formatAllJSON           = False
+        self.l_call                     = []
+
+        self._shell                     = crun.crun()
         self._shell.waitForChild(True)
         self._shell.echoStdOut(False)
         self._shell.echoStdErr(False)
@@ -94,6 +134,21 @@ class ChRIS_client(object):
         str_hashInput   = "%s%s" % (self._str_token, self._str_seed)
         return m.md5(str_hash).hexdigest()
 
+    def JSONdump_all(self):
+        """
+        Prints a fully conformant JSON type object around the l_history
+        :param al_history: history of calls
+        :return:
+        """
+        print("{")
+        for i in range(0, len(self.l_call)):
+            if not i:
+                print(" \"call_%03d\": " % i, end="")
+            else:
+                print(",\"call_%03d\": " % i, end="")
+            print(json.dumps(self.l_call[i]))
+        print("}")
+
 class ChRIS_client_REST(ChRIS_client):
     """A REST client"""
 
@@ -103,36 +158,19 @@ class ChRIS_client_REST(ChRIS_client):
     def __call__(self, *args, **kwargs):
         """Entry point mimicking the external call to the web service
         """
-        str_jwrap       = ""
-        b_jwrapStart    = False
-        b_jwrapEnd      = False
-        for key, val in kwargs.iteritems():
-            if key == "jwrap" and val == "start":   b_jwrapStart    = True
-            if key == "jwrap" and val == "end":     b_jwrapEnd      = True
 
         ChRIS_client.callCounter += 1
 
-        if self._b_formatAllJSON:
-            if b_jwrapStart:
-                print("{\"call_%03d\": " % ChRIS_client.callCounter, end="")
-            else:
-                print(",\"call_%03d\": " % ChRIS_client.callCounter, end="")
-
-        self._shell("%s --REST --APIcall %s" % (self._str_executable, args[0]))
         try:
-            job = eval(self.stdout())
+            job = self._shell("%s --REST --APIcall %s" % (self._str_executable, args[0]))
         except:
-            print("\n\nShell job failure!")
-            print("Attempting to execute:")
-            print(self._shell._str_shellCmd)
-            print("Returned:")
-            print(self._shell.stderr())
-            sys.exit(1)
-        # print("vvvv")
-        print(json.dumps(job), end="")
-        # print("^^^^")
-        if self._b_formatAllJSON and b_jwrapEnd:
-            print("}")
+            error.fatal(self, 'shellFailure',
+                        '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
+                        (self._shell._str_cmd, self._shell.stdout(), self._shell.stderr()))
+        if self._shell._exitCode:
+            error.fatal(self, 'shellFailure', '\nExit code failure:\n\t%s\n%s\n%s' %
+                        (self._shell._exitCode, self._shell._str_cmd, self._shell.stderr()))
+        return(json.loads(self.stdout()))
 
 class ChRIS_client_RPC(ChRIS_client):
     """An RPC-specialized client
@@ -269,6 +307,7 @@ if __name__ == "__main__":
 
     args        = parser.parse_args()
     m           = hashlib
+    l_call      = []
 
     if args.b_RPC:
         API         = ChRIS_client_RPC(     simulatedMachine = './ChRIS_SM.py',
@@ -296,19 +335,35 @@ if __name__ == "__main__":
         # Get details about specific feeds
         API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
 
-        API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"",jwrap="end")
+        API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+
+        # Finally, log out...
+        API("\"http://chris_service?returnstore=d&object=chris&method=logout&parameters=user='chris'\"",jwrap="end")
+
 
     if args.b_REST:
         API         = ChRIS_client_REST(    simulatedMachine = './ChRIS_SM.py',
                                             formatAllJSON    = args.formatAllJSON)
         # First login...
-        API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
+        API.l_call.append(
+            API("\"http://chris_service/v1/login?auth=user=chris,passwd=chris1234\"")
+        )
 
         # Now do something...
 
         # Get a list of feeds for the homepage
-        API("\"http://chris_service?/v1/Feeds?auth=user=chris,hash=123456\"")
+        API.l_call.append(
+            API("\"http://chris_service/v1/Feeds?auth=user=chris,hash=123456\"")
+        )
 
         # Get a specific feed...
-        API("\"http://chris_service?v1/Feeds/NAME_Feed-1?auth=user=chris,hash=123456\"")
+        API.l_call.append(
+            API("\"http://chris_service/v1/Feeds/NAME_Feed-1?auth=user=chris,hash=123456\"")
+        )
 
+        # Finally, log out...
+        API.l_call.append(
+            API("\"http://chris_service/v1/logout?auth=user=chris\"", jwrap="end")
+        )
+
+        API.JSONdump_all()
