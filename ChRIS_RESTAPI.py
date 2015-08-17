@@ -116,7 +116,6 @@ class ChRIS_RESTAPI(object):
         self.chris                      = None
 
         self._str_apiCall               = ""
-        self.d_return                   = {}
         self.debug                      = message.Message(logTo = './debug.log')
         self.debug._b_syslog            = True
         self._log                       = message.Message()
@@ -130,6 +129,7 @@ class ChRIS_RESTAPI(object):
         self.passwd                     = ""
 
         # JSON return objects
+        self.d_return                   = {}
         self.d_call                     = {}
         self.d_auth                     = {}
         self.d_API                      = {}
