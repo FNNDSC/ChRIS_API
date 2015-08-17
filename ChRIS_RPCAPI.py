@@ -41,10 +41,14 @@ to actual ChRIS calls.
 
 from    urlparse        import urlparse, parse_qs
 
+import  error
 import  message
 import  shlex
 import  os
 import  datetime
+
+import  ChRIS_SM
+import  json
 
 class ChRIS_RPCAPI(object):
     """This class processes GET verbs. Effectively it maps from the REST API
@@ -61,7 +65,7 @@ class ChRIS_RPCAPI(object):
             'exitCode'      : 11},
         'no_stateFile'   : {
             'action'        : 'examining command line arguemnts, ',
-            'error'         : 'it seems that the required --stateFile is missing.',
+            'error'         : 'it seems that the required stateFile is missing from the constructor.',
             'exitCode'      : 12},
         'no_stateFileExist': {
             'action'        : 'checking on the <stateFile>, ',
@@ -70,11 +74,49 @@ class ChRIS_RPCAPI(object):
         'no_stateFileAccess': {
             'action'        : 'attempting to access the <stateFile>, ',
             'error'         : 'a system error was encountered. Does the <stateFile> exist?',
-            'exitCode'      : 21}
+            'exitCode'      : 21},
+        'no_authModuleSpec' : {
+            'action'        : 'executing API call, ',
+            'error'         : "there doesn't seem to be an auth module!",
+            'exitCode'      : 22},
+        'no_chrisModuleSpec' : {
+            'action'        : 'building API object, ',
+            'error'         : "the reference to the containing <chris> object is missing!",
+            'exitCode'      : 23},
+        'malformedURL' : {
+            'action'        : 'parsing REST call, ',
+            'error'         : "the URL itself didn't yield a path -- it might be malformed. Perhaps an extra '?'",
+            'exitCode'      : 24}
     }
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
 
 
     def __init__(self, *args, **kwargs):
+
+        # auth is the per-call authentication module
+        self.auth                       = None
+        # chris is the chris-object that contains this API
+        self.chris                      = None
 
         self._b_clearStateFile          = False
         self._str_stateFile             = ""
@@ -83,6 +125,20 @@ class ChRIS_RPCAPI(object):
         self.auth                       = None
         self.debug                      = message.Message(logTo = './debug.log')
         self.debug._b_syslog            = True
+        self._log                       = message.Message()
+        self._log._b_syslog             = True
+        self.__name                     = "ChRIS_RESTAPI"
+
+        self.user                       = ""
+        self.hash                       = ""
+        self.passwd                     = ""
+
+        # JSON return objects
+        self.d_return                   = {}
+        self.d_call                     = {}
+        self.d_cmd                      = {}
+        self.d_auth                     = {}
+        self.d_API                      = {}
 
         # The returnStore variables control how json objects are
         # captured from API calls. Essentially the python exec
@@ -94,8 +150,12 @@ class ChRIS_RPCAPI(object):
         for key,val in kwargs.iteritems():
             if key == 'stateFile':  self._str_stateFile = val
             if key == 'auth':       self.auth           = val
+            if key == 'chris':      self.chris          = val
 
-        if self._str_stateFile  == "<void>": error.fatal(self, 'no_stateFile')
+        if not self.chris:
+            error.fatal(self, 'no_chrisModuleSpec')
+
+        if not len(self._str_stateFile): error.fatal(self, 'no_stateFile')
 
     def __call__(self, *args, **kwargs):
         '''
@@ -110,7 +170,7 @@ class ChRIS_RPCAPI(object):
         # print(self._str_apiCall)
         self.readCallHistory()
         self.parseCurrentCall(authmodule = self.auth)
-        self.replayCalls()
+        return(self.replayCalls())
 
     def readCallHistory(self):
         """Reads the (parsed) API calls stored in the stateful file.
@@ -133,6 +193,26 @@ class ChRIS_RPCAPI(object):
         with open(self._str_stateFile) as f:
             self._l_apiCallHistory = f.read().splitlines()
         return True
+
+    def str2URL(self, astr_stringSpec, ab_strip = False):
+        """
+        Parses the string as if it were a query URL.
+        :param astr_stringSpec: input string to parse
+        :param ab_strip: If True, strip certain characters from string.
+        :return: dictionary of key,val extracted from astr_stringSpec
+        """
+        str_parametersURL   = '?%s' % astr_stringSpec.replace(',' ,'&')
+        d_parametersURL     = parse_qs(urlparse(str_parametersURL).query)
+        if 'user' in d_parametersURL.keys():
+            self.user   = d_parametersURL['user'][0]
+            if ab_strip: self.user   = self.user.translate(None, '\'\"')
+        if 'hash' in d_parametersURL.keys():
+            self.hash   = d_parametersURL['hash'][0]
+            if ab_strip: self.hash   = self.hash.translate(None, '\'\"')
+        if 'passwd' in d_parametersURL.keys():
+            self.passwd = d_parametersURL['passwd'][0]
+            if ab_strip: self.passwd = self.passwd.translate(None, '\'\"')
+        return(d_parametersURL)
 
     def parseCurrentCall(self, **kwargs):
         """Parses the apiCall and updates the stateFile.
@@ -161,14 +241,12 @@ class ChRIS_RPCAPI(object):
         str_method      = ""
         str_parameters  = ""
 
-        # Additional "auth" components
-        str_user        = ""
-        str_hash        = ""
-
         d_component     = parse_qs(urlparse(self._str_apiCall).query)
 
         if 'clearSessionFile' in d_component:
             self._b_clearStateFile = int(d_component['clearSessionFile'][0])
+        else:
+            self._b_clearStateFile = False
         if 'returnstore' in d_component:
             str_ret                 = d_component['returnstore'][0]
             self._b_returnStore     = True
@@ -179,16 +257,18 @@ class ChRIS_RPCAPI(object):
         if 'object'      in d_component: str_object      = d_component['object'][0]
         str_method                  = d_component['method'][0]
         if 'parameters'  in d_component: str_parameters  = d_component['parameters'][0]
+        if str_method == 'login' or str_method == 'logout':
+            self.str2URL(str_parameters)
         if len(str_ret):    str_ret     = "%s="   % str_ret
-        if len(str_object): str_object  = "%s(lambda: %s."     % (str_auth, str_object)
+        if len(str_object) and str_method != 'login' and str_method != 'logout':
+            str_object  = "%s(lambda: %s."     % (str_auth, str_object)
+        if len(str_object) and str_method == 'login' or str_method == 'logout':
+            str_object  = '%s.' % str_object
 
         # Parse the "auth" components
         if 'auth'       in d_component:
             str_authSpec    = d_component['auth'][0]
-            str_authUrl     = "?%s" % str_authSpec.replace(',', '&')
-            d_auth          = parse_qs(urlparse(str_authUrl).query)
-            str_user        = d_auth['user'][0]
-            str_hash        = d_auth['hash'][0]
+            self.str2URL(str_authSpec)
 
         if len(str_parameters):
             str_eval    = "%s%s%s(%s)" % (
@@ -205,14 +285,12 @@ class ChRIS_RPCAPI(object):
             )
 
         if len(str_object):
-            if str_method == 'login':
-                str_eval += ")"
-            else:
-                str_eval += ", user=%s, hash=%s)" % (str_user, str_hash)
+            if str_method != 'login' and str_method != 'logout':
+                str_eval += ", user=%s, hash=%s)" % (self.user, self.hash)
         self._l_apiCallHistory.append(str_eval)
         #print(d_component)
         str_mode = 'a'
-        #print("clear state file = %d" % self._b_clearStateFile)
+        # print("clear state file = %d" % self._b_clearStateFile)
         if self._b_clearStateFile: str_mode = 'w'
         with open(self._str_stateFile, str_mode) as f:
             f.write("# %s %s\n" % (datetime.datetime.now(), self._str_apiCall))
@@ -247,37 +325,78 @@ class ChRIS_RPCAPI(object):
                 self.debug("replay cmd: %s\n" % cmd)
                 exec(cmd) in locals()
 
-        # Now process the current call.
-        # First, we capture the API call itself from the client to return
-        # in the 'APIcall' field of the return structure
-        str_API     = self._str_apiCall
-        d_API       = {'APIcall': str_API}
 
-        # And similarly for the actual python call
-        cmd         = self._l_apiCallHistory[-1]
-        d_cmd       = {'pycode': cmd}
+        # Record the actual python call
+        cmd             = self._l_apiCallHistory[-1]
+        self.d_cmd      = {'pycode': cmd}
 
-        print("{")
-        if self._b_returnStore:
-            cmd = "%s; strout = str(%s); print(\"'exec':\", end=\" \"); print(strout, end=\"\"); print(\",\", end=\" \")" % (cmd, self._str_returnStore)
-        else:
-            cmd = "%s = %s; strout = (%s); print(\"'exec':\", end=\" \"); print(strout, end=\"\"); print(\",\", end=\" \")" % (self._str_returnStore, cmd, self._str_returnStore)
-
+        if not self._b_returnStore:
+            cmd = "self.d_call = %s" % cmd
         self.debug('this cmd: %s\n' % cmd)
         exec(cmd) in locals()
+        if self._b_returnStore:
+            exec("self.d_call = %s" % self._str_returnStore)
 
-        # Get the user's auth data
-        d_component = parse_qs(urlparse(str_API).query)
-        if 'auth' in d_component:
-            str_userSpec    = d_component['auth'][0]
-        if d_component['method'][0] == 'login':
-            str_userSpec    = d_component['parameters'][0]
-        d_params    = dict(token.split('=') for token in shlex.split(str_userSpec.replace(',', ' ')))
-        str_user    = d_params['user']
-        d_auth      = chris.DB.user_getAuthInfo(user=str_user)
-        s_auth      = "'auth': %s," % d_auth
-        # print(s_auth.strip())
-        print("\n'auth': %s,"   % d_auth)
-        print("'API': %s,"      % d_API)
-        print("'cmd': %s"       % d_cmd)
-        print("}")
+        return(self.formatReturnJSON())
+
+    def formatReturnJSON(self):
+        """
+
+        :return: the formatted JSON components
+        """
+
+        d_auth  = self.chris.DB.user_getAuthInfo(user = self.user)
+        d_API   = {'APIcall':   self._str_apiCall}
+        d_exec  = {'exec':      self.d_call}
+
+        d_result   = {
+            'cmd':      self.d_cmd,
+            'auth':     d_auth,
+            'API':      d_API,
+            'return':   d_exec
+        }
+
+        return d_result
+
+def JSONdump_all(al_history):
+    """
+    Prints a fully conformant JSON type object around the l_history
+    :param al_history: history of calls
+    :return:
+    """
+    print("{")
+    for i in range(0, len(al_history)):
+        if not i:
+            print(" \"call_%03d\": " % i, end="")
+        else:
+            print(",\"call_%03d\": " % i, end="")
+        print(json.dumps(al_history[i]))
+    print("}")
+
+if __name__ == "__main__":
+
+    chris               = ChRIS_SM.ChRIS_SM_RPC(stateFile = 'session.py')   # This also instantiates a chris.API object
+    chris.API.auth      = ChRIS_SM.ChRIS_authenticate(chris, 'auth')
+
+    l_callHistory       = []
+
+    l_callHistory.append(
+        chris.API(APIcall   = "http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1")
+    )
+
+    l_callHistory.append(
+        chris.API(APIcall   = "http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default'&auth=user='chris',hash='dabcdef1234'")
+    )
+
+    l_callHistory.append(
+        chris.API(APIcall   = "http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'")
+    )
+
+    l_callHistory.append(
+        chris.API(APIcall   = "http://chris_service?object=chris&method=logout&parameters=user='chris'")
+    )
+
+
+    JSONdump_all(l_callHistory)
+
+
