@@ -185,40 +185,19 @@ class ChRIS_client_RPC(ChRIS_client):
     def __call__(self, *args, **kwargs):
         """Entry point mimicking the external call to the web service
         """
-        str_jwrap       = ""
-        b_jwrapStart    = False
-        b_jwrapEnd      = False
-        for key, val in kwargs.iteritems():
-            if key == "jwrap" and val == "start":   b_jwrapStart    = True
-            if key == "jwrap" and val == "end":     b_jwrapEnd      = True
 
         ChRIS_client.callCounter += 1
 
-        if self._b_formatAllJSON:
-            if b_jwrapStart:
-                print("{\"call_%03d\": " % ChRIS_client.callCounter, end="")
-            else:
-                print(",\"call_%03d\": " % ChRIS_client.callCounter, end="")
-
-        self._shell("%s --RPC --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
-        # print("\n-->%s<--" % self.stdout())
-        # print(json.dumps(self.stdout()))
-        # print(json.dumps(self.stdout(), sort_keys = True,
-        #       indent=4, separators=(',', ': ')))
         try:
-            job = eval(self.stdout())
+            job = self._shell("%s --RPC --APIcall %s --stateFile %s" % (self._str_executable, args[0], self._str_stateFile))
         except:
-            print("\n\nShell job failure!")
-            print("Attempting to execute:")
-            print(self._shell._str_shellCmd)
-            print("Returned:")
-            print(self._shell.stderr())
-            sys.exit(1)
-        # print("vvvv")
-        print(json.dumps(job), end="")
-        # print("^^^^")
-        if self._b_formatAllJSON and b_jwrapEnd:
-            print("}")
+            error.fatal(self, 'shellFailure',
+                        '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
+                        (self._shell._str_cmd, self._shell.stdout(), self._shell.stderr()))
+        if self._shell._exitCode:
+            error.fatal(self, 'shellFailure', '\nExit code failure:\n\t%s\n%s\n%s' %
+                        (self._shell._exitCode, self._shell._str_cmd, self._shell.stderr()))
+        return(json.loads(self.stdout()))
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
@@ -314,32 +293,49 @@ if __name__ == "__main__":
                                             stateFile        = args.str_stateFileName,
                                             formatAllJSON    = args.formatAllJSON)
         # First login...
-        API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"",jwrap="start")
+        API.l_call.append(
+            API("\"http://chris_service?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1\"")
+        )
 
         # Now do something...
 
         # Get a list of feeds for the homepage
-        API("\"http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default'&auth=user='chris',hash='dabcdef1234'\"")
+        API.l_call.append(
+            API("\"http://chris_service?object=chris.homePage&method=feeds_organize&parameters=schema='default'&auth=user='chris',hash='dabcdef1234'\"")
+        )
 
         # Get a list of plugins that are valid at the scope of the homepage
-        API("\"http://chris_service?object=chris.homePage.plugin&method=getList&auth=user='chris',hash='dabcdef1234'\"")
+        API.l_call.append(
+            API("\"http://chris_service?object=chris.homePage.plugin&method=getList&auth=user='chris',hash='dabcdef1234'\"")
+        )
 
         # Choose a specific plugin
-        API("\"http://chris_service?object=chris.homePage.plugin&method=set&parameters='file_browser'&auth=user='chris',hash='dabcdef1234'\"")
+        API.l_call.append(
+            API("\"http://chris_service?object=chris.homePage.plugin&method=set&parameters='file_browser'&auth=user='chris',hash='dabcdef1234'\"")
+        )
 
         # Run it...
-        API("\"http://chris_service?object=chris.homePage.plugin&method=run&auth=user='chris',hash='dabcdef1234'\"")
+        API.l_call.append(
+            API("\"http://chris_service?object=chris.homePage.plugin&method=run&auth=user='chris',hash='dabcdef1234'\"")
+        )
 
         # This creates a new feed ... the client needs to request a new list of Feeds and render it.
 
         # Get details about specific feeds
-        API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+        API.l_call.append(
+            API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-3',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+        )
 
-        API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+        API.l_call.append(
+            API("\"http://chris_service?object=chris.homePage&method=feed_getFromObjectName&parameters='Feed-2',returnAsDict=True&auth=user='chris',hash='dabcdef1234'\"")
+        )
 
         # Finally, log out...
-        API("\"http://chris_service?returnstore=d&object=chris&method=logout&parameters=user='chris'\"",jwrap="end")
+        API.l_call.append(
+            API("\"http://chris_service?returnstore=d&object=chris&method=logout&parameters=user='chris'\"")
+        )
 
+        API.JSONdump_all()
 
     if args.b_REST:
         API         = ChRIS_client_REST(    simulatedMachine = './ChRIS_SM.py',
