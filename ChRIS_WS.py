@@ -34,6 +34,7 @@ back to the caller.
 
 Parts of the server infrastructure were adapted from:
 http://thomasfischer.biz/python-simple-json-tcp-server-and-client/
+
 """
 
 from    webob           import Response
@@ -107,7 +108,6 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         l_URLargSpec    = str_GET.split('/')
         str_URLargs     = l_URLargSpec[1].split()[0]
         return str_URLargs
-        #return "?" + al_inputRaw[7]
 
     def URL_clientParamsRPCGET(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
@@ -129,6 +129,23 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         str_URLargs     = l_URLargSpec[1].split()[0]
         print(str_URLargs)
         return str_URLargs
+
+    def URL_clientParams_RPCGET(self, al_inputRaw):
+        """ Returns the string of client parameters embedded in the URL.
+
+            This method handles GET calls from client, i.e. calls that
+            get information FROM the backend.
+
+            Args:
+                al_inputRaw (list): The raw socket data as list split on '\n'
+
+            Returns:
+                a string of client parameters.
+        """
+        str_GET         = al_inputRaw[0]
+        str_RPC         = str_GET.split()[1]
+
+        return str_RPC
 
     def URL_clientParams_RESTGET(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
@@ -170,29 +187,22 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self._log._b_syslog             = True
         self.__name                     = "ChRIS_client"
 
-        b_RPC   = False
-        b_REST  = True
-
         for key,val in kwargs.iteritems():
             if key == 'sessionFile':
                 astr_sessionFile    = val
-                b_RPC               = True
-                b_REST              = False
 
-        if b_RPC:
-            try:
-                shell('ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile))
-            except:
-                error.fatal(self, 'shellFailure',
-                        '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
-                        (shell._str_cmd, sshell.stdout(), shell.stderr()))
-        if b_REST:
-            try:
-                shell('ChRIS_SM.py --APIcall \"%s\" --REST ' % (astr_URLargs))
-            except:
-                error.fatal(self, 'shellFailure',
-                        '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
-                        (shell._str_cmd, shell.stdout(), shell.stderr()))
+        if args.API == 'REST':
+            cmd     = 'ChRIS_SM.py --APIcall \"%s\" --REST ' % (astr_URLargs)
+
+        if args.API == 'RPC':
+            cmd     = 'ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile)
+
+        try:
+            shell(cmd)
+        except:
+            error.fatal(self, 'shellFailure',
+                    '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
+                    (shell._str_cmd, shell.stdout(), shell.stderr()))
         if shell._exitCode:
             error.fatal(self, 'shellFailure', '\nExit code failure:\n\t%s\n%s\n%s' %
                         (shell._exitCode, shell._str_cmd, shell.stderr()))
@@ -229,23 +239,21 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         l_raw       = str_raw.split('\n')
         #print(l_raw)
         FORMtype    = l_raw[0].split('/')[0]
-        print(FORMtype)
-        print(l_raw[0].split())[1]
+        print('API verb   = %s' % FORMtype)
+        print('API object = %s' % l_raw[0].split()[1])
+        print("***********************************************")
         str_URL     = eval('self.URL_clientParams_%s%s(l_raw)' % (args.API, FORMtype))
-        # str_URLargs = l_raw[0].split('/')[0]
-        # # process the data:
-        # d_component     = parse_qs(urlparse(str_URLargs).query)
-        # print("parsed input:")
-        # print("***********************************************")
-        # print(d_component)
-        # print("\n***********************************************")
-        # if 'sessionFile' in d_component.keys():
-        #     str_sessionFile = d_component['sessionFile'][0]
-        #     str_reply       = self.URL_serverProcess(str_URLargs, str_sessionFile)
-        # else:
-        #     str_reply       = self.URL_serverProcess(str_URL)
-        str_reply       = self.URL_serverProcess(str_URL)
-        print("reply:")
+        d_component     = parse_qs(urlparse(str_URL).query)
+        print("parsed query component:")
+        print("***********************************************")
+        print(d_component)
+        print("***********************************************")
+        if 'sessionFile' in d_component.keys():
+            str_sessionFile = d_component['sessionFile'][0]
+            str_reply       = self.URL_serverProcess(str_URL, sessionFile = str_sessionFile)
+        else:
+            str_reply       = self.URL_serverProcess(str_URL)
+        print("reply from remote service:")
         print("***********************************************")
         pprint.pprint(json.dumps(str_reply))
         print("***********************************************")
@@ -334,6 +342,7 @@ if __name__ == "__main__":
 
     print(str_desc)
     print('Starting Simple ChRIS Web Service on %s:%s.' % (args.host, args.port))
+    print('API paradigm: %s' % args.API)
     print('To exit/kill this server, hit <ctrl>-c.\n')
     print("Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
     server = TCPServer((args.host, args.port), TCPServerHandler)
