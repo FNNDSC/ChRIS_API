@@ -48,11 +48,10 @@ import  os
 import  sys
 import  datetime
 
-import  ChRIS_SM
-import  ChRIS_RESTAPI
 import  message
 import  error
-import  pprint
+from    _colors         import Colors
+
 
 class TCPServer(SocketServer.ThreadingTCPServer):
     allow_reuse_address = True
@@ -234,19 +233,23 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print("***********************************************")
         print("raw input:")
         print("***********************************************")
-        print("%s\n" % (str_raw) )
+        print(Colors.CYAN + "%s\n" % (str_raw) + Colors.NO_COLOUR)
         print("***********************************************")
         l_raw       = str_raw.split('\n')
         #print(l_raw)
         FORMtype    = l_raw[0].split('/')[0]
+        print(Colors.YELLOW)
         print('API verb   = %s' % FORMtype)
         print('API object = %s' % l_raw[0].split()[1])
+        print(Colors.NO_COLOUR)
         print("***********************************************")
         str_URL     = eval('self.URL_clientParams_%s%s(l_raw)' % (args.API, FORMtype))
         d_component     = parse_qs(urlparse(str_URL).query)
         print("parsed query component:")
         print("***********************************************")
+        print(Colors.YELLOW)
         print(d_component)
+        print(Colors.NO_COLOUR)
         print("***********************************************")
         if 'sessionFile' in d_component.keys():
             str_sessionFile = d_component['sessionFile'][0]
@@ -255,7 +258,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             str_reply       = self.URL_serverProcess(str_URL)
         print("reply from remote service:")
         print("***********************************************")
-        pprint.pprint(json.dumps(str_reply))
+        print(Colors.LIGHT_GREEN + json.dumps(str_reply) + Colors.NO_COLOUR)
         print("***********************************************")
         print("***********************************************")
         try:
@@ -341,9 +344,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(str_desc)
-    print('Starting Simple ChRIS Web Service on %s:%s.' % (args.host, args.port))
-    print('API paradigm: %s' % args.API)
-    print('To exit/kill this server, hit <ctrl>-c.\n')
-    print("Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
+    print(Colors.YELLOW + 'Starting Simple ChRIS Web Service on %s:%s.' % (args.host, args.port))
+    print(Colors.YELLOW + 'API paradigm: ' + Colors.RED_BCKGRND + Colors.WHITE + args.API + Colors.NO_COLOUR)
+    print(Colors.RED + '\nTo exit/kill this server, hit <ctrl>-c.\n')
+    print(Colors.CYAN + "Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
+    print(Colors.NO_COLOUR)
     server = TCPServer((args.host, args.port), TCPServerHandler)
     server.serve_forever()
