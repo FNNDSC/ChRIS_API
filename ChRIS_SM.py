@@ -73,8 +73,8 @@ class ChRIS_SMUserDB(object):
         astr_user               = ""
         astr_sessionHash        = ""
         for key, value in kwargs.iteritems():
-            if key == 'user':           astr_user           = value
-            if key == 'hash':           astr_sessionHash    = value
+            if key == 'user':           astr_user           = value.translate(None, '\'\"')
+            if key == 'hash':           astr_sessionHash    = value.translate(None, '\'\"')
         try:
             d_currentSessionInfo    = json.load(open("%s-login.json" % astr_user))
         except:
@@ -90,6 +90,9 @@ class ChRIS_SMUserDB(object):
         if b_OK:
             d_currentSessionInfo['sessionToken']    = str_hashInput
             d_currentSessionInfo['sessionSeed']     = int(str_sessionSeed) + 1
+            str_message         = "User '%s can call API." % astr_user
+        else:
+            str_message         = "User '%s' can not call API." % astr_user
         d_currentSessionInfo['APIcanCall']      = b_OK
         self.login_writePersistent( sessionInfo = d_currentSessionInfo,
                       #              user        = astr_user,
@@ -98,7 +101,7 @@ class ChRIS_SMUserDB(object):
         self.chris.homePage   = self._userTree
         return {'status':   b_OK,
                 'code':     0,
-                'message':  'User %s can call API.' % astr_user}
+                'message':  str_message}
 
     def user_getAuthInfo(self, **kwargs):
         """Gets the DB auth info of the user
@@ -106,18 +109,19 @@ class ChRIS_SMUserDB(object):
         # s                   = self._stree
 
         for key,value in kwargs.iteritems():
-            if key == 'user':           str_user            = value
+            if key == 'user':           str_user            = value.translate(None, '\'\"')
         try:
             d_authSession = json.load(open("%s-login.json" % str_user))
         except:
             return {'status':   False,
+                    'code':     2,
                     'message':  'No login for user %s detected.' % str_user}
         rd_authInfo     = {}
         rd_authInfo['sessionStatus']    = d_authSession['sessionStatus']
         rd_authInfo['sessionSeed']      = d_authSession['sessionSeed']
         return {'status':   True,
                 'authInfo': rd_authInfo,
-                'message':  'Authorization info for user %s.' % str_user}
+                'message':  "Authorization info for user '%s'." % str_user}
 
     def login_writePersistent(self, **kwargs):
         """Write persistent information about login to disk"""
@@ -126,14 +130,14 @@ class ChRIS_SMUserDB(object):
         str_user            = 'nobody'
         for key,value in kwargs.iteritems():
             if key == 'sessionInfo':    dict_sessionInfo    = value
-            if key == 'user':           str_user            = value
+            if key == 'user':           str_user            = value.translate(None, '\'\"')
 
         json.dump(dict_sessionInfo, open("%s-login.json" % str_user, "w"))
 
     def user_attachFeedTree(self, **kwargs):
         """Attach the feed tree for this user"""
         for key, val in kwargs.iteritems():
-            if key == 'user':   astr_user   = val
+            if key == 'user':   astr_user   = val.translate(None, '\'\"')
         # Get the user's feed tree structure -- we only need to
         # do this *ONCE* per session/replay.
         if not self._userTree:
@@ -150,7 +154,7 @@ class ChRIS_SMUserDB(object):
         """
         astr_user   = 'nobody'
         for key,val in kwargs.iteritems():
-            if key == 'user':   astr_user   = val
+            if key == 'user':   astr_user   = val.translate(None, '\'\"')
         now                     = datetime.datetime.today()
         logoutStamp             = now.strftime('%Y-%m-%d_%H:%M:%S.%f')
         try:
@@ -160,7 +164,7 @@ class ChRIS_SMUserDB(object):
                     'message':  'logout failed for %s at %s -- no prior login detected.' %
                                 (astr_user, logoutStamp)}
         return {'status': True,
-                'message':  'Successfully logged %s out at %s.' % (astr_user, logoutStamp)}
+                'message':  "Successfully logged '%s' out at %s." % (astr_user, logoutStamp)}
 
     def user_login(self, **kwargs):
         """Log a user in.
@@ -182,8 +186,8 @@ class ChRIS_SMUserDB(object):
         """
 
         for key, val in kwargs.iteritems():
-            if key == 'user':   astr_user   = val
-            if key == 'passwd': astr_passwd = val
+            if key == 'user':   astr_user   = val.translate(None, '\'\"')
+            if key == 'passwd': astr_passwd = val.translate(None, '\'\"')
         s = self._stree
         s.cdnode('/users')
 
@@ -214,7 +218,7 @@ class ChRIS_SMUserDB(object):
                 ret['sessionToken']     = "ABCDEF"
                 ret['sessionSeed']      = "1"
 
-                self.debug("in login... writing persistent for user -->%s<--.\n" % astr_user)
+                self.debug("in login... writing persistent for user '%s'.\n" % astr_user)
                 # print(ret)
                 self.login_writePersistent( sessionInfo = ret,
                                             user        = astr_user)
@@ -352,8 +356,11 @@ class ChRIS_SM(object):
 
     def login(self, **kwargs):
         loginStatus     = self._SMCore.login(**kwargs)
-        # self.homePage   = self._SMCore._userDB._userTree
         return(loginStatus)
+
+    def logout(self, **kwargs):
+        logoutStatus     = self._SMCore.logout(**kwargs)
+        return(logoutStatus)
 
     def feed_nextID(self):
         """Find the next ID in the Feed database
@@ -379,7 +386,7 @@ class ChRIS_SM_RPC(ChRIS_SM):
         """
         ChRIS_SM.__init__(self, **kwargs)
 
-        self.API    = ChRIS_RPCAPI.ChRIS_RPCAPI(**kwargs)
+        self.API    = ChRIS_RPCAPI.ChRIS_RPCAPI(chris = self, **kwargs)
 
 class ChRIS_SM_REST(ChRIS_SM):
     """ The ChRIS_SM_REST subclass implements a ChRIS_SM using a REST type
@@ -478,6 +485,7 @@ class ChRIS_authenticate(object):
             Whatever is returned by the call is returned back.
         """
         db = self.chris._SMCore._userDB
+
         d_ret = db.user_checkAPIcanCall(**kwargs)
         if not d_ret['status'] and d_ret['code'] == 1:
             error.fatal(self, 'no_loginFound')
