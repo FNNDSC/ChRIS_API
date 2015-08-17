@@ -203,8 +203,8 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                     '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
                     (shell._str_cmd, shell.stdout(), shell.stderr()))
         if shell._exitCode:
-            error.fatal(self, 'shellFailure', '\nExit code failure:\n\t%s\n%s\n%s' %
-                        (shell._exitCode, shell._str_cmd, shell.stderr()))
+            error.fatal(self, 'shellFailure', '\nExit code failure:\t%s\n%s\n%s\n%s' %
+                        (shell._exitCode, shell._str_cmd, shell.stdout(), shell.stderr()))
 
         return(json.loads(shell.stdout()))
 
@@ -236,7 +236,6 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print(Colors.CYAN + "%s\n" % (str_raw) + Colors.NO_COLOUR)
         print("***********************************************")
         l_raw       = str_raw.split('\n')
-        #print(l_raw)
         FORMtype    = l_raw[0].split('/')[0]
         print(Colors.YELLOW)
         print('API verb   = %s' % FORMtype)
@@ -266,6 +265,13 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                                                               ContentType = 'application/json'))
         except Exception, e:
             print "Exception while attempting to transmit receive message: ", e
+        print(Colors.YELLOW + '\nChRIS Web Service listening on %s:%s.' % (args.host, args.port))
+        print(Colors.YELLOW + 'API paradigm: ' + Colors.RED_BCKGRND + Colors.WHITE + args.API + Colors.NO_COLOUR)
+        print(Colors.RED + '\nTo exit/kill this server, hit <ctrl>-c.\n')
+        print(Colors.CYAN + "Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
+        print(Colors.BLUE_BCKGRND + Colors.BLINK_BROWN + "\n\n\t\t\t\t\t. . . w a i t i n g . . .")
+        print(Colors.NO_COLOUR)
+
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
@@ -348,6 +354,7 @@ if __name__ == "__main__":
     print(Colors.YELLOW + 'API paradigm: ' + Colors.RED_BCKGRND + Colors.WHITE + args.API + Colors.NO_COLOUR)
     print(Colors.RED + '\nTo exit/kill this server, hit <ctrl>-c.\n')
     print(Colors.CYAN + "Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
+    print(Colors.BLUE_BCKGRND + Colors.BLINK_BROWN + "\n\t\t\t. . . w a i t i n g . . .")
     print(Colors.NO_COLOUR)
     server = TCPServer((args.host, args.port), TCPServerHandler)
     server.serve_forever()
