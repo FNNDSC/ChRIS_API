@@ -228,7 +228,7 @@ class ChRIS_RESTAPI(object):
             if len(al_path) == 2:
                 str_feedTarget  = al_path[1]
                 l_targetType    = str_feedTarget.split('_')
-                if l_targetType[0].lower() == 'ID':
+                if l_targetType[0].lower() == 'id':
                     self.d_call = self.auth(lambda: self.chris.homePage.feed_getFromObjectID(
                                                         l_targetType[1]),
                                                         user    = self.user,
