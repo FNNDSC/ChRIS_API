@@ -122,6 +122,43 @@ class Feed_FS(Feed):
         Feed.__init__(self, **kwargs)
         self.create(**kwargs)
 
+    def pluginElement_create(self, **kwargs):
+        """
+        Creates the 'plugin' element container -- it must be the direct child of
+        a 'data' element container.
+
+        :param kwargs: 'root' = <location>
+        :return:
+        """
+        s = self._stree
+        l_selected = ['selected-0', 'selected-1']
+        str_root = '/data'
+        for key, val in kwargs.iteritems():
+            if key == 'root': str_root = val
+        s.cd(str_root)
+        s.mkcd('plugin')
+        s.touch('contents', '<pluginList>')
+        s.touch('treeInfo', l_selected)
+        for select in l_selected:
+            s.mkcd(select)
+            s.touch('contents', '<pluginData>')
+            s.mkcd('data')
+            s.cd('../../')
+
+    def dataElement_create(self, **kwargs):
+        """
+        Creates the 'data' element container.
+
+        :param kwargs: 'root' = <location>
+        :return:
+        """
+        s = self._stree
+        str_root    = '/'
+        for key, val in kwargs.iteritems():
+            if key == 'root':   str_root    = val
+        s.cd(str_root)
+        s.mknode(['visualView', 'fileView'])
+
     def create(self, **kwargs):
         """Create a new feed.
 
@@ -146,19 +183,19 @@ class Feed_FS(Feed):
           True if successful, False otherwise.
 
         """
-        s = self.stree
+        s = self._stree
         self._stree.mknode(['title', 'note', 'data', 'comment'])
-        self._stree.cdnode('/data')
-        self._stree.mknode(['visualView', 'fileView'])
+        self.dataElement_create(root='/')
+        self.pluginElement_create(root='/data')
         self._stree.cdnode('/comment')
-        self._stree.touch("contents", "Hello, world.")
+        self._stree.touch("contents", "ChRIS says: Interesting results!\n")
 
         for key, value in kwargs.iteritems():
             if key == 'desc':
                 s.cd('/')
                 s.touch('desc', value)
                 s.cd('/comment')
-                s.append('contents', ' Greetings and salutations from %s!' % value)
+                s.append('contents', ' ChRIS says: Greetings and salutations from %s!' % value)
 
 class FeedTree(object):
     '''
