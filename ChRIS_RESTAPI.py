@@ -52,9 +52,11 @@ from    urlparse        import urlparse, parse_qs
 import  message
 import  error
 import  ChRIS_SM
+import  serverInfo
+import  json
+
 import  crun
 import  SocketServer
-import  json
 import  argparse
 import  os
 import  sys
@@ -127,6 +129,7 @@ class ChRIS_RESTAPI(object):
         self.user                       = ""
         self.hash                       = ""
         self.passwd                     = ""
+        self.authority                  = "localhost:5555"
 
         # JSON return objects
         self.d_return                   = {}
@@ -134,9 +137,13 @@ class ChRIS_RESTAPI(object):
         self.d_auth                     = {}
         self.d_API                      = {}
 
+
         for key,val in kwargs.iteritems():
             if key == 'auth':       self.auth           = val
             if key == 'chris':      self.chris          = val
+            if key == 'authority':  self.authority      = val
+
+        self.serverInfo                 = serverInfo.serverInfo(authority = self.authority)
 
         if not self.chris:
             error.fatal(self, 'no_chrisModuleSpec')
@@ -228,17 +235,11 @@ class ChRIS_RESTAPI(object):
             if len(al_path) == 2:
                 str_feedTarget  = al_path[1]
                 l_targetType    = str_feedTarget.split('_')
-                if l_targetType[0].lower() == 'id':
-                    self.d_call = self.auth(lambda: self.chris.homePage.feed_getFromObjectID(
-                                                        l_targetType[1]),
-                                                        user    = self.user,
-                                                        hash    = self.hash)
-                if l_targetType[0].lower() == 'name':
-                    self.d_call = self.auth(lambda: self.chris.homePage.feed_getFromObjectName(
-                                                        l_targetType[1],
-                                                        returnAsDict    = True),
-                                                        user    = self.user,
-                                                        hash    = self.hash)
+                self.d_call = self.auth(lambda: self.chris.homePage.feed_get(
+                                        searchType  = l_targetType[0].lower(),
+                                        target      = l_targetType[1]),
+                                        user        = self.user,
+                                        hash        = self.hash)
         return True
 
 
@@ -255,7 +256,8 @@ class ChRIS_RESTAPI(object):
         d_result   = {
             'auth':     d_auth,
             'API':      d_API,
-            'return':   d_exec
+            'return':   d_exec,
+            'server':   {'URI': self.serverInfo.URI, 'APIversion': self.serverInfo.APIversion}
         }
 
         return d_result
