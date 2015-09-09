@@ -4,12 +4,12 @@
 
 This repository contains a set of mostly python code that creates a simulated ChRIS machine that serves as a test bed for the interacting with and developing the ChRIS REST API.
 
-### Quick-n-Dirty Test
+### Quick-n-Dirty RPC Test
 
-The simplest way to interact with the service, is to fire up the ChRIS Web Service, <tt>ChRIS_WS.py</tt> and connect to the server port (default '5555', specify alternate port with <tt>--port \<port\></tt>:
+The simplest way to interact with the service, is to fire up the ChRIS Web Service, <tt>ChRIS_WS.py</tt> and connect to the server port (default '5555', specify alternate port with <tt>--port \<port\></tt>). In order to connect to the service from a non-localhost browser, specify the host address of the service explicitly:
 
 ```
-./ChRIS_WS.py
+./ChRIS_WS.py --host 192.168.1.10 --port 5555
 ```
 
 Perhaps the quickest way to test an interaction with the web service is to use Google Chrome with the Advanced Rest Client extension. In the Query parameters you can add "key, value" pairs.
