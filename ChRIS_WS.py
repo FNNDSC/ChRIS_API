@@ -356,5 +356,5 @@ if __name__ == "__main__":
     print(Colors.CYAN + "Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
     print(Colors.BLUE_BCKGRND + Colors.BLINK_BROWN + "\n\t\t\t. . . w a i t i n g . . .")
     print(Colors.NO_COLOUR)
-    server = TCPServer((args.host, args.port), TCPServerHandler)
+    server = TCPServer((args.host, int(args.port)), TCPServerHandler)
     server.serve_forever()
