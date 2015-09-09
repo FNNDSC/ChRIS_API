@@ -183,19 +183,25 @@ class Feed_FS(Feed):
           True if successful, False otherwise.
 
         """
-        s = self._stree
-        self._stree.mknode(['title', 'note', 'data', 'comment'])
-        self.dataElement_create(root='/data')
-        self.pluginElement_create(root='/data')
-        self._stree.cdnode('/comment')
-        self._stree.touch("contents", "ChRIS says: Interesting results!\n")
+
+        str_id      = ''
+        str_name    = ''
 
         for key, value in kwargs.iteritems():
-            if key == 'desc':
-                s.cd('/')
-                s.touch('desc', value)
-                s.cd('/comment')
-                s.append('contents', ' ChRIS says: Greetings and salutations from %s!' % value)
+            if key == 'name':   str_name    = value
+            if key == 'id':     str_id      = value
+
+        s = self._stree
+        s.mknode(['title', 'note', 'data', 'comment'])
+        self.dataElement_create(root='/data')
+        self.pluginElement_create(root='/data')
+        s.cdnode('/comment')
+        s.touch("contents", "ChRIS says: Interesting results!\n")
+        s.cdnode('/title')
+        s.touch('contents', 'Title string for Feed')
+        s.cd ('/comment')
+        s.append('contents', 'ChRIS says: Greetings and salutions from Feed NAME = %s, Feed ID = %s' % (str_name, str_id))
+
 
 class FeedTree(object):
     '''
@@ -235,9 +241,14 @@ class FeedTree(object):
 
         l_URL = []
         for key in l_keys:
-            l_URL.append('GET http://chris_service/v1/Feeds/NAME_%s' % key)
+            l_URL.append('Feeds/NAME_%s' % (key))
 
-        return {'list': l_keys, 'URL': l_URL}
+        return {
+                'status':   True,
+                'payload':  {'list': l_keys},
+                'URL_GET':  l_URL,
+                'URL_POST': []
+                }
 
     def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
@@ -283,49 +294,66 @@ class FeedTree(object):
                 return True
         return False
 
-    def feed_getFromObjectName(self, astr_feedObjectName, **kwargs):
-        """Get a feed from its internal object name
-
-        This returns a feed by directly returning the object
-        in the snode tree with the given feedObjectName.
-
-        Args:
-            astr_feedObjectName (string): The Feed Object Name.
-
-        Returns:
-            Feed (Feed): The Feed itself if it exists, False if not.
+    def feed_GETURI(self, **kwargs):
+        """
+        The list of GET URIs at the scope of a Feed
+        :param kwargs:
+        :return:
         """
 
-        b_returnAsDict = False
+        feedSpec   = ''
+        for key,val in kwargs.iteritems():
+            if key == 'feedSpec':   feedSpec    = val
+
+        return [
+            'Feeds/%s/title' % feedSpec,
+            'Feeds/%s/note' % feedSpec,
+            'Feeds/%s/comment' % feedSpec,
+            'Feeds/%s/data' % feedSpec,
+        ]
+
+
+    def feed_get(self, **kwargs):
+        """
+        Get a feed based on various criteria
+        :param kwargs: searchType = 'name' | 'id', target = <target>
+        :return: Feed conforming to search criteria
+        """
+        b_returnAsDict = True
+
+        str_searchType  = ''
+        str_target      = ''
 
         for key,val in kwargs.iteritems():
-            if key == "returnAsDict":   b_returnAsDict = val
+            if key == 'returnAsDict':   b_returnAsDict  = val
+            if key == 'searchType':     str_searchType  = val
+            if key == 'target':         str_target      = val
 
         f = self._feedTree
         f.cd('/')
-        if f.cd(astr_feedObjectName):
-            self.feed = f.cat('Feed')
-            if b_returnAsDict:
-                return dict(f.cat('Feed'))
-            else:
-                return f.cat('Feed')
-        else:
-            return False
-
-    def feed_getFromID(self, astr_feedID):
-        """Get a feed from its internal ID string.
-
-        :param astr_feedID: The ID of the Feed to get
-        :return: False if not found, otherwise the Feed object
-        """
-        f = self._feedTree
-        l_feed = f.lstr_lsnode('/')
-        for feedNode in f.lstr_lsnode('/'):
-            f.cd('/%s' % feedNode)
-            str_ID = f.cat('ID')
-            if str_ID == astr_feedID:
-                return f.cat('Feed')
-        return False
+        ret_status      = False
+        ret_feed        = {}
+        str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_target)
+        if str_searchType.lower() == 'name':
+            if f.cd(str_target):
+                self.feed = f.cat('Feed')
+                ret_status  = True
+                if b_returnAsDict:
+                    ret_feed = dict(f.cat('Feed'))
+                else:
+                    ret_feed = f.cat('Feed')
+        if str_searchType.lower() == 'id':
+            for feedNode in f.lstr_lsnode('/'):
+                f.cd('/%s' % feedNode)
+                if str_target == f.cat('ID'):
+                    ret_feed = f.cat('Feed')
+                    break
+        return {
+                'status':       ret_status,
+                'payload':      ret_feed,
+                'URL_get':      self.feed_GETURI(feedSpec = str_feedSpec),
+                'URL_post':     []
+                }
 
 class FeedTree_chrisUser(FeedTree):
     '''
@@ -348,10 +376,9 @@ class FeedTree_chrisUser(FeedTree):
             f.cd('/%s' % node)
             f.touch("ID", id)
             f.touch("Feed", Feed_FS(
-                                repo='Repo-%s' % node,
-                                desc='Node Object Name: %s; Node FID: %s' % (node, id)))
-
-
+                                name    = node,
+                                id      = id
+                    ))
 
 if __name__ == "__main__":
     feed    = Feed_FS()
