@@ -46,6 +46,7 @@ import  message
 import  feed
 import  ChRIS_RPCAPI
 import  ChRIS_RESTAPI
+import  serverInfo
 
 class ChRIS_SMUserDB(object):
     """A "DB" of users and passwords.
@@ -406,8 +407,11 @@ class ChRIS_SM_REST(ChRIS_SM):
         """
         ChRIS_SM.__init__(self, **kwargs)
 
-        self.API    = ChRIS_RESTAPI.ChRIS_RESTAPI(chris = self, **kwargs)
+        # str_authority   = ""
+        # for key,val in kwargs.iteritems():
+        #     if key == 'authority':      str_authority   = val
 
+        self.API        = ChRIS_RESTAPI.ChRIS_RESTAPI(chris = self, **kwargs)
 
 class ChRIS_authenticate(object):
     """The ChRIS_authenticate object is responsible for authenticated valid
@@ -503,6 +507,7 @@ def synopsis(ab_shortOnly = False):
 
             %s                                     \\
                             [--REST | --RPC --stateFile <stateFile>]       \\
+                            [--authority <clientSideAuthority>]            \\
                             --APIcall <APIcall>
 
 
@@ -515,6 +520,9 @@ def synopsis(ab_shortOnly = False):
         web service interface to the machine.
 
     ARGS
+
+       --authority <clientSideAuthority>
+       The RFC 3986 URI authority. A string like "10.15.23.17:5555".
 
        --REST
        Use a REST API paradigm.
@@ -594,13 +602,24 @@ if __name__ == "__main__":
         action  =   'store',
         default =   "<void>"
     )
+    parser.add_argument(
+        '--authority',
+        help    =   "The URI authority from the client perspective.",
+        dest    =   'str_authority',
+        action  =   'store',
+        default =   ""
+    )
 
     args            = parser.parse_args()
 
     if args.b_RPC:
-        chris       = ChRIS_SM_RPC(stateFile   = args.str_stateFileName)
+        chris       = ChRIS_SM_RPC(
+                            stateFile   = args.str_stateFileName
+                      )
     if args.b_REST:
-        chris       = ChRIS_SM_REST()
+        chris       = ChRIS_SM_REST(
+                            authority   = args.str_authority
+                      )
     chris.API.auth  = ChRIS_authenticate(chris, 'auth')
 
     # Call the API and print the JSON formatted return.
