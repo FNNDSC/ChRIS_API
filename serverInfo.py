@@ -78,7 +78,7 @@ class serverInfo(object):
             else:
                 self.authority = self.hostname
 
-        self.URI        = "%s://%s/%s/" % (self.scheme, self.authority, self.APIversion)
+        self.URI        = "%s://%s" % (self.scheme, self.authority)
 
     def __iter__(self):
         """
