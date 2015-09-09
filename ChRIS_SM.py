@@ -117,6 +117,7 @@ class ChRIS_SMUserDB(object):
                     'code':     2,
                     'message':  'No login for user %s detected.' % str_user}
         rd_authInfo     = {}
+        rd_authInfo['user']             = str_user
         rd_authInfo['sessionStatus']    = d_authSession['sessionStatus']
         rd_authInfo['sessionSeed']      = d_authSession['sessionSeed']
         return {'status':   True,
