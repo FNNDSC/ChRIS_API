@@ -51,7 +51,7 @@ import  datetime
 import  message
 import  error
 from    _colors         import Colors
-
+import  serverInfo
 
 class TCPServer(SocketServer.ThreadingTCPServer):
     allow_reuse_address = True
@@ -185,13 +185,14 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self._log                       = message.Message()
         self._log._b_syslog             = True
         self.__name                     = "ChRIS_client"
+        self._str_authority             = ""
 
         for key,val in kwargs.iteritems():
-            if key == 'sessionFile':
-                astr_sessionFile    = val
+            if key == 'sessionFile':    astr_sessionFile    = val
+            if key == 'authority':      self._str_authority = val
 
         if args.API == 'REST':
-            cmd     = 'ChRIS_SM.py --APIcall \"%s\" --REST ' % (astr_URLargs)
+            cmd     = 'ChRIS_SM.py --APIcall \"%s\" --REST --authority %s' % (astr_URLargs, self._str_authority)
 
         if args.API == 'RPC':
             cmd     = 'ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile)
@@ -224,6 +225,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         return str_res
 
     def handle(self):
+        str_authority   = ""
         str_raw         = self.request.recv(1024).strip()
         now             = datetime.datetime.today()
         str_timeStamp   = now.strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -235,9 +237,11 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print("***********************************************")
         print(Colors.CYAN + "%s\n" % (str_raw) + Colors.NO_COLOUR)
         print("***********************************************")
-        l_raw       = str_raw.split('\n')
-        FORMtype    = l_raw[0].split('/')[0]
+        l_raw           = str_raw.split('\n')
+        FORMtype        = l_raw[0].split('/')[0]
+        str_authority   = l_raw[1].split()[1]
         print(Colors.YELLOW)
+        print('authority  = %s' % str_authority)
         print('API verb   = %s' % FORMtype)
         print('API object = %s' % l_raw[0].split()[1])
         print(Colors.NO_COLOUR)
@@ -254,7 +258,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             str_sessionFile = d_component['sessionFile'][0]
             str_reply       = self.URL_serverProcess(str_URL, sessionFile = str_sessionFile)
         else:
-            str_reply       = self.URL_serverProcess(str_URL)
+            str_reply       = self.URL_serverProcess(str_URL, authority = str_authority)
         print("reply from remote service:")
         print("***********************************************")
         print(Colors.LIGHT_GREEN + json.dumps(str_reply) + Colors.NO_COLOUR)
