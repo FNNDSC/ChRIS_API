@@ -185,7 +185,7 @@ class Feed_FS(Feed):
         """
         s = self._stree
         self._stree.mknode(['title', 'note', 'data', 'comment'])
-        self.dataElement_create(root='/')
+        self.dataElement_create(root='/data')
         self.pluginElement_create(root='/data')
         self._stree.cdnode('/comment')
         self._stree.touch("contents", "ChRIS says: Interesting results!\n")
@@ -233,7 +233,11 @@ class FeedTree(object):
             d_tree = dict(self._feedTree.snode_root)
             l_keys = d_tree.keys()
 
-        return l_keys
+        l_URL = []
+        for key in l_keys:
+            l_URL.append('GET http://chris_service/v1/Feeds/NAME_%s' % key)
+
+        return {'list': l_keys, 'URL': l_URL}
 
     def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
