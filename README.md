@@ -4,57 +4,131 @@
 
 This repository contains a set of mostly python code that creates a simulated ChRIS machine that serves as a test bed for the interacting with and developing the ChRIS REST API.
 
-### Quick-n-Dirty RPC Test
+### Quick HOWOTO
 
 The simplest way to interact with the service, is to fire up the ChRIS Web Service, <tt>ChRIS_WS.py</tt> and connect to the server port (default '5555', specify alternate port with <tt>--port \<port\></tt>). In order to connect to the service from a non-localhost browser, specify the host address of the service explicitly:
 
 ```
-./ChRIS_WS.py --host 192.168.1.10 --port 5555
+./ChRIS_WS.py --host 10.17.24.111 --port 5555 --API REST
 ```
 
-Perhaps the quickest way to test an interaction with the web service is to use Google Chrome with the Advanced Rest Client extension. In the Query parameters you can add "key, value" pairs.
+This starts the service on <tt>10.17.24.111:5555</tt> and informs the listener to use the REST paradigm (the default). A Remote Procedure Call (RPC) paradigm is also available. You can now connect to this service from any <tt>http</tt> protocol scheme. Perhaps the quickest way to test an interaction with the web service is to use Google Chrome with the Advanced Rest Client extension. 
 
-| key             | Value    |
-|-----------------|----------|
-| <tt>returnstore</tt>     | <tt>d</tt>        |
-| <tt>object</tt>          | <tt>chris</tt>    |
-| <tt>method</tt>          | <tt>login</tt>    |
-| <tt>parameters</tt>      | <tt>user='chris',passwd='chris1234'</tt> |
-| <tt>sessionFile</tt>     | <tt>session.py</tt> |
-| <tt>clearSessionFile</tt>| <tt>1</tt> |
-Or, alternatively, as one HTTP formatted request:
+## REST
 
-````
-http://127.0.0.1:5555?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1&sessionFile=session.py
-````
+The default manner of interaction is via a REST paradigm. 
 
-On hitting "Send", you should see:
+### Login
+
+To log into the system via REST, use the following call
+
+```
+http://10.17.24.111:5555/v1/login?auth=user=chris,passwd=chris1234
+```
+
+which returns
 
 ```json
 {
- "cmd": {
-     "pycode": "d=auth(lambda: chris.login(user='chris',passwd='chris1234'))" 
-        },
- "API": {
-     "APIcall": "?returnstore=d&object=chris&method=login&parameters=user=%27chris%27,passwd=%27chris1234%27&clearSessionFile=1&sessionFile=session.py"
-        },
- "auth": {
-      "sessionSeed": "1",
-      "sessionStatus": true
-         },
- "exec": {
-      "sessionSeed": "1",
-      "APIcanCall": false,
-      "loginStatus": true,
-      "loginTimeStamp": "2015-06-11_18:41:48.610569",
-      "loginMessage": "Successful login at 2015-06-11 18:41:48.610600.",
-      "logoutMessage": "",
-      "sessionStatus": true,
-      "sessionToken": "ABCDEF"
+    "API": {
+        "APIcall": "/v1/login?auth=user=chris,passwd=chris1234"
+    },
+    "return": {
+        "exec": {
+            "status": true,
+            "payload": {
+                "message": "login credentials parsed",
+                "loginDetail": {
+                    "loginTimeStamp": "2015-09-10_16:07:33.319970",
+                    "loginMessage": "Successful login for user chris at 2015-09-10 16:07:33.320026.",
+                    "logoutMessage": "",
+                    "sessionToken": "ABCDEF",
+                    "APIcanCall": false,
+                    "loginStatus": true,
+                    "sessionSeed": "1",
+                    "sessionStatus": true
+                }
+            }
         }
+    },
+    "auth": {
+        "status": true,
+        "authInfo": {
+            "sessionSeed": "1",
+            "user": "chris",
+            "sessionStatus": true
+        },
+        "message": "Authorization info for user 'chris'."
+    },
+    "server": {
+        "URI": "http://10.17.24.111:5555",
+        "APIversion": "v1"
+    }
 }
+```
+
+## RPC
+
+As an alternate to the <tt>REST</tt> interface, a Remote Procedure Call (RPC) type paradigm is also available. In this paradigm you effectively call the internal python API directly over the <tt>http</tt> scheme.
+
+## Start the Web Service in RPC mode
+
+The web service can be started in RPC mode as follows:
 
 ```
+./ChRIS_WS.py --host 10.17.24.111 --port 5555 --API RPC 
+```
+
+As opposed to REST, the RPC approach is stateful, and each call is recorded (and played back again) in the a state file specified in *each* API call. This session file *must* be consistent across all API calls for this session. The RPC paradigm more complex, but arguably more expressive way to interact with the service since one can call the internal python API directly.
+
+### Login
+
+For completeness sake, the login using RPC:
+
+````
+http://10.17.24.111:5555?returnstore=d&object=chris&method=login&parameters=user='chris',passwd='chris1234'&clearSessionFile=1&sessionFile=session.py
+````
+which returns
+
+```json
+{
+    "cmd": {
+        "pycode": "d=chris.login(user='chris',passwd='chris1234')"
+    },
+    "API": {
+        "APIcall": "/?returnstore=d&object=chris&method=login&parameters=user=%27chris%27,passwd=%27chris1234%27&clearSessionFile=1&sessionFile=session.py"
+    },
+    "return": {
+        "exec": {
+            "status": true,
+            "payload": {
+                "message": "login credentials parsed",
+                "loginDetail": {
+                    "loginTimeStamp": "2015-09-10_16:28:08.586338",
+                    "loginMessage": "Successful login for user chris at 2015-09-10 16:28:08.586375.",
+                    "logoutMessage": "",
+                    "sessionToken": "ABCDEF",
+                    "APIcanCall": false,
+                    "loginStatus": true,
+                    "sessionSeed": "1",
+                    "sessionStatus": true
+                }
+            }
+        }
+    },
+    "auth": {
+        "status": true,
+        "authInfo": {
+            "sessionSeed": "1",
+            "user": "chris",
+            "sessionStatus": true
+        },
+        "message": "Authorization info for user 'chris'."
+    }
+}
+```
+
+This is identical to the REST call, with the added return field <tt>pycmd</tt> for the actual internal python API call made.
 
 #### Behind the scenes
 
