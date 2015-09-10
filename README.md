@@ -22,8 +22,8 @@ The client sends an http request to the server. The server services the call and
 o
  \
   +--- API
-  |    |
-  |    +--- APIcall: <APIcall>
+  |       |
+  |       +--- APIcall: <APIcall>
   |
   +--- return
   |       |
