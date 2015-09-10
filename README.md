@@ -156,7 +156,7 @@ which returns
 }
 ```
 
-This is identical to the REST call, with the added return field <tt>pycmd</tt> for the actual internal python API call made.
+This is identical to the REST call, with the added return field <tt>cmd/pycode</tt> for the actual internal python API call made.
 
 #### Behind the scenes
 
