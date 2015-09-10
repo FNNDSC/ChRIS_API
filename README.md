@@ -14,6 +14,34 @@ The simplest way to interact with the service, is to fire up the ChRIS Web Servi
 
 This starts the service on <tt>10.17.24.111:5555</tt> and informs the listener to use the REST paradigm (the default). A Remote Procedure Call (RPC) paradigm is also available. You can now connect to this service from any <tt>http</tt> protocol scheme. Perhaps the quickest way to test an interaction with the web service is to use Google Chrome with the Advanced Rest Client extension. 
 
+## Call anatomy
+
+The client sends an http request to the server. The server services the call and returns a JSON formatted stream of data with the following fields:
+
+### <tt>API</tt>
+
+The <tt>API</tt> field echoes back to the client the received API call.
+
+## <tt>return</tt>
+
+The <tt>return</tt> field contains information that the server has processed based on the client call. It contains the following sub-fields:
+
+### <tt>status</tt>
+
+The boolean return status of the call.
+
+### <tt>payload</tt>
+
+The call-specific information returned.
+
+### <tt>URL_GET</tt>
+
+A list of valid GET URLs from this context.
+
+### <tt>URL_PUT</tt>
+
+A list of valid PUT URLs from this context.
+
 ## REST
 
 The default manner of interaction is via a REST paradigm. 
