@@ -74,6 +74,14 @@ A list of valid GET URLs from this context.
 
 A list of valid PUT URLs from this context.
 
+## <tt>auth</tt>
+
+A module containing authorization information used to create per-call hashes between client and server.
+
+## <tt>server</tt>
+
+Information about the server, used in conjunction with <tt>URL_GET</tt> and <tt>URL_PUT</tt> to create REST API calls from this context.
+
 ## REST
 
 The default manner of interaction is via a REST paradigm. 
