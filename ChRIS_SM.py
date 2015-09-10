@@ -165,8 +165,12 @@ class ChRIS_SMUserDB(object):
             return {'status':   False,
                     'message':  'logout failed for %s at %s -- no prior login detected.' %
                                 (astr_user, logoutStamp)}
-        return {'status': True,
-                'message':  "Successfully logged '%s' out at %s." % (astr_user, logoutStamp)}
+        return {
+                'status': True,
+                'payload': {
+                    'message':  "Successfully logged '%s' out at %s." % (astr_user, logoutStamp)
+                    }
+                }
 
     def user_login(self, **kwargs):
         """Log a user in.
@@ -224,9 +228,13 @@ class ChRIS_SMUserDB(object):
                 # print(ret)
                 self.login_writePersistent( sessionInfo = ret,
                                             user        = astr_user)
-        return {'status':   True,
-                'message':  'login credentials parsed',
-                'ret':      ret}
+        return {
+                'status':   True,
+                'payload':  {
+                                'message':      'login credentials parsed',
+                                'loginDetail':   ret
+                            }
+                }
 
     def __init__(self, **kwargs):
         # This class contains a reference back to the chris parent object that
