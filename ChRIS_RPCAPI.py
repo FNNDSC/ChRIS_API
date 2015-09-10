@@ -48,6 +48,7 @@ import  os
 import  datetime
 
 import  ChRIS_SM
+import  serverInfo
 import  json
 
 class ChRIS_RPCAPI(object):
@@ -132,6 +133,7 @@ class ChRIS_RPCAPI(object):
         self.user                       = ""
         self.hash                       = ""
         self.passwd                     = ""
+        self.authority                  = "localhost:5555"
 
         # JSON return objects
         self.d_return                   = {}
@@ -151,6 +153,9 @@ class ChRIS_RPCAPI(object):
             if key == 'stateFile':  self._str_stateFile = val
             if key == 'auth':       self.auth           = val
             if key == 'chris':      self.chris          = val
+            if key == 'authority':  self.authority      = val
+
+        self.serverInfo                 = serverInfo.serverInfo(authority = self.authority)
 
         if not self.chris:
             error.fatal(self, 'no_chrisModuleSpec')
@@ -347,13 +352,14 @@ class ChRIS_RPCAPI(object):
 
         d_auth  = self.chris.DB.user_getAuthInfo(user = self.user)
         d_API   = {'APIcall':   self._str_apiCall}
-        d_exec  = {'exec':      self.d_call}
 
         d_result   = {
             'cmd':      self.d_cmd,
             'auth':     d_auth,
             'API':      d_API,
-            'return':   d_exec
+            'return':   self.d_call,
+            'server':   {'URI': self.serverInfo.URI, 'APIversion': self.serverInfo.APIversion}
+
         }
 
         return d_result
