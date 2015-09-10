@@ -23,31 +23,31 @@ o
  \
   +--- API
   |       |
-  |       +--- APIcall: <APIcall>
+  |       +--- APIcall: "text string: API call as seen by client"
   |
   +--- return
   |       |
-  |       +--- status: True|False
+  |       +--- status: True|False (boolean)
   |       |
-  |       +--- payload: {call specific results}
+  |       +--- payload: {dictionary of call specific results}
   |       |         
-  |       +--- URL_PUT: [list]
+  |       +--- URL_PUT: [list of PUT URLs from this context]
   |       |
-  |       +--- URL_GET: [list]
+  |       +--- URL_GET: [list of GET URLs from this context]
   |
   +--- auth
   |       |
-  |       +--- status: True|False
+  |       +--- status: True|False (boolean)
   |       |
-  |       +--- authInfo: {authorization information}
+  |       +--- authInfo: {dictionary of authorization information}
   |       |
   |       +--- message: "text message"
   |
   +--- server
           |
-          +--- URI: "text URI of server"
+          +--- URI: "text URI of server -- can be combined with URL_GET/URL_PUT and {auth} to create valid calls"
           |
-          +--- APIversion: "text"
+          +--- APIversion: "text of called API version"
 ````
 
 ### <tt>API</tt>
