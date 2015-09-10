@@ -251,12 +251,11 @@ class ChRIS_RESTAPI(object):
 
         d_auth  = self.chris.DB.user_getAuthInfo(user = self.user)
         d_API   = {'APIcall':   self._str_apiCall}
-        d_exec  = {'exec':      self.d_call}
 
         d_result   = {
             'auth':     d_auth,
             'API':      d_API,
-            'return':   d_exec,
+            'return':   self.d_call,
             'server':   {'URI': self.serverInfo.URI, 'APIversion': self.serverInfo.APIversion}
         }
 
