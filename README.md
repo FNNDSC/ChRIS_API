@@ -18,6 +18,38 @@ This starts the service on <tt>10.17.24.111:5555</tt> and informs the listener t
 
 The client sends an http request to the server. The server services the call and returns a JSON formatted stream of data with the following fields:
 
+````
+o
+ \
+  +--- API
+  |    |
+  |    +--- APIcall: <APIcall>
+  |
+  +--- return
+  |       |
+  |       +--- status: True|False
+  |       |
+  |       +--- payload: {call specific results}
+  |       |         
+  |       +--- URL_PUT: [list]
+  |       |
+  |       +--- URL_GET: [list]
+  |
+  +--- auth
+  |       |
+  |       +--- status: True|False
+  |       |
+  |       +--- authInfo: {authorization information}
+  |       |
+  |       +--- message: "text message"
+  |
+  +--- server
+          |
+          +--- URI: "text URI of server"
+          |
+          +--- APIversion: "text"
+````
+
 ### <tt>API</tt>
 
 The <tt>API</tt> field echoes back to the client the received API call.
