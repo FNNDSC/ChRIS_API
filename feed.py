@@ -280,39 +280,6 @@ class FeedTree(object):
         self.feed       = None
         self.plugin     = plugin.Plugin_homePage()
 
-    def feeds_organize(self, **kwargs):
-        """Basically "gets" the feed tree, possibly (re)organized according
-        to kwargs.
-
-        :param kwargs:
-        :return:
-        """
-        b_returnAsDict  = False
-        str_schema      = "default"
-
-        for key,val in kwargs.iteritems():
-            if key == "returnAsDict":   b_returnAsDict  = val
-            if key == 'schema':         str_schema      = val
-
-        l_keys = []
-
-        # More logic needed here to possibly reorganize
-        if str_schema == "default":
-            # Generate a list of feed elements
-            d_tree = dict(self._feedTree.snode_root)
-            l_keys = d_tree.keys()
-
-        l_URL = []
-        for key in l_keys:
-            l_URL.append('Feeds/NAME_%s' % (key))
-
-        return {
-                'status':   True,
-                'payload':  {'list': l_keys},
-                'URL_GET':  l_URL,
-                'URL_POST': []
-                }
-
     def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
 
@@ -372,11 +339,84 @@ class FeedTree(object):
         f           = self.feed._stree
         f.cd(str_path)
         str_path    = f.cwd()
+        if str_path == '/': str_path = ''
         l_branch    = f.lstr_lsnode(str_path)
         l_URI       = []
         for node in l_branch:
-            l_URI.append('Feeds/%s/%s/%s' % (feedSpec, str_path, node))
+            l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, node))
         return l_URI
+
+    def feeds_organize(self, **kwargs):
+        """Basically "gets" the feed tree, possibly (re)organized according
+        to kwargs.
+
+        :param kwargs:
+        :return:
+        """
+        b_returnAsDict  = False
+        str_schema      = "default"
+
+        for key,val in kwargs.iteritems():
+            if key == "returnAsDict":   b_returnAsDict  = val
+            if key == 'schema':         str_schema      = val
+
+        l_keys = []
+
+        # More logic needed here to possibly reorganize
+        if str_schema == "default":
+            # Generate a list of feed elements
+            d_tree = dict(self._feedTree.snode_root)
+            l_keys = d_tree.keys()
+
+        l_URL = []
+        for key in l_keys:
+            l_URL.append('Feeds/NAME_%s' % (key))
+
+        return {
+            'status':   True,
+            'payload':  {'list': l_keys},
+            'URL_GET':  l_URL,
+            'URL_POST': []
+        }
+
+    def feedTree_feedsGet(self, **kwargs):
+        """
+        Process the main feedTree (i.e. the tree that has all the Feeds.
+        :param kwargs: schema='name'|'id' -- how to return the list of Feeds.
+        :return: a list of "hits" in URI format
+        """
+        str_schema      = ''
+        str_searchType  = 'name'
+        b_status        = False
+
+        for key,val in kwargs.iteritems():
+            if key == 'schema':         str_schema          = val
+            if key == 'searchType':     str_searchType      = val
+
+        l_URI   = []
+        l_keys  = []
+        if str_searchType.lower() == "name":
+            l_keys  = []
+            # Generate a list of feed elements
+            d_tree      = dict(self._feedTree.snode_root)
+            l_keys      = d_tree.keys()
+            l_URI       = ['Feeds/NAME_' + name for name in l_keys]
+            b_status    = True
+        if str_searchType.lower() == 'id':
+            f = self._feedTree
+            for feedNode in f.lstr_lsnode('/'):
+                f.cd('/%s' % feedNode)
+                str_ID = f.cat('ID')
+                l_keys.append(str_ID)
+                l_URI.append('Feeds/ID_' + str_ID)
+            b_status    = True
+
+        return {
+                'status':   b_status,
+                'payload':  l_keys,
+                'URL_GET':  l_URI
+        }
+
 
     def feed_get(self, **kwargs):
         """
@@ -384,17 +424,22 @@ class FeedTree(object):
         :param kwargs: searchType = 'name' | 'id', target = <target>
         :return: Feed conforming to search criteria
         """
-        b_returnAsDict  = True
+        b_returnAsDict      = True
 
-        str_searchType  = ''
-        str_target      = ''
-        str_pathInFeed  = ''
+        str_searchType      = ''
+        str_target          = ''
+        str_pathInFeed      = ''
+        str_schema          = ''
+
+        ret_path            = []
+        debugMessage        = None
 
         for key,val in kwargs.iteritems():
             if key == 'returnAsDict':   b_returnAsDict      = val
             if key == 'searchType':     str_searchType      = val
             if key == 'target':         str_target          = val
             if key == 'pathInFeed':     str_pathInFeed      = val
+            if key == 'schema':         str_schema          = val
 
         # First get the feed itself from the tree of Feeds...
         f = self._feedTree
@@ -402,34 +447,49 @@ class FeedTree(object):
         ret_status      = False
         ret_feed        = {}
         str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_target)
-        if str_searchType.lower() == 'name':
-            if f.cd(str_target):
-                self.feed   = f.cat('Feed')
-                ret_status  = True
-                ret_feed    = self.feed
-                if b_returnAsDict: ret_feed = dict(ret_feed)
-        if str_searchType.lower() == 'id':
-            for feedNode in f.lstr_lsnode('/'):
-                f.cd('/%s' % feedNode)
-                if str_target == f.cat('ID'):
-                    ret_status  = True
+
+        if not len(str_searchType) or not len(str_target) or str_target == '*':
+            debugMessage = 'here!!!'
+            ret_feeds   = self.feedTree_feedsGet(searchType = str_searchType, schema = str_schema)
+            debugMessage    = ret_feeds
+            ret_status  = ret_feeds['status']
+            l_URL_get   = ret_feeds['URL_GET']
+            ret_payload = ret_feeds['payload']
+        else:
+            if str_searchType.lower() == 'name':
+                if f.cd(str_target):
                     self.feed   = f.cat('Feed')
+                    ret_status  = True
                     ret_feed    = self.feed
                     if b_returnAsDict: ret_feed = dict(ret_feed)
-                    break
+            if str_searchType.lower() == 'id':
+                for feedNode in f.lstr_lsnode('/'):
+                    f.cd('/%s' % feedNode)
+                    if str_target == f.cat('ID'):
+                        ret_status  = True
+                        self.feed   = f.cat('Feed')
+                        ret_feed    = self.feed
+                        if b_returnAsDict: ret_feed = dict(ret_feed)
+                        break
 
-        self.feed._stree.cd('/')
-        # and now, check for any paths in the tree of this Feed
-        if len(str_pathInFeed):
-            ret_status  = self.feed._stree.cd(str_pathInFeed)
-            ret_feed    = self.feed._stree.snode_current
-            if b_returnAsDict: ret_feed = dict(ret_feed)
+            self.feed._stree.cd('/')
+            # and now, check for any paths in the tree of this Feed
+            if len(str_pathInFeed):
+                ret         = self.feed._stree.cd(str_pathInFeed)
+                ret_status  = ret['status']
+                ret_path    = ret['path']
+                ret_feed    = self.feed._stree.snode_current
+                if b_returnAsDict: ret_feed = dict(ret_feed)
+            ret_payload     = ret_feed
+            l_URL_get       = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
 
         return {
+                'debug':        debugMessage,
                 'path':         str_pathInFeed,
+                'pathInFeed':   ret_path,
                 'status':       ret_status,
-                'payload':      ret_feed,
-                'URL_get':      self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed),
+                'payload':      ret_payload,
+                'URL_get':      l_URL_get,
                 'URL_post':     []
                 }
 
