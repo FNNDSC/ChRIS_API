@@ -22,8 +22,12 @@ This module implements a server side feed controller/model.
 import abc
 import json
 
-import C_snode
-import plugin
+import  C_snode
+
+import  title
+import  note
+import  comment
+import  plugin
 
 class Feed(object):
     """The summary line for a class docstring should fit on one line.
@@ -159,6 +163,68 @@ class Feed_FS(Feed):
         s.cd(str_root)
         s.mknode(['visualView', 'fileView'])
 
+    def titleElement_create(self, **kwargs):
+        """
+        Creates the 'title' element container.
+
+        :param kwargs: 'root' = <location>
+        :return:
+        """
+        s = self._stree
+        str_root    = '/'
+        words       = 10
+        for key, val in kwargs.iteritems():
+            if key == 'root':   str_root    = val
+            if key == 'words':  words       = val
+
+        sample      = title.title()
+        sample.contents_rikeripsumBuild(words=10)
+
+        s.cd(str_root)
+        s.touch('contents', dict(sample))
+
+    def noteElement_create(self, **kwargs):
+        """
+        Creates the 'note' element container.
+
+        :param kwargs: 'root' = <location>
+        :return:
+        """
+        s = self._stree
+        str_root    = '/'
+        paragraphs  = 3
+        for key, val in kwargs.iteritems():
+            if key == 'root':           str_root        = val
+            if key == 'paragraphs':     paragraphs      = val
+
+        sample      = note.note()
+        sample.contents_rikeripsumBuild(paragraphs=paragraphs)
+
+        s.cd(str_root)
+        s.touch('contents', dict(sample))
+
+    def commentElement_create(self, **kwargs):
+        """
+        Populate the comment component with simulated comments/conversations.
+        :param kwargs:
+        :return:
+        """
+
+        conversations = 1
+        s = self._stree
+        str_root    = '/'
+        for key, val in kwargs.iteritems():
+            if key == 'root':           str_root        = val
+            if key == 'conversations':  conversations   = val
+
+        sample     = comment.comment()
+        sample.contents_rikeripsumBuild(conversations=conversations)
+
+        s.cd(str_root)
+        s.touch('contents', dict(sample))
+
+        return(dict(sample))
+
     def create(self, **kwargs):
         """Create a new feed.
 
@@ -193,14 +259,11 @@ class Feed_FS(Feed):
 
         s = self._stree
         s.mknode(['title', 'note', 'data', 'comment'])
-        self.dataElement_create(root='/data')
-        self.pluginElement_create(root='/data')
-        s.cdnode('/comment')
-        s.touch("contents", "ChRIS says: Interesting results!\n")
-        s.cdnode('/title')
-        s.touch('contents', 'Title string for Feed')
-        s.cd ('/comment')
-        s.append('contents', 'ChRIS says: Greetings and salutions from Feed NAME = %s, Feed ID = %s' % (str_name, str_id))
+        self.titleElement_create(   root='/title',      words=10)
+        self.noteElement_create(    root='/note',       paragraphs=4)
+        self.commentElement_create( root='/comment',    conversations=7)
+        self.dataElement_create(    root='/data')
+        self.pluginElement_create(  root='/data')
 
 
 class FeedTree(object):
@@ -296,22 +359,24 @@ class FeedTree(object):
 
     def feed_GETURI(self, **kwargs):
         """
-        The list of GET URIs at the scope of a Feed
+        The list of GET URIs at the current processing scope.
         :param kwargs:
-        :return:
+        :return: The list of GET URIs at this scope referenced to current Feed context.
         """
 
-        feedSpec   = ''
+        feedSpec    = ''
+        str_path    = '/'
         for key,val in kwargs.iteritems():
             if key == 'feedSpec':   feedSpec    = val
-
-        return [
-            'Feeds/%s/title' % feedSpec,
-            'Feeds/%s/note' % feedSpec,
-            'Feeds/%s/comment' % feedSpec,
-            'Feeds/%s/data' % feedSpec,
-        ]
-
+            if key == 'path':       str_path    = val
+        f           = self.feed._stree
+        f.cd(str_path)
+        str_path    = f.cwd()
+        l_branch    = f.lstr_lsnode(str_path)
+        l_URI       = []
+        for node in l_branch:
+            l_URI.append('Feeds/%s/%s/%s' % (feedSpec, str_path, node))
+        return l_URI
 
     def feed_get(self, **kwargs):
         """
@@ -319,16 +384,19 @@ class FeedTree(object):
         :param kwargs: searchType = 'name' | 'id', target = <target>
         :return: Feed conforming to search criteria
         """
-        b_returnAsDict = True
+        b_returnAsDict  = True
 
         str_searchType  = ''
         str_target      = ''
+        str_pathInFeed  = ''
 
         for key,val in kwargs.iteritems():
-            if key == 'returnAsDict':   b_returnAsDict  = val
-            if key == 'searchType':     str_searchType  = val
-            if key == 'target':         str_target      = val
+            if key == 'returnAsDict':   b_returnAsDict      = val
+            if key == 'searchType':     str_searchType      = val
+            if key == 'target':         str_target          = val
+            if key == 'pathInFeed':     str_pathInFeed      = val
 
+        # First get the feed itself from the tree of Feeds...
         f = self._feedTree
         f.cd('/')
         ret_status      = False
@@ -336,22 +404,32 @@ class FeedTree(object):
         str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_target)
         if str_searchType.lower() == 'name':
             if f.cd(str_target):
-                self.feed = f.cat('Feed')
+                self.feed   = f.cat('Feed')
                 ret_status  = True
-                if b_returnAsDict:
-                    ret_feed = dict(f.cat('Feed'))
-                else:
-                    ret_feed = f.cat('Feed')
+                ret_feed    = self.feed
+                if b_returnAsDict: ret_feed = dict(ret_feed)
         if str_searchType.lower() == 'id':
             for feedNode in f.lstr_lsnode('/'):
                 f.cd('/%s' % feedNode)
                 if str_target == f.cat('ID'):
-                    ret_feed = f.cat('Feed')
+                    ret_status  = True
+                    self.feed   = f.cat('Feed')
+                    ret_feed    = self.feed
+                    if b_returnAsDict: ret_feed = dict(ret_feed)
                     break
+
+        self.feed._stree.cd('/')
+        # and now, check for any paths in the tree of this Feed
+        if len(str_pathInFeed):
+            ret_status  = self.feed._stree.cd(str_pathInFeed)
+            ret_feed    = self.feed._stree.snode_current
+            if b_returnAsDict: ret_feed = dict(ret_feed)
+
         return {
+                'path':         str_pathInFeed,
                 'status':       ret_status,
                 'payload':      ret_feed,
-                'URL_get':      self.feed_GETURI(feedSpec = str_feedSpec),
+                'URL_get':      self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed),
                 'URL_post':     []
                 }
 
