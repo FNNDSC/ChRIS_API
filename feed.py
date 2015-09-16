@@ -449,7 +449,6 @@ class FeedTree(object):
         str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_searchTarget)
 
         if not len(str_searchType) or not len(str_searchTarget) or str_searchTarget == '*':
-            debugMessage = 'here!!!'
             ret_feeds   = self.feedTree_feedsGet(searchType = str_searchType, schema = str_schema)
             debugMessage    = ret_feeds
             ret_status  = ret_feeds['status']
