@@ -652,8 +652,7 @@ class C_stree:
                 astr_path (string): The path to cd to.
 
             Returns:
-                l_cwd (list): The cdnode path -- if path valid
-                False (boolean): If path invalid
+                {"status" : True/False , "path": l_cwd -- the path as list}
 
             """
 
@@ -670,8 +669,8 @@ class C_stree:
                 for node in l_absPath[1:]:
                     self.snode_current = self.snode_current.d_nodes[node]
                 self.sbranch_current.dict_branch = self.snode_current.snode_parent.d_nodes
-                return self.l_cwd
-            return False
+                return {"status": True, "path": self.l_cwd}
+            return {"status": False, "path": []}
 
         def cd(self, astr_path):
             """Alias for cdnode()
