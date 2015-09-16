@@ -4,6 +4,32 @@
 
 This repository contains a set of mostly python code that creates a simulated ChRIS machine that serves as a test bed for the interacting with and developing the ChRIS REST API.
 
+### Pre-requisites
+
+Some of the modules in this package require external dependencies (mostly for filling up dummy loremipsum type text in comments / notes / title). These dependencies are installed/handled by <tt>bower</tt> (part of node.js).
+
+#### Ubuntu
+
+On Ubuntu systems you might need to also install legacy node support:
+
+```
+sudo apt-get install nodejs-legacy
+```
+
+Now do 
+
+```
+sudo npm -g install bower
+```
+
+followed by
+
+```
+bower update
+```
+
+in a checkout directory.
+
 ### Quick HOWOTO
 
 The simplest way to interact with the service, is to fire up the ChRIS Web Service, <tt>ChRIS_WS.py</tt> and connect to the server port (default '5555', specify alternate port with <tt>--port \<port\></tt>). In order to connect to the service from a non-localhost browser, specify the host address of the service explicitly:
