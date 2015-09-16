@@ -197,6 +197,9 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         if args.API == 'RPC':
             cmd     = 'ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile)
 
+
+        print(Colors.CYAN_BCKGRND + "\n%s" % cmd + Colors.NO_COLOUR + "\n")
+
         try:
             shell(cmd)
         except:
@@ -254,11 +257,14 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print(d_component)
         print(Colors.NO_COLOUR)
         print("***********************************************")
+        print("CLI to remote service:")
+        print("***********************************************")
         if 'sessionFile' in d_component.keys():
             str_sessionFile = d_component['sessionFile'][0]
             str_reply       = self.URL_serverProcess(str_URL, sessionFile = str_sessionFile)
         else:
             str_reply       = self.URL_serverProcess(str_URL, authority = str_authority)
+        print("***********************************************")
         print("reply from remote service:")
         print("***********************************************")
         print(Colors.LIGHT_GREEN + json.dumps(str_reply) + Colors.NO_COLOUR)
