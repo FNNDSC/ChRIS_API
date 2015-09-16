@@ -214,32 +214,103 @@ class ChRIS_RESTAPI(object):
 
     def parsePathSpec(self, al_path):
         """
+        The main decision "nexus" to parse an incoming API request.
+
         :param al_path: the path list spec
         :return:
         """
 
         # print(al_path)
         # print(len(al_path))
+
+        # login...
         if al_path[0].lower() == 'login':
             self.parseLogin()
             return True
+
+        # logout...
         if al_path[0].lower() == 'logout':
             self.parseLogout()
             return True
-        if len(al_path) <= 2 and self.str_APIaction == "GET":
+
+        # GET a Feed or internals of a Feed...
+        if len(al_path) and self.str_APIaction == "GET":
             if len(al_path) == 1:
-                self.d_call = self.auth(lambda: self.chris.homePage.feeds_organize(
-                                                        schema = 'default'),
-                                                        user   = self.user,
-                                                        hash   = self.hash)
-            if len(al_path) == 2:
+                # GET a list of all Feeds
+                self.d_call     = self.auth(lambda: self.chris.homePage.feeds_organize(
+                                        schema          = 'default'),
+                                        user            = self.user,
+                                        hash            = self.hash)
+
+            str_path            = ''
+            if len(al_path) >= 2:
+                str_path        = '/'.join(al_path[2:])
                 str_feedTarget  = al_path[1]
                 l_targetType    = str_feedTarget.split('_')
-                self.d_call = self.auth(lambda: self.chris.homePage.feed_get(
-                                        searchType  = l_targetType[0].lower(),
-                                        target      = l_targetType[1]),
-                                        user        = self.user,
-                                        hash        = self.hash)
+                self.d_call     = self.auth(lambda: self.chris.homePage.feed_get(
+                                        searchType      = l_targetType[0].lower(),
+                                        target          = l_targetType[1],
+                                        returnAsDict    = True,
+                                        pathInFeed      = str_path),
+                                        user            = self.user,
+                                        hash            = self.hash)
+
+
+            # if len(al_path) == 2:
+            #     # GET a single feed tree
+            #     str_feedTarget  = al_path[1]
+            #     l_targetType    = str_feedTarget.split('_')
+            #     self.d_call     = self.auth(lambda: self.chris.homePage.feed_get(
+            #                             searchType      = l_targetType[0].lower(),
+            #                             target          = l_targetType[1],
+            #                             returnAsDict    = True),
+            #                             user            = self.user,
+            #                             hash            = self.hash)
+            # if len(al_path) == 3:
+            #     # GET a component of a specified feed tree
+            #     # First GET the spec'd feed...
+            #     str_feedTarget  = al_path[1]
+            #     l_targetType    = str_feedTarget.split('_')
+            #     d_feed          = self.auth(lambda: self.chris.homePage.feed_get(
+            #                             searchType      = l_targetType[0].lower(),
+            #                             target          = l_targetType[1],
+            #                             returnAsDict    = True),
+            #                             user            = self.user,
+            #                             hash            = self.hash)
+            #     # and now the part of the feed we want
+            #     str_component   = al_path[2]
+            #     self.d_call     = {
+            #                     'status':   True,
+            #                     'payload':  d_feed['payload']['Feed'][str_component]
+            #                     }
+            #
+            # if len(al_path) > 3:
+            #     # GET a component of a specified feed tree
+            #     # First GET the spec'd feed...
+            #     str_feedSpec    = '%s_%s' % (l_targetType[0].upper(), l_targetType[1])
+            #     str_feedTarget  = al_path[1]
+            #     l_targetType    = str_feedTarget.split('_')
+            #     d_feed          = self.auth(lambda: self.chris.homePage.feed_get(
+            #                             searchType      = l_targetType[0].lower(),
+            #                             target          = l_targetType[1],
+            #                             returnAsDict    = False),
+            #                             user            = self.user,
+            #                             hash            = self.hash)
+            #     s = d_feed['payload']._stree
+            #     s.cd('/')
+            #     for depth in range(2, len(al_path)):
+            #         s.cd(al_path[depth])
+            #         str_path    = s.cwd()
+            #     self.d_call     = {
+            #                     'status':   True,
+            #                     'payload':  dict(s.snode_current),
+            #                     'URL_get':  self.auth(lambda: self.chris.homePage.feed_GETURI(
+            #                             feed            = d_feed,
+            #                             feedSpec        = str_feedSpec,
+            #                             path            = str_path),
+            #                             user            = self.user,
+            #                             hash            = self.hash)
+            #                     }
         return True
 
 
