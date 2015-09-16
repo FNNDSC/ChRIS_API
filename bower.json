@@ -22,6 +22,7 @@
   ],
   "dependencies": {
 	"names": 	"https://github.com/treyhunner/names.git",
-	"rikeripsum": 	"https://github.com/ben174/rikeripsum.git"
+	"rikeripsum": 	"https://github.com/ben174/rikeripsum.git",
+	"faker":	"https://github.com/joke2k/faker.git"
   }
 }
