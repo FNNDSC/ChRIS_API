@@ -427,7 +427,7 @@ class FeedTree(object):
         b_returnAsDict      = True
 
         str_searchType      = ''
-        str_target          = ''
+        str_searchTarget    = ''
         str_pathInFeed      = ''
         str_schema          = ''
 
@@ -437,7 +437,7 @@ class FeedTree(object):
         for key,val in kwargs.iteritems():
             if key == 'returnAsDict':   b_returnAsDict      = val
             if key == 'searchType':     str_searchType      = val
-            if key == 'target':         str_target          = val
+            if key == 'searchTarget':   str_searchTarget    = val
             if key == 'pathInFeed':     str_pathInFeed      = val
             if key == 'schema':         str_schema          = val
 
@@ -446,9 +446,9 @@ class FeedTree(object):
         f.cd('/')
         ret_status      = False
         ret_feed        = {}
-        str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_target)
+        str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_searchTarget)
 
-        if not len(str_searchType) or not len(str_target) or str_target == '*':
+        if not len(str_searchType) or not len(str_searchTarget) or str_searchTarget == '*':
             debugMessage = 'here!!!'
             ret_feeds   = self.feedTree_feedsGet(searchType = str_searchType, schema = str_schema)
             debugMessage    = ret_feeds
@@ -457,7 +457,7 @@ class FeedTree(object):
             ret_payload = ret_feeds['payload']
         else:
             if str_searchType.lower() == 'name':
-                if f.cd(str_target):
+                if f.cd(str_searchTarget):
                     self.feed   = f.cat('Feed')
                     ret_status  = True
                     ret_feed    = self.feed
@@ -465,7 +465,7 @@ class FeedTree(object):
             if str_searchType.lower() == 'id':
                 for feedNode in f.lstr_lsnode('/'):
                     f.cd('/%s' % feedNode)
-                    if str_target == f.cat('ID'):
+                    if str_searchTarget == f.cat('ID'):
                         ret_status  = True
                         self.feed   = f.cat('Feed')
                         ret_feed    = self.feed
