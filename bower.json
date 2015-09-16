@@ -1,0 +1,27 @@
+{
+  "name": "ChRIS_API",
+  "version": "0.1.0",
+  "homepage": "https://github.com/FNNDSC/ChRIS_API",
+  "authors": [
+    "Rudolph Pienaar <rudolph.pienaar@gmail.com>"
+  ],
+  "description": "The ChRIS_API project for REST development",
+  "main": "ChRIS_WS.py",
+  "keywords": [
+    "ChRIS",
+    "API"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "components"
+  ],
+  "dependencies": {
+	"names": 	"https://github.com/treyhunner/names.git",
+	"rikeripsum": 	"https://github.com/ben174/rikeripsum.git"
+  }
+}
