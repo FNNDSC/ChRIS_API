@@ -252,7 +252,7 @@ class ChRIS_RESTAPI(object):
             self.d_call     = self.auth(
                 lambda: self.chris.homePage.feed_get(
                     searchType      = str_searchType,
-                    target          = str_searchTarget,
+                    searchTarget    = str_searchTarget,
                     returnAsDict    = True,
                     pathInFeed      = str_path,
                     schema          = str_schema
