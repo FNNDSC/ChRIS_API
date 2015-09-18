@@ -58,8 +58,8 @@ class dataTree_PACSPull(dataTree):
         self.MRN = 10000000 + random.randint(0, 1000000)
         return self.MRN
 
-    def dbID_generate(self):
-        self.id = random.randint(0, 1000)
+    def dbID_generate(self, a_upperLimit = 1000):
+        self.id = random.randint(0, a_upperLimit)
         return self.id
 
     def StudyDescriptions_generate(self):
@@ -81,8 +81,8 @@ class dataTree_PACSPull(dataTree):
                 rand_date   = self.fake.date_time_this_decade()
                 FS.mkcd('%s-%03dY-%s-%03d' % (
                                              rand_date.isoformat(),
-                                             self.dbID_generate(),
-                                             random.choice(self.l_StudyDescription),
+                                             self.dbID_generate(100),
+                                             random.choice(self.l_StudyDescription).strip(),
                                              self.dbID_generate()
                                              ))
                 for series in range(0, self.SeriesCount):
