@@ -395,6 +395,7 @@ class FeedTree(object):
 
         l_URI   = []
         l_keys  = []
+
         if str_searchType.lower() == "name":
             l_keys  = []
             # Generate a list of feed elements
