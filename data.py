@@ -62,16 +62,21 @@ class data(object):
         for key,val in kwargs.iteritems():
             if key == 'SeriesfilesCount':       SeriesFilesCount = int(val)
 
-        fileTree =  dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
+        ft_dataView = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
+        ft_fileView = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
 
         self.tree   = C_snode.C_stree()
         s           = self.tree
 
         s.mknode(['dataView', 'fileView', 'plugin'])
         s.cd('/dataView')
-        s.touch('tree', fileTree.FS)
+        print(ft_dataView)
+        s.graft(ft_dataView.FS)
+        print(ft_dataView.FS)
+        # s.touch('tree', fileTree.FS)
         s.cd('/fileView')
-        s.touch('tree', fileTree.FS)
+        s.graft(ft_fileView.FS)
+        # s.touch('tree', fileTree.FS)
 
         s.cd('/plugin')
         s.mknode(['0', '1'])
@@ -79,24 +84,24 @@ class data(object):
 
         self.contents = {'tree':    self.tree}
 
-
     def __iter__(self):
-        s = self.tree
-        s.cd('/dataView')
-        d_dataView  = dict(s.cat('tree').snode_root)
-        s.cd('/fileView')
-        d_fileView  = dict(s.cat('tree').snode_root)
-        s.cd('/plugin')
-        d_plugin    = dict(s.cat('tree').snode_root)
-        yield(
-            'data', {
-                'tree': {
-                    'dataView': d_dataView,
-                    'fileView': d_fileView,
-                    'plugin':   d_plugin
-                        }
-                    }
-              )
+        yield('data', dict(self.tree.snode_root))
+        # s = self.tree
+        # s.cd('/dataView')
+        # d_dataView  = dict(s.cat('tree').snode_root)
+        # s.cd('/fileView')
+        # d_fileView  = dict(s.cat('tree').snode_root)
+        # s.cd('/plugin')
+        # d_plugin    = dict(s.cat('tree').snode_root)
+        # yield(
+        #     'data', {
+        #         'tree': {
+        #             'dataView': d_dataView,
+        #             'fileView': d_fileView,
+        #             'plugin':   d_plugin
+        #                 }
+        #             }
+        #       )
 
 
 def synopsis(ab_shortOnly = False):
