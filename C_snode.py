@@ -566,8 +566,10 @@ class C_stree:
             :param apath: a path in atree
             :return:
             """
+            parent = self.snode_current.snode_parent
             atree.cd(apath)
             self.snode_current  = atree.snode_current
+            self.snode_current.parent = parent
 
         def touch(self, name, data):
             '''
