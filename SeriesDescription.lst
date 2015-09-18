@@ -2,8 +2,8 @@
 2D_FLASH_COR-2D_FLASH_COR- 
 2D_FLASH_T2star_weighted-2D_FLASH_T2star_weighted- 
 2D_SAG_MERGE-8_CH_KNEE_ZOOM_4- 
-2DTOF_AX_MRA_CAROTIDS_DO_INDIV_RECONS_LF_RT_-MRA'S_MRV'S_8- 
-2DTOF_AX_MRA_CAROTIDS__DO_INDIV_RECONS_LT_RT__-MRA'S- 
+2DTOF_AX_MRA_CAROTIDS_DO_INDIV_RECONS_LF_RT_-MRAS_MRVS_8- 
+2DTOF_AX_MRA_CAROTIDS__DO_INDIV_RECONS_LT_RT__-MRAS- 
 2mm__HEAD_120-WIP_2mm__HEAD_120_CLEAR- 
 2mm__HEAD-WIP_2mm__HEAD_CLEAR- 
 2mm_lower_TE_200-WIP_2mm_lower_TE_200_CLEAR- 
@@ -47,7 +47,7 @@
 3D_SPGR_CORONAL-Pedi_Seizure_8- 
 3d_T1_mprage-janet_brain__- 
 3DTOF_MRA_COW__2_SLABS__LOOP_RECONS_-MRA_S_MRV_S_inc_MSV_S__9- 
-3D_TOF_MRA_COW-MRA'S_MRV'S_inc_MSV__1- 
+3D_TOF_MRA_COW-MRAS_MRVS_inc_MSV__1- 
 3D_TOF_MRA_COW-PB_MRA_and_MRV__1- 
 3mm_AX_HEAD_A-WIP_3mm_AX_HEAD_A_CLEAR- 
 3mm_AX_HEAD-WIP_3mm_AX_HEAD_CLEAR- 
@@ -746,7 +746,7 @@ Calibration_Scan-PEDI_TS_2-
 Calibration_Scan-Pedi___TSC_09_09_2- 
 CAL_-PB_BRAIN_SCREEN__2- 
 CAL-PB_BRAIN_SCREEN__2- 
-CAL_PCASL_MULT_PLD'S-CAL_PCASL_MULT_PLD'S- 
+CAL_PCASL_MULT_PLDS-CAL_PCASL_MULT_PLDS- 
 CALSCAN_-PB_PRE_SURG_EPILEPSY__2- 
 CALSCAN-PB_PRE_SURG_EPILEPSY__2- 
 _C_AXIAL_T1-_C_AXIAL_T1- 
@@ -805,7 +805,7 @@ COR_2D_MRV_MSV_MIP_SAG-COR_2D_MRV_MSV-
 COR_2D_MRV_MSV_MIP_TRA-COR_2D_MRV_MSV- 
 COR_3D_FLAIR_1MM-SAG_T2_FLAIR_SPACE_FAST- 
 COR_3D_SPGR-Cerebellar_protocol__2_3- 
-COR3Dspgr_incl._entire_skull;full_fov_-Cerebellar_protocol__1_3- 
+COR3Dspgr_incl._entire_skullfull_fov_-Cerebellar_protocol__1_3- 
 COR_3D_SPGR_NO_OBLIQUE__-NEW_SEIZURE_BRAIN_1_29__- 
 COR_3D_SPGR-NoProtocolName- 
 COR3DSPGR_-PB_PRE_SURG_EPILEPSY__8- 
@@ -1834,7 +1834,7 @@ moco_SAG_MEMPRAGE_RMS_-moco_SAG_MEMPRAGE-
 MoCoSeries-ASL- 
 MoCoSeries-ASL_2D_tra- 
 MoCoSeries-ASL_2D_tra__same_slice_loc_fov_as_vs_asl_- 
-MoCoSeries-CAL_PCASL_MULT_PLD'S- 
+MoCoSeries-CAL_PCASL_MULT_PLDS- 
 MoCoSeries-DistCorr_for_fMRI_A_P- 
 MoCoSeries-DistCorr_for_fMRI_P_A- 
 MoCoSeries-ep2d_bold_SliceAcc_770A- 
@@ -1892,7 +1892,7 @@ MoCoSeries-PCASL_PLD1s-
 MoCoSeries-PCASL_PLD2s- 
 MoCoSeries-PCASL__SCAN_STRAIGHT- 
 MoCoSeries-PCASL__SEE_NOTES_ON_THE_WALL_- 
-MoCoSeries_RelCBF-CAL_PCASL_MULT_PLD'S- 
+MoCoSeries_RelCBF-CAL_PCASL_MULT_PLDS- 
 MoCoSeries-rsfMRI_SMS3_2mmISO- 
 MoCoSeries-SMS3_rs_fMRI- 
 MoCoSeries-SMS3_rs_fMRI_2mmIso- 
@@ -2172,9 +2172,9 @@ Pha_Images-SWI____replaces_mpgr_-
 Pha_Images-t2_fl3d_tra_p2_swi- 
 PhoenixZIPReport-Phoenix_Document- 
 PJN_-BRAIN_SCREEN_2011_11- 
-PJN_-MRA'S- 
-PJN_-MRA'S_MRV'S_8- 
-PJN_-MRA'S_MRV'S_inc_MSV__1- 
+PJN_-MRAS- 
+PJN_-MRAS_MRVS_8- 
+PJN_-MRAS_MRVS_inc_MSV__1- 
 PJN-MRA_S_MRV_S_inc_MSV_S__9- 
 PJN-o__need_to_consider_MRA_3D_ToF_lesion_ask_fellow- 
 PJN_-PB_MRA_and_MRV__1- 
