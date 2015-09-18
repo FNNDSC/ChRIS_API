@@ -554,8 +554,20 @@ class C_stree:
         def cat(self, name):
             '''
             Returns the contents of the 'name'd element at this level.
+
+            TODO: parse possible path spec in name...
             '''
             return self.snode_current.d_data[name]
+
+        def graft(self, atree, apath = '/'):
+            """
+            Attach (link) apath in a separate atree to here.
+            :param atree: a tree
+            :param apath: a path in atree
+            :return:
+            """
+            atree.cd(apath)
+            self.snode_current  = atree.snode_current
 
         def touch(self, name, data):
             '''
