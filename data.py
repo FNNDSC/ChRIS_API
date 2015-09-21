@@ -60,7 +60,7 @@ class data(object):
 
         SeriesFilesCount = 1
         for key,val in kwargs.iteritems():
-            if key == 'SeriesfilesCount':       SeriesFilesCount = int(val)
+            if key == 'SeriesFilesCount':       SeriesFilesCount = int(val)
 
         ft_dataView = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
         ft_fileView = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
@@ -70,39 +70,19 @@ class data(object):
 
         s.mknode(['dataView', 'fileView', 'plugin'])
         s.cd('/dataView')
-        print(ft_dataView)
         s.graft(ft_dataView.FS)
-        print(ft_dataView.FS)
-        # s.touch('tree', fileTree.FS)
         s.cd('/fileView')
-        s.graft(ft_fileView.FS)
-        # s.touch('tree', fileTree.FS)
+        s.graft(ft_dataView.FS)
 
         s.cd('/plugin')
         s.mknode(['0', '1'])
+        s.tree_metaData_print(False)
 
 
         self.contents = {'tree':    self.tree}
 
     def __iter__(self):
         yield('data', dict(self.tree.snode_root))
-        # s = self.tree
-        # s.cd('/dataView')
-        # d_dataView  = dict(s.cat('tree').snode_root)
-        # s.cd('/fileView')
-        # d_fileView  = dict(s.cat('tree').snode_root)
-        # s.cd('/plugin')
-        # d_plugin    = dict(s.cat('tree').snode_root)
-        # yield(
-        #     'data', {
-        #         'tree': {
-        #             'dataView': d_dataView,
-        #             'fileView': d_fileView,
-        #             'plugin':   d_plugin
-        #                 }
-        #             }
-        #       )
-
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
@@ -147,8 +127,8 @@ if __name__ == "__main__":
 
     args        = parser.parse_args()
 
-    container   = data(SeriesFilesCount = args.SeriesFilesCount)
-    container.contents_build()
+    container   = data()
+    container.contents_build(SeriesFilesCount = args.SeriesFilesCount)
 
     print(container.tree)
     print(json.dumps(dict(container)))
