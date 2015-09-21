@@ -28,6 +28,7 @@
 import  os
 import  sys
 import  re
+import  copy
 from    string                  import  *
 
 from    C_stringCore            import  *
@@ -359,6 +360,7 @@ class C_snodeBranch:
             else:
               for node in al_branchNodes:
                 self.dict_branch[node]  = C_snode(node)
+
         #
         # Simple error handling
         def error_exit(self, astr_action, astr_error, astr_code):
@@ -446,6 +448,9 @@ class C_stree:
             self.sCore.reset()
             self.sCore.write('%s' % self.snode_root)
             return self.sCore.strget()
+
+        def __iter__(self):
+            yield(dict(self.snode.root))
 
         def root(self):
             """
@@ -566,10 +571,10 @@ class C_stree:
             :param apath: a path in atree
             :return:
             """
-            parent = self.snode_current.snode_parent
             atree.cd(apath)
-            self.snode_current  = atree.snode_current
-            self.snode_current.parent = parent
+            self.snode_current.d_nodes  = atree.snode_current.d_nodes
+            self.snode_current.d_data   = atree.snode_current.d_data
+
 
         def touch(self, name, data):
             '''
@@ -801,13 +806,16 @@ class C_stree:
 
                 afunc_nodeEval(astr_startPath, **kwargs)
 
-            and must return either True or False.
+            and must return a dictionary containing at least one field:
+
+                { "status": True | False }
+
             """
             [b_valid, l_path ] = self.b_pathInTree(astr_startPath)
             if b_valid and afunc_nodeEval:
-                b_valid     = afunc_nodeEval(astr_startPath)
+                ret = afunc_nodeEval(astr_startPath)
             #print 'processing node: %s' % astr_startPath
-            if b_valid:
+            if ret['status']:
                 for node in self.lstr_lsnode(astr_startPath):
                     if astr_startPath == '/': recursePath = "/%s" % node
                     else: recursePath = '%s/%s' % (astr_startPath, node)
