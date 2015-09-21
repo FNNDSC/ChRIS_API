@@ -426,6 +426,8 @@ class C_stree:
                                                         #+ added to the tree, its path
                                                         #+ list is appended to this
                                                         #+ list variable.
+            self.l_lwd                  = []            # A scratch path list variable
+                                                        #+ for the lwd() method.
             if not len(al_rootBranch):
                 al_rootBranch           = ['/']
             if len(al_rootBranch):
@@ -794,12 +796,57 @@ class C_stree:
             '''
             self.cdnode(astr_path)
             self.snode_current.metaData_print(self.b_printMetaData)
-            return True
+            return {'status': True}
+
+        def treeWalk(self, **kwargs):
+            """
+            Recursively walk through a C_stree, applying a passed function
+            at each node.
+
+            kwargs:
+                --startPath=<startPath> :   The starting point in the tree
+                --func=<f> :                The function to apply at each node
+
+                Additional kwargs are passed to <f>
+
+            <f> is a function that is called on a node path. It is of form:
+
+                f(path, **kwargs)
+
+            where path is a node in the tree space.
+
+            <f> must return a dictionary containing at least one field:
+
+                { "status": True | False }
+
+            This same dictionary is also returned out to the caller of this
+            function.
+
+            """
+
+            str_recursePath = ''
+            str_startPath   = '/'
+            f               = None
+            ret             = {}
+
+            for key,val in kwargs.iteritems():
+                if key == 'startPath':  str_startPath   = val
+                if key == 'f':          f               = val
+
+            if self.cd(str_startPath)['status']:
+                ret = f(str_startPath, **kwargs)
+                if ret['status']:
+                    for node in self.lstr_lsnode(str_startPath):
+                        if str_startPath == '/': str_recursePath = "/%s" % node
+                        else: str_recursePath = '%s/%s' % (str_startPath, node)
+                        self.treeWalk(f = f, startPath = str_recursePath)
+            return ret
 
         def treeRecurse(self, afunc_nodeEval = None, astr_startPath = '/'):
             """
-            Recursively walk through a C_stree, starting from node
-            <astr_startPath>.
+            Recursively walk through the C_stree, starting from node
+            <astr_startPath> and using the internal l_allPaths space
+            as verifier.
 
             The <afunc_nodeEval> is a function that is called on a node
             path. It is of form:
@@ -810,16 +857,44 @@ class C_stree:
 
                 { "status": True | False }
 
+            This same dictionary is also returned out to the caller of this
+            function.
+
             """
+            ret = {'status': False}
             [b_valid, l_path ] = self.b_pathInTree(astr_startPath)
             if b_valid and afunc_nodeEval:
                 ret = afunc_nodeEval(astr_startPath)
+            b_OK = ret['status']
             #print 'processing node: %s' % astr_startPath
-            if ret['status']:
+            if b_OK:
                 for node in self.lstr_lsnode(astr_startPath):
                     if astr_startPath == '/': recursePath = "/%s" % node
                     else: recursePath = '%s/%s' % (astr_startPath, node)
                     self.treeRecurse(afunc_nodeEval, recursePath)
+            return ret
+
+        def lwd(self, astr_startPath, **kwargs):
+            """
+            Return the cwd in treeRecurse compatible format.
+            :return: Return the cwd in treeRecurse compatible format.
+            """
+            self.cd(astr_startPath)
+            self.l_lwd.append(self.cwd())
+
+            return {'status': True, 'cwd': self.cwd()}
+
+
+        def pathFromHere(self, astr_startPath = '/'):
+            """
+            Return a list of paths from "here" in the stree.
+            :return: a list of paths from "here"
+            """
+
+            self.l_lwd  = []
+            self.treeWalk(startPath = astr_startPath, f=self.lwd)
+            return self.l_lwd
+
 
         #
         # Simple error handling
