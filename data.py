@@ -74,10 +74,16 @@ class data(object):
         s.cd('/fileView')
         s.graft(ft_dataView.FS)
 
+        ft_dataView.FS.pathFromHere('/')
+        sPathSpace = ['/dataView' + pathStr for pathStr in ft_dataView.FS.l_lwd[1:]]
+        # print(ft_dataView.FS)
+
         s.cd('/plugin')
         s.mknode(['0', '1'])
         s.tree_metaData_print(False)
 
+        s.l_allPaths.append(sPathSpace)
+        print(s.pathFromHere('/'))
 
         self.contents = {'tree':    self.tree}
 
@@ -130,6 +136,6 @@ if __name__ == "__main__":
     container   = data()
     container.contents_build(SeriesFilesCount = args.SeriesFilesCount)
 
-    print(container.tree)
-    print(json.dumps(dict(container)))
+    # print(container.tree)
+    # print(json.dumps(dict(container)))
 
