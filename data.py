@@ -68,32 +68,23 @@ class data(object):
         self.tree   = C_snode.C_stree()
         s           = self.tree
 
-        s.mknode(['dataView', 'fileView', 'plugin'])
-        s.cd('/dataView')
-        s.graft(ft_dataView.FS)
-        s.cd('/fileView')
-        s.graft(ft_dataView.FS)
+        # print(ft_dataView.FS)
+        # sys.exit(0)
 
-        # ft_dataView.FS.pathFromHere('/')
-        # sPathSpace = ['/dataView' + pathStr for pathStr in ft_dataView.FS.l_lwd[1:]]
-        # l_graftPath = []
-        # for p in sPathSpace:
-        #     l_p     = p.split('/')
-        #     l_p[0]  = '/'
-        #     l_graftPath.append(l_p)
-        #     s.l_allPaths.append(p)
-        # # print(ft_dataView.FS)
-        # print(l_graftPath)
+        s.mknode(['dataView', 'fileView', 'plugin'])
+        for node in ft_dataView.FS.lstr_lsnode('/'):
+            s.cd('/dataView')
+            s.graft(ft_dataView.FS, '/' + node)
+            s.cd('/fileView')
+            s.graft(ft_dataView.FS, '/' + node)
 
         s.cd('/plugin')
         s.mknode(['0', '1'])
         s.tree_metaData_print(False)
 
-        # print(s.l_allPaths)
-        # for p in l_graftPath:
-        #     s.l_allPaths.append(p)
         print(s.l_allPaths)
-        print(s.pathFromHere('/dataView'))
+        print(s.pathFromHere_explore('/'))
+        print(s)
 
         self.contents = {'tree':    self.tree}
 
