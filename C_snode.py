@@ -613,20 +613,9 @@ class C_stree:
                     atree.cd('../')
                     self.cd('../')
 
-            l_atreePath = atree.pathFromHere_walk(apath)
-            if apath != '/':
-                l_atreePath = [s.replace(apath, '') for s in l_atreePath]
-
-            if self.cwd() != '/':
-                l_atreePath = [self.cwd() + s for s in l_atreePath]
-
-            l_graftPath = []
-            for p in l_atreePath:
-                l_p     = p.split('/')
-                l_p[0]  = '/'
-                l_graftPath.append(l_p)
-                self.l_allPaths.append(l_p)
-
+            # Update internal space of possible paths.
+            self.cd('../')
+            self.pathFromHere_explore(self.cwd())
 
         def touch(self, name, data):
             '''
@@ -1103,7 +1092,7 @@ if __name__ == "__main__":
     print(bTree.pathFromHere_walk('/'))
 
     aTree.cd('/')
-    aTree.graft(bTree, '/1/2')
+    aTree.graft(bTree, '/1/2/')
     aTree.tree_metaData_print(False)
     print(aTree)
     print(aTree.pathFromHere_walk('/'))
