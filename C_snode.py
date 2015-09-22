@@ -575,7 +575,7 @@ class C_stree:
 
             Functionally equivalent to
 
-                ln -s atree:/apth .
+                ln -s atree:/apath .
 
             Also updates the self tree's path list space.
 
@@ -584,16 +584,41 @@ class C_stree:
             :return:
             """
             atree.cd(apath)
-            self.snode_current.d_nodes  = atree.snode_current.d_nodes
-            self.snode_current.d_data   = atree.snode_current.d_data
+            atree_nodes                 = atree.lstr_lsnode()
 
-            l_atreePath = atree.pathFromHere(apath)
+            b_childrenLink              = False
             if apath != '/':
-                l_atreePath = [s.replace(apath, '/') for s in l_atreePath]
+                l_apath = apath.split('/')
+                # No trailing '/'
+                if l_apath[-1] != '':
+                    self.mkcd(apath.split('/')[-1])
+                    self.snode_current.d_nodes  = atree.snode_current.d_nodes
+                    self.snode_current.d_data   = atree.snode_current.d_data
+                # Trailing '/'
+                else:
+                    apath = apath[0:-1]
+                    if apath[-1] != '/':
+                        atree.cd(apath)
+                        atree_nodes     = atree.lstr_lsnode()
+                        b_childrenLink  = True
+            else:
+                b_childrenLink  = True
+            if b_childrenLink:
+                self.mknode(atree_nodes)
+                for node in atree_nodes:
+                    self.cd(node)
+                    atree.cd(apath + '/' + node)
+                    self.snode_current.d_nodes  = atree.snode_current.d_nodes
+                    self.snode_current.d_data   = atree.snode_current.d_data
+                    atree.cd('../')
+                    self.cd('../')
 
-            l_atreePath = [self.cwd() + s for s in l_atreePath]
+            l_atreePath = atree.pathFromHere_walk(apath)
+            if apath != '/':
+                l_atreePath = [s.replace(apath, '') for s in l_atreePath]
 
-            # print(l_atreePath)
+            if self.cwd() != '/':
+                l_atreePath = [self.cwd() + s for s in l_atreePath]
 
             l_graftPath = []
             for p in l_atreePath:
@@ -601,11 +626,6 @@ class C_stree:
                 l_p[0]  = '/'
                 l_graftPath.append(l_p)
                 self.l_allPaths.append(l_p)
-
-            # self.pathFromHere('/')
-            # # print(self.l_allPaths)
-            # print(atree.pathFromHere(apath))
-            # print(self.l_lwd)
 
 
         def touch(self, name, data):
@@ -661,6 +681,10 @@ class C_stree:
             """
             if astr_path == '/':  return True, ['/']
             al_path               = astr_path.split('/')
+            # Do we have a trailing '/' and not doing a '../'? If so, strip it..!
+            if astr_path != '../' and al_path[-1] == '':
+                al_path = al_path[0:-2]
+
             # Check for absolute path
             if not len(al_path[0]):
                 al_path[0]          = '/'
@@ -686,7 +710,6 @@ class C_stree:
             if(len(l_path)>=1 and l_path[0] != '/'):      l_path.insert(0, '/')
             if(len(l_path)>1):            l_path[0]       = ''
             if(not len(l_path)):          l_path          = ['/']
-            #TODO: Possibly check for trailing '/', i.e. list ['']
             str_path      = '/'.join(l_path)
             #print "final path str  = %s" % str_path
             b_valid, al_path = self.b_pathInTree(str_path)
@@ -828,10 +851,70 @@ class C_stree:
             self.snode_current.metaData_print(self.b_printMetaData)
             return {'status': True}
 
+        def treeExplore(self, **kwargs):
+            """
+            Recursively walk through a C_stree, applying a passed function
+            at each node. The actual "walk" uses individual nodes' internal
+            child dictionaries.
+
+            It is assumed that the start origin of exploration can in fact
+            be reached by a 'cd()' call. Directories are added to the internal
+            l_allPaths list variable as they are discovered.
+
+            kwargs:
+                startPath=<startPath> :     The starting point in the tree
+                func=<f> :                  The function to apply at each node
+
+                Additional kwargs are passed to <f>
+
+            <f> is a function that is called on a node path. It is of form:
+
+                f(path, **kwargs)
+
+            where path is a node in the tree space.
+
+            <f> must return a dictionary containing at least one field:
+
+                { "status": True | False }
+
+            This same dictionary is also returned out to the caller of this
+            function.
+
+            """
+
+            str_recursePath = ''
+            str_startPath   = '/'
+            f               = None
+            ret             = {}
+
+            for key,val in kwargs.iteritems():
+                if key == 'startPath':  str_startPath   = val
+                if key == 'f':          f               = val
+
+            # print 'processing node: %s' % str_startPath
+            if self.cd(str_startPath)['status']:
+                ret = f(str_startPath, **kwargs)
+                if ret['status']:
+                    for node in self.lstr_lsnode(str_startPath):
+                        if str_startPath == '/': str_recursePath = "/%s" % node
+                        else: str_recursePath = '%s/%s' % (str_startPath, node)
+                        l_recursePath       = str_recursePath.split('/')
+                        l_recursePath[0]    = '/'
+                        if not l_recursePath in self.l_allPaths:
+                            self.l_allPaths.append(l_recursePath)
+                        self.treeExplore(f = f, startPath = str_recursePath)
+            return ret
+
+
         def treeWalk(self, **kwargs):
             """
             Recursively walk through a C_stree, applying a passed function
-            at each node.
+            at each node. The actual "walk" depends on using the 'cd' function
+            which will only descend into paths that already exist in the
+            internal path database.
+
+            To flush this and explore the pathspace de novo, use treeExplore()
+            instead.
 
             kwargs:
                 --startPath=<startPath> :   The starting point in the tree
@@ -863,6 +946,7 @@ class C_stree:
                 if key == 'startPath':  str_startPath   = val
                 if key == 'f':          f               = val
 
+            # print 'processing node: %s' % str_startPath
             if self.cd(str_startPath)['status']:
                 ret = f(str_startPath, **kwargs)
                 if ret['status']:
@@ -877,6 +961,9 @@ class C_stree:
             Recursively walk through the C_stree, starting from node
             <astr_startPath> and using the internal l_allPaths space
             as verifier.
+
+            To self-discover tree structure based on internal node links,
+            use treeExplore() instead.
 
             The <afunc_nodeEval> is a function that is called on a node
             path. It is of form:
@@ -915,9 +1002,11 @@ class C_stree:
             return {'status': True, 'cwd': self.cwd()}
 
 
-        def pathFromHere(self, astr_startPath = '/'):
+        def pathFromHere_walk(self, astr_startPath = '/'):
             """
-            Return a list of paths from "here" in the stree.
+            Return a list of paths from "here" in the stree, using
+            the internal cd() to walk the path space.
+
             :return: a list of paths from "here"
             """
 
@@ -925,6 +1014,17 @@ class C_stree:
             self.treeWalk(startPath = astr_startPath, f=self.lwd)
             return self.l_lwd
 
+        def pathFromHere_explore(self, astr_startPath = '/'):
+            """
+            Return a list of paths from "here" in the stree, using the
+            child explore access.
+
+            :return: a list of paths from "here"
+            """
+
+            self.l_lwd  = []
+            self.treeExplore(startPath = astr_startPath, f=self.lwd)
+            return self.l_lwd
 
         #
         # Simple error handling
@@ -934,3 +1034,88 @@ class C_stree:
             print("%s" % astr_error)
             print("\nReturning to system with code %s\n" % astr_code)
             sys.exit(astr_code)
+
+if __name__ == "__main__":
+
+
+    aTree = C_stree()
+    bTree = C_stree()
+    ATree = C_stree()
+
+    aTree.cd('/')
+    aTree.mkcd('a')
+    aTree.mknode(['b', 'c'])
+    aTree.cd('b')
+    aTree.mknode(['d', 'e'])
+    aTree.cd('d')
+    aTree.mknode(['h', 'i'])
+    aTree.cd('/a/b/e')
+    aTree.mknode(['j', 'k'])
+    aTree.cd('/a/c')
+    aTree.mknode(['f', 'g'])
+    aTree.cd('f')
+    aTree.mknode(['l', 'm'])
+    aTree.cd('/a/c/g')
+    aTree.mknode(['n', 'o'])
+
+    ATree.cd('/')
+    ATree.mkcd('A')
+    ATree.mknode(['B', 'C'])
+    ATree.cd('B')
+    ATree.mknode(['D', 'E'])
+    ATree.cd('D')
+    ATree.mknode(['H', 'I'])
+    ATree.cd('/A/B/E')
+    ATree.mknode(['J', 'K'])
+    ATree.cd('/A/C')
+    ATree.mknode(['F', 'G'])
+    ATree.cd('F')
+    ATree.mknode(['L', 'M'])
+    ATree.cd('/A/C/G')
+    ATree.mknode(['N', 'O'])
+
+    bTree.cd('/')
+    bTree.mkcd('1')
+    bTree.mknode(['2', '3'])
+    bTree.cd('2')
+    bTree.mknode(['4', '5'])
+    bTree.cd('4')
+    bTree.mknode(['8', '9'])
+    bTree.cd('/1/2/5')
+    bTree.mknode(['10', '11'])
+    bTree.cd('/1/3')
+    bTree.mknode(['6', '7'])
+    bTree.cd('6')
+    bTree.mknode(['12', '13'])
+    bTree.cd('/1/3/7')
+    bTree.mknode(['14', '15'])
+
+
+    aTree.tree_metaData_print(False)
+    ATree.tree_metaData_print(False)
+    bTree.tree_metaData_print(False)
+
+    print(aTree)
+    print(aTree.pathFromHere_walk('/'))
+    print(ATree)
+    print(ATree.pathFromHere_walk('/'))
+    print(bTree)
+    print(bTree.pathFromHere_walk('/'))
+
+    aTree.cd('/')
+    aTree.graft(bTree, '/1/2')
+    aTree.tree_metaData_print(False)
+    print(aTree)
+    print(aTree.pathFromHere_walk('/'))
+    print(aTree.l_allPaths)
+
+    bTree.cd('/1/2/4/9')
+    bTree.graft(ATree, '/A/B')
+    bTree.tree_metaData_print(False)
+    print(bTree)
+    print(bTree.pathFromHere_walk('/'))
+    print(bTree.l_allPaths)
+    print(aTree)
+    print(aTree.pathFromHere_explore('/'))
+    print(aTree.l_allPaths)
+
