@@ -515,6 +515,8 @@ class C_stree:
             append the combined list to ml_allPaths. This method is
             typically not called by a user, but by other methods in
             this module.
+
+            Returns the list of all paths.
             """
             for node in al_branchNodes:
                 #print "appending %s" % node
@@ -523,6 +525,7 @@ class C_stree:
                 #print "l_pwd: %s" % l_pwd
                 #print "ml_cwd: %s" % self.ml_cwd
                 self.l_allPaths.append(l_pwd)
+            return self.l_allPaths
 
         def mknode(self, al_branchNodes):
             """
@@ -569,6 +572,13 @@ class C_stree:
         def graft(self, atree, apath = '/'):
             """
             Attach (link) apath in a separate atree to here.
+
+            Functionally equivalent to
+
+                ln -s atree:/apth .
+
+            Also updates the self tree's path list space.
+
             :param atree: a tree
             :param apath: a path in atree
             :return:
@@ -576,6 +586,26 @@ class C_stree:
             atree.cd(apath)
             self.snode_current.d_nodes  = atree.snode_current.d_nodes
             self.snode_current.d_data   = atree.snode_current.d_data
+
+            l_atreePath = atree.pathFromHere(apath)
+            if apath != '/':
+                l_atreePath = [s.replace(apath, '/') for s in l_atreePath]
+
+            l_atreePath = [self.cwd() + s for s in l_atreePath]
+
+            # print(l_atreePath)
+
+            l_graftPath = []
+            for p in l_atreePath:
+                l_p     = p.split('/')
+                l_p[0]  = '/'
+                l_graftPath.append(l_p)
+                self.l_allPaths.append(l_p)
+
+            # self.pathFromHere('/')
+            # # print(self.l_allPaths)
+            # print(atree.pathFromHere(apath))
+            # print(self.l_lwd)
 
 
         def touch(self, name, data):
