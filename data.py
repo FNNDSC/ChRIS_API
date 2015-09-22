@@ -74,16 +74,26 @@ class data(object):
         s.cd('/fileView')
         s.graft(ft_dataView.FS)
 
-        ft_dataView.FS.pathFromHere('/')
-        sPathSpace = ['/dataView' + pathStr for pathStr in ft_dataView.FS.l_lwd[1:]]
-        # print(ft_dataView.FS)
+        # ft_dataView.FS.pathFromHere('/')
+        # sPathSpace = ['/dataView' + pathStr for pathStr in ft_dataView.FS.l_lwd[1:]]
+        # l_graftPath = []
+        # for p in sPathSpace:
+        #     l_p     = p.split('/')
+        #     l_p[0]  = '/'
+        #     l_graftPath.append(l_p)
+        #     s.l_allPaths.append(p)
+        # # print(ft_dataView.FS)
+        # print(l_graftPath)
 
         s.cd('/plugin')
         s.mknode(['0', '1'])
         s.tree_metaData_print(False)
 
-        s.l_allPaths.append(sPathSpace)
-        print(s.pathFromHere('/'))
+        # print(s.l_allPaths)
+        # for p in l_graftPath:
+        #     s.l_allPaths.append(p)
+        print(s.l_allPaths)
+        print(s.pathFromHere('/dataView'))
 
         self.contents = {'tree':    self.tree}
 
