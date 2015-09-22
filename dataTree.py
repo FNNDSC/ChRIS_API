@@ -109,9 +109,10 @@ class dataTree_PACSPull(dataTree):
                     FS.mkcd('%s-%03d' % (random.choice(self.l_SeriesDescription).strip(),
                                          self.dbID_generate()))
                     l_image = []
+                    SeriesInstanceUID = self.SeriesInstanceUID_generate()
                     for image in range(1, self.SeriesFilesCount + 1):
                         l_image.append('%04d-%s.dcm' % \
-                            (image, self.SeriesInstanceUID_generate())
+                            (image, SeriesInstanceUID)
                         )
                     FS.touch('images', l_image)
                     FS.cd('../')
