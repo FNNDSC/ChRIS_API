@@ -49,26 +49,100 @@ class data(object):
     def __init__(self, **kwargs):
 
         self.contents   = ""
-        self.tree       = None
+        self.tree       = C_snode.C_stree
 
 
-    def contents_build(self, **kwargs):
+    def dataComponent_build(self, **kwargs):
         """
-        Populate the contents with default noise.
+        This method builds a "single" dataComponent
+        and adds to the internal tree at a specified
+        path.
+
+        A data component consists of:
+
+            * dataView
+                - "files" for visualizing
+            * fileView
+                - "files" in a traditional tree view
+            * plugin
+                - list of plugins to choose from for this data/fileView
+                - plugin that has been applied to the data/fileView
+        :param kwargs:
         :return:
+        """
+
+        str_path            = '/'
+        str_data            = 'PACSPull'
+        convertFrom         = None
+        SeriesFilesCount    = 3
+        dataTree            = None
+        for key,val in kwargs.iteritems():
+            if key == 'path':               str_path            = val
+            if key == 'data':               str_data            = val
+            if key == 'convertFrom':        convertFrom         = val
+            if key == 'SeriesFilesCount':   SeriesFilesCount    = val
+
+        s = self.stree
+
+        if s.cd(str_path)['status']:
+            s.mknode(['dataView', 'fileView', 'plugin'])
+            if str_data.lower() == 'pacspull':
+                dataTree = self.dataTree_PACSPull_build(
+                                SeriesFilesCount   = SeriesFilesCount
+                            )
+                s.cd('/dataView')
+                s.graft(dataTree, '/files')
+                s.cd('/fileView')
+                s.graft(dataTree, '/files')
+
+    def dataTree_mriConvert_build(self, **kwargs):
+        """
+        Convert an input tree (typically from PACSPull) to
+        a different format.
+
+        :param kwargs: PACSPullTree = <Tree>, extention = <ext>
+        :return: converted tree
+        """
+        ft_converted    = None
+        ft_PACSPull     = None
+        str_extension   = 'nii'
+        for key, val in kwargs.iteritems():
+            if key == 'PACSPullTree':   ft_PACSPull     = val
+            if key == 'extension':      str_extension   = val
+
+        ft_converted    = dataTree.dataTree_convert(
+            PACSPullTree    = ft_PACSPull,
+            convertTo       = str_extension
+        )
+
+        return ft_converted
+
+    def dataTree_PACSPull_build(self, **kwargs):
+        """
+        Build a PACSPull tree.
+        :param kwargs:  SeriesFilesCount = <count>
+        :return: PACSPull tree
         """
 
         SeriesFilesCount = 1
         for key,val in kwargs.iteritems():
             if key == 'SeriesFilesCount':       SeriesFilesCount = int(val)
 
-        ft_dataView = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
-        ft_fileView = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
+        ft_PACSPull         = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
 
-        self.tree   = C_snode.C_stree()
+        ft_dataView00   = dataTree.dataTree_convert(
+            PACSPullTree    = ft_PACSPull.FS,
+            convertTo       = 'nii'
+        )
+        ft_dataView01   = dataTree.dataTree_convert(
+            PACSPullTree    = ft_PACSPull.FS,
+            convertTo       = 'mgz'
+        )
+
         s           = self.tree
 
         # print(ft_dataView.FS)
+        # print(ft_dataView2.FS)
         # sys.exit(0)
 
         s.mknode(['dataView', 'fileView', 'plugin'])
@@ -80,13 +154,19 @@ class data(object):
 
         s.cd('/plugin')
         s.mknode(['0', '1'])
+        for node in ft_dataView00.FS.lstr_lsnode('/'):
+            s.cd('/plugin/0')
+            s.graft(ft_dataView00.FS, '/' + node)
+        for node in ft_dataView01.FS.lstr_lsnode('/'):
+            s.cd('/plugin/1')
+            s.graft(ft_dataView01.FS, '/' + node)
         s.tree_metaData_print(False)
 
         print(s.l_allPaths)
         print(s.pathFromHere_explore('/'))
         print(s)
-
         self.contents = {'tree':    self.tree}
+        return ft_PACSPull.FS
 
     def __iter__(self):
         yield('data', dict(self.tree.snode_root))
