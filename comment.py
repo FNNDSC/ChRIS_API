@@ -61,7 +61,9 @@ class comment(object):
             now                     = datetime.datetime.today()
             timeStamp               = now.strftime('%Y-%m-%d_%H:%M')
 
-            d_stamp[loop] = [timeStamp, names.get_full_name(), rikeripsum.generate_paragraph()]
+            d_stamp[loop] = {'timestamp': timeStamp,
+                             'fullname': names.get_full_name(),
+                             'comment': rikeripsum.generate_paragraph()}
 
         self.contents = d_stamp
 
