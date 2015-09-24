@@ -42,17 +42,13 @@ class dataTree(object):
 
     def __init__(self, **kwargs):
 
+        self.fake       = faker.Faker()
         self.contents   = ""
         self.FS         = C_snode.C_stree()
         self.numFiles   = 10
 
         for key,val in kwargs.iteritems():
-            if key == 'numFiles':   numFiles    = val
-
-class dataTree_PACSPull(dataTree):
-    """
-    Sub-class emulating PACS_pull trees.
-    """
+            if key == 'numFiles':   self.numFiles    = val
 
     def MRN_generate(self):
         self.MRN = 4000000 + random.randint(0, 1000000)
@@ -61,6 +57,62 @@ class dataTree_PACSPull(dataTree):
     def dbID_generate(self, a_upperLimit = 1000):
         self.id = random.randint(0, a_upperLimit)
         return self.id
+
+
+class dataTree_convert(dataTree):
+    """
+    Sub-class emulating the results of an 'mri_covert' on a
+    PACSPull tree.
+    """
+
+    def __init__(self, **kwargs):
+        dataTree.__init__(self, **kwargs)
+        self.inputTree              = None
+        self.b_processPACSPullInput = False
+        for key,val in kwargs.iteritems():
+            if key == 'PACSPullTree':
+                self.inputTree              = val
+                self.b_processPACSPullInput = True
+            if key == 'convertTo':
+                self.extension              = val
+
+        self.treeConvert()
+        self.FS.tree_metaData_print(False)
+
+    def treeConvert(self, **kwargs):
+        """
+        Convert the input tree to another format.
+        """
+        f   = self.FS
+        p   = self.inputTree
+        if self.b_processPACSPullInput:
+            # This basically creates a tree similar to the original
+            # PACSpull, but the "images" container is just a
+            # single file.
+            f.cd('/')
+            f.mkcd('files')
+            p.cd('/files')
+            for mrn in p.lstr_lsnode():
+                p.cd(mrn)
+                mrnOnly = mrn.split('-')[0]
+                f.mkcd(mrnOnly + '-' + str(self.dbID_generate()))
+                for study in p.lstr_lsnode():
+                    p.cd(study)
+                    f.mkcd('-'.join(study.split('-')[0:-1]) + '-' + str(self.dbID_generate()))
+                    l_image = ['-'.join(s.split('-')[0:-1]) + '-' + str(self.dbID_generate())+\
+                                '.' + self.extension for s in p.lstr_lsnode()]
+                    f.touch('images', l_image)
+                    f.cd('../')
+                    p.cd('../')
+                f.cd('../')
+                p.cd('../')
+            f.cd('../')
+            p.cd('../')
+
+class dataTree_PACSPull(dataTree):
+    """
+    Sub-class emulating PACS_pull trees.
+    """
 
     def StudyDescriptions_generate(self):
         with open('StudyDescription.lst') as f:
@@ -95,6 +147,7 @@ class dataTree_PACSPull(dataTree):
     def treeBuild(self):
         FS  = self.FS
         FS.cd('/')
+        FS.mkcd('files')
         for mrn in range(0, self.MRNCount):
             FS.mkcd('%d-%03d' % (self.MRN_generate(), self.dbID_generate()))
             for study in range(0, self.StudyCount):
@@ -122,8 +175,6 @@ class dataTree_PACSPull(dataTree):
     def __init__(self, **kwargs):
         dataTree.__init__(self, **kwargs)
 
-        self.fake                   = faker.Faker()
-
         self.MRNCount               = 3
         self.StudyCount             = 3
         self.SeriesCount            = 3
@@ -140,7 +191,6 @@ class dataTree_PACSPull(dataTree):
 
         self.treeBuild()
         self.FS.tree_metaData_print(False)
-
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
