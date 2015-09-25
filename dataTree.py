@@ -170,7 +170,7 @@ class dataTree_PACSPull(dataTree):
                     FS.touch('images', l_image)
                     FS.cd('../')
                 FS.cd('../')
-            FS.cd('/')
+            FS.cd('../')
 
     def __init__(self, **kwargs):
         dataTree.__init__(self, **kwargs)
@@ -198,7 +198,8 @@ def synopsis(ab_shortOnly = False):
     SYNOPSIS
 
             %s                                     \\
-                            --type <dataTreeType>
+                            --type <dataTreeType>   \\
+                            --SeriesFilesCount <SeriesFilesCount>
 
 
     ''' % scriptName
