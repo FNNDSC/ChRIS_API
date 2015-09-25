@@ -30,9 +30,23 @@ import  dataTree
 
 import  C_snode
 
+sys.path.append('components/faker')
+
+import faker
+
 class data(object):
     """
-    This class implements a ChRIS style data object container.
+    This class implements a ChRIS style data object container, accessible
+    in a tree like structure, i.e.:
+
+        /data/contents/fileView
+        /data/contents/dataView
+        /data/contents/plugin
+        /data/contents/plugin/list
+        /data/contents/plugin/<timeStamp>/parameters
+        /data/contents/plugin/<timeStamp>/name
+        /data/contents/plugin/<timeStamp>/results
+
     The data container encapsulates three components:
 
         contents
@@ -50,6 +64,9 @@ class data(object):
 
         self.contents   = ""
         self.tree       = C_snode.C_stree
+        self.tree.cd('/')
+        self.tree.mknode(['contents'])
+        self.fake       = faker.Faker()
 
 
     def dataComponent_build(self, **kwargs):
@@ -71,7 +88,7 @@ class data(object):
         :return:
         """
 
-        str_path            = '/'
+        str_path            = '/contents'
         str_data            = 'PACSPull'
         convertFrom         = None
         SeriesFilesCount    = 3
@@ -79,7 +96,8 @@ class data(object):
         for key,val in kwargs.iteritems():
             if key == 'path':               str_path            = val
             if key == 'data':               str_data            = val
-            if key == 'convertFrom':        convertFrom         = val
+            if key == 'tree_convertFrom':   ft_convertFrom      = val
+            if key == 'type_convertTo':     str_convertTo       = val
             if key == 'SeriesFilesCount':   SeriesFilesCount    = val
 
         s = self.stree
@@ -94,6 +112,31 @@ class data(object):
                 s.graft(dataTree, '/files')
                 s.cd('/fileView')
                 s.graft(dataTree, '/files')
+            else:
+                if convertFrom and len(convertTo)
+
+    def dataComponent_pluginBuild(self, **kwargs):
+        """
+        Build the plugin tree on a specific data component.
+        :param kwargs: 'path'=<path>
+        :return:
+        """
+        str_path            = '/contents'
+        str_selected        = 'mri_convert'
+        for key,val in kwargs.iteritems():
+            if key == 'path':               str_path            = val
+            if key == 'selected':           str_selected        = val
+
+        s = self.stree
+
+        if s.cd(str_path)['status']:
+            if not s.cd('list_pluginRunFromHere')['status']:
+                s.mknode(['list_pluginRunFromHere'])
+            rand_date       = self.fake.date_time_this_decade()
+            str_timestamp   = rand_date.isoformat()
+            s.mkcd(str_timestamp)
+            s.mknode(['parameters', 'results'])
+            s.touch('name', str_selected)
 
     def dataTree_mriConvert_build(self, **kwargs):
         """
