@@ -452,7 +452,7 @@ class C_stree:
             return self.sCore.strget()
 
         def __iter__(self):
-            yield(dict(self.snode.root))
+            yield(dict(self.snode_root))
 
         def root(self):
             """
@@ -619,12 +619,19 @@ class C_stree:
 
         def touch(self, name, data):
             '''
-            Put 'data' to the current node d_data dictionary under key 'name'
+            Create a 'file' analog called 'name' and put 'data' to the d_data dictionary
+            under key 'name'.
+
+            The 'name' can contain a path specifier.
             '''
             b_OK = True
             # print("here!")
             # print(self.snode_current)
             # print(self.snode_current.d_nodes)
+            l_path = name.split('/')
+            if len(l_path) > 1:
+                self.cd('/'.join(l_path[0:-1]))
+            name = l_path[-1]
             self.snode_current.d_data[name] = data
             # print(self.snode_current)
             return b_OK
