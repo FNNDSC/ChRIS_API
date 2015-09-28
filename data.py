@@ -58,6 +58,44 @@ class data(object):
             +--- plugins
     """
 
+    _dict_plugin = {
+        'mri_convert' : {
+            'name':         'mri_convert',
+            'args':         {
+                                'convertTo':    'nii, mgh, img'
+                            }
+            'executable':   'mri_convert',
+            'resultTree':   'dataTree_convert'
+        },
+        'recon-all' : {
+            'name':         'recon-all',
+            'args':         {
+                'arg1':     'val1',
+                'arg2':     'val2'
+            }
+            'executable':   'recon-all',
+            'resultTree':   'dataTree_recon-all'
+        },
+        'zip' : {
+            'name':         'zip',
+            'args':         {
+                'arg1':     'val1',
+                'arg2':     'val2'
+            }
+            'executable':   'zip',
+            'resultTree':   'dataTree_convert'
+        },
+        'tractography' : {
+            'name':         'tractography',
+            'args':         {
+                'arg1':     'val1',
+                'arg2':     'val2'
+            }
+            'executable':   'dtk',
+            'resultTree':   'dataTree_tractography'
+        }
+    }
+
     __metaclass__   = abc.ABCMeta
 
     def __init__(self, **kwargs):
@@ -90,7 +128,8 @@ class data(object):
 
         str_path            = '/contents'
         str_data            = 'PACSPull'
-        convertFrom         = None
+        ft_convertFrom      = None
+        str_convertTo       = ''
         SeriesFilesCount    = 3
         dataTree            = None
         for key,val in kwargs.iteritems():
@@ -104,16 +143,24 @@ class data(object):
 
         if s.cd(str_path)['status']:
             s.mknode(['dataView', 'fileView', 'plugin'])
+            s.cd('plugin')
             if str_data.lower() == 'pacspull':
                 dataTree = self.dataTree_PACSPull_build(
                                 SeriesFilesCount   = SeriesFilesCount
                             )
-                s.cd('/dataView')
-                s.graft(dataTree, '/files')
-                s.cd('/fileView')
-                s.graft(dataTree, '/files')
-            else:
-                if convertFrom and len(convertTo)
+            if ft_convertFrom and len(convertTo):
+                dataTree = self.dataTree_mriConvert_build(
+                    PACSPullTree    = ft_convertFrom,
+                    convertTo       = str_convertTo
+                )
+            if str_data.lower() == 'mri_convert':
+                dataTree    = self.dataTree_recon-all()
+            if str_data.lower() == 'tractography':
+                dataTree    = self.dataTree_tractography()
+            s.cd('/dataView')
+            s.graft(dataTree, '/files')
+            s.cd('/fileView')
+            s.graft(dataTree, '/files')
 
     def dataComponent_pluginBuild(self, **kwargs):
         """
@@ -121,7 +168,7 @@ class data(object):
         :param kwargs: 'path'=<path>
         :return:
         """
-        str_path            = '/contents'
+        str_path            = '/contents/plugin'
         str_selected        = 'mri_convert'
         for key,val in kwargs.iteritems():
             if key == 'path':               str_path            = val
@@ -130,13 +177,60 @@ class data(object):
         s = self.stree
 
         if s.cd(str_path)['status']:
-            if not s.cd('list_pluginRunFromHere')['status']:
-                s.mknode(['list_pluginRunFromHere'])
+            self.pluginList_withinFeed()
+
+    def pluginList_withinFeed(self, **kwargs):
+        """
+        Creates the "available" directory in the plugin directory within
+        the larger feed hierarchy.
+
+        This contains a list-ordered sub-tree, each with a plugin descriptor
+        dictionary.
+
+
+        :return:
+        """
+
+        str_path    = '/contents/plugin'
+        for key,val in kwargs.iteritems():
+            if key == 'path':           str_path        = val
+
+        s = self.tree
+
+        if s.cd(str_path)['status']:
+            s.mkcd('available')
+            s.mknode(data._dict_plugin.keys())
+            for node in s.lstr_lsnode():
+                s.cd(node)
+                s.touch('detail', data._dict_plugin[node])
+                s.cd('../')
+
+    def dataComponent_pluginRun(self, **kwargs):
+        """
+        'Run' a few fake plugins.
+        :param kwargs: 'path'=<path>
+        :return:
+        """
+        str_path            = '/contents/plugin'
+        str_selected        = 'mri_convert'
+        for key,val in kwargs.iteritems():
+            if key == 'path':               str_path            = val
+            if key == 'selected':           str_selected        = val
+
+        s = self.stree
+
+        if s.cd(str_path)['status']:
             rand_date       = self.fake.date_time_this_decade()
             str_timestamp   = rand_date.isoformat()
             s.mkcd(str_timestamp)
+            s.touch('detail', data._dict_plugin[str_selected])
             s.mknode(['parameters', 'results'])
-            s.touch('name', str_selected)
+            s.touch('parameters/input', {
+                'input':    '<some dictionary of all input parameters>'
+            })
+            s.cd('results')
+
+
 
     def dataTree_mriConvert_build(self, **kwargs):
         """
