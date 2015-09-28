@@ -109,6 +109,40 @@ class dataTree_convert(dataTree):
             f.cd('../')
             p.cd('../')
 
+class dataTree_tractography(dataTree):
+    """
+    Sub-class emulating a tractography set of results
+    """
+    def __init__(self, **kwargs):
+        dataTree.__init__(self, **kwargs)
+
+        f = self.FS
+        f.cd('/')
+        f.mkcd('files')
+        f.mknode(['DIFFUSION_input', 'log', 'diffusionProcess', 'tract_meta-stage-2-dcm2trk.bash'])
+        f.cd('tract_meta-stage-2-dcm2trk.bash')
+        f.mknode([  'final-trackvis',
+                    'stage-1-mri_convert',
+                    'stage-2-eddy_correct',
+                    'stage-3-dti_recon',
+                    'stage-4-dti_tracker',
+                    'stage-5-spline_filter'])
+        self.FS.tree_metaData_print(False)
+
+class dataTree_recon-all(dataTree):
+    """
+    Sub-class emulating a recon-all set of results
+    """
+    def __init__(self, **kwargs):
+        dataTree.__init__(self, **kwargs)
+
+        f = self.FS
+        f.cd('/')
+        f.mkcd('files')
+        f.mknode(['surf', 'stats', 'bem', 'label', 'mri', 'src', 'tmp', 'touch', 'trash'])
+
+        self.FS.tree_metaData_print(False)
+
 class dataTree_PACSPull(dataTree):
     """
     Sub-class emulating PACS_pull trees.
