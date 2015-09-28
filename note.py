@@ -26,6 +26,8 @@ import  os
 import  sys
 
 import  argparse
+import  C_snode
+import  message
 
 sys.path.append('components/rikeripsum/rikeripsum')
 sys.path.append('components/names')
@@ -39,9 +41,40 @@ class note(object):
 
     __metaclass__   = abc.ABCMeta
 
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
+
     def __init__(self, **kwargs):
 
-        self.contents   = ""
+        self.contents           = C_snode.C_stree()
+
+        self.debug              = message.Message(logTo = './debug.log')
+        self.debug._b_syslog    = True
+        self._log               = message.Message()
+        self._log._b_syslog     = True
+        self.__name             = "note"
+
+        self.contents.cd('/')
+        self.contents.mkcd('contents')
 
     def contents_rikeripsumBuild(self, **kwargs):
         """
@@ -59,11 +92,12 @@ class note(object):
             str_p                   += rikeripsum.generate_paragraph()
             str_p                   += "\n"
 
-        self.contents = {'body':    str_p}
+        self.contents.cd('/contents')
+        self.contents.touch('body', str_p)
 
 
     def __iter__(self):
-        yield('note', self.contents)
+        yield(self.contents)
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])

@@ -27,6 +27,9 @@ import  sys
 import  datetime
 
 import  argparse
+import  C_snode
+import  message
+
 
 sys.path.append('components/rikeripsum/rikeripsum')
 sys.path.append('components/names')
@@ -41,9 +44,39 @@ class comment(object):
 
     __metaclass__   = abc.ABCMeta
 
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
     def __init__(self, **kwargs):
 
-        self.contents   = ""
+        self.contents           = C_snode.C_stree()
+
+        self.debug              = message.Message(logTo = './debug.log')
+        self.debug._b_syslog    = True
+        self._log               = message.Message()
+        self._log._b_syslog     = True
+        self.__name             = "note"
+
+        self.contents.cd('/')
+        self.contents.mkcd('contents')
 
     def contents_rikeripsumBuild(self, **kwargs):
         """
@@ -57,19 +90,27 @@ class comment(object):
 
         d_stamp = {}
 
+        self.contents.cd('/contents')
+
         for loop in range(0, conversations):
             now                     = datetime.datetime.today()
             timeStamp               = now.strftime('%Y-%m-%d_%H:%M')
 
-            d_stamp[loop] = {'timestamp': timeStamp,
-                             'fullname': names.get_full_name(),
-                             'comment': rikeripsum.generate_paragraph()}
+            self.contents.mkcd(str(loop))
+            self.contents.touch('timestamp', timeStamp)
+            self.contents.touch('fullname', names.get_full_name())
+            self.contents.touch('comment', rikeripsum.generate_paragraph())
+            self.contents.cd('../')
 
-        self.contents = d_stamp
+            # d_stamp[loop] = {'timestamp': timeStamp,
+            #                  'fullname': names.get_full_name(),
+            #                  'comment': rikeripsum.generate_paragraph()}
+
+        # self.contents = d_stamp
 
 
     def __iter__(self):
-        yield('comments', self.contents)
+        yield(self.contents)
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])

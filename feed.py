@@ -23,6 +23,7 @@ import abc
 import json
 
 import  C_snode
+import  message
 
 import  title
 import  note
@@ -43,6 +44,29 @@ class Feed(object):
 
     """
     __metaclass__   = abc.ABCMeta
+
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
 
     def __init__(self, **kwargs):
         """Example of docstring on the __init__ method.
@@ -65,6 +89,14 @@ class Feed(object):
         """
 
         self._stree             = C_snode.C_stree()
+
+        self.debug              = message.Message(logTo = './debug.log')
+        self.debug._b_syslog    = True
+        self._log               = message.Message()
+        self._log._b_syslog     = True
+        self.__name             = "Feed"
+
+
         self._name              = ""
         self._commentComponent  = {}
         self._dataviewComponet  = []
@@ -180,8 +212,13 @@ class Feed_FS(Feed):
         sample      = title.title()
         sample.contents_rikeripsumBuild(words=10)
 
+        # self.debug("\n%s" % sample.contents)
+
         s.cd(str_root)
-        s.touch('contents', dict(sample))
+        s.graft(sample.contents, '/contents')
+
+        return(dict(sample.contents))
+
 
     def noteElement_create(self, **kwargs):
         """
@@ -201,7 +238,9 @@ class Feed_FS(Feed):
         sample.contents_rikeripsumBuild(paragraphs=paragraphs)
 
         s.cd(str_root)
-        s.touch('contents', dict(sample))
+        s.graft(sample.contents, '/contents')
+
+        return(dict(sample.contents))
 
     def commentElement_create(self, **kwargs):
         """
@@ -221,9 +260,9 @@ class Feed_FS(Feed):
         sample.contents_rikeripsumBuild(conversations=conversations)
 
         s.cd(str_root)
-        s.touch('contents', dict(sample))
+        s.graft(sample.contents, '/contents')
 
-        return(dict(sample))
+        return(dict(sample.contents))
 
     def create(self, **kwargs):
         """Create a new feed.
