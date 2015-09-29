@@ -63,7 +63,7 @@ class data(object):
             'name':         'mri_convert',
             'args':         {
                                 'convertTo':    'nii, mgh, img'
-                            }
+                            },
             'executable':   'mri_convert',
             'resultTree':   'dataTree_convert'
         },
@@ -72,7 +72,7 @@ class data(object):
             'args':         {
                 'arg1':     'val1',
                 'arg2':     'val2'
-            }
+            },
             'executable':   'recon-all',
             'resultTree':   'dataTree_recon-all'
         },
@@ -81,7 +81,7 @@ class data(object):
             'args':         {
                 'arg1':     'val1',
                 'arg2':     'val2'
-            }
+            },
             'executable':   'zip',
             'resultTree':   'dataTree_convert'
         },
@@ -90,7 +90,7 @@ class data(object):
             'args':         {
                 'arg1':     'val1',
                 'arg2':     'val2'
-            }
+            },
             'executable':   'dtk',
             'resultTree':   'dataTree_tractography'
         }
@@ -127,14 +127,14 @@ class data(object):
         """
 
         str_path            = '/contents'
-        str_data            = 'PACSPull'
+        str_plugin          = 'PACSPull'
         ft_convertFrom      = None
         str_convertTo       = ''
         SeriesFilesCount    = 3
         dataTree            = None
         for key,val in kwargs.iteritems():
             if key == 'path':               str_path            = val
-            if key == 'data':               str_data            = val
+            if key == 'plugin':             str_plugin          = val
             if key == 'tree_convertFrom':   ft_convertFrom      = val
             if key == 'type_convertTo':     str_convertTo       = val
             if key == 'SeriesFilesCount':   SeriesFilesCount    = val
@@ -144,22 +144,23 @@ class data(object):
         if s.cd(str_path)['status']:
             s.mknode(['dataView', 'fileView', 'plugin'])
             s.cd('plugin')
-            if str_data.lower() == 'pacspull':
+            if str_plugin.lower() == 'pacspull':
                 dataTree = self.dataTree_PACSPull_build(
                                 SeriesFilesCount   = SeriesFilesCount
                             )
-            if ft_convertFrom and len(convertTo):
-                dataTree = self.dataTree_mriConvert_build(
-                    PACSPullTree    = ft_convertFrom,
-                    convertTo       = str_convertTo
-                )
-            if str_data.lower() == 'mri_convert':
+            if str_plugin.lower == 'mri_conver':
+                if ft_convertFrom and len(str_convertTo):
+                    dataTree = self.dataTree_mriConvert_build(
+                        PACSPullTree    = ft_convertFrom,
+                        convertTo       = str_convertTo
+                    )
+            if str_plugin.lower() == 'recon-all':
                 dataTree    = self.dataTree_recon-all()
-            if str_data.lower() == 'tractography':
+            if str_plugin.lower() == 'tractography':
                 dataTree    = self.dataTree_tractography()
-            s.cd('/dataView')
+            s.cd('dataView')
             s.graft(dataTree, '/files')
-            s.cd('/fileView')
+            s.cd('fileView')
             s.graft(dataTree, '/files')
 
     def dataComponent_pluginBuild(self, **kwargs):
@@ -212,10 +213,10 @@ class data(object):
         :return:
         """
         str_path            = '/contents/plugin'
-        str_selected        = 'mri_convert'
+        str_plugin          = 'mri_convert'
         for key,val in kwargs.iteritems():
             if key == 'path':               str_path            = val
-            if key == 'selected':           str_selected        = val
+            if key == 'plugin':             str_plugin          = val
 
         s = self.stree
 
@@ -223,12 +224,24 @@ class data(object):
             rand_date       = self.fake.date_time_this_decade()
             str_timestamp   = rand_date.isoformat()
             s.mkcd(str_timestamp)
-            s.touch('detail', data._dict_plugin[str_selected])
+            s.touch('detail', data._dict_plugin[str_plugin])
             s.mknode(['parameters', 'results'])
             s.touch('parameters/input', {
                 'input':    '<some dictionary of all input parameters>'
             })
             s.cd('results')
+            if str_plugin.lower() != 'pacspull' and str_plugin.lower() != 'mri_convert':
+                self.dataComponent_build(
+                    path    = s.cwd(),
+                    plugin  = str_plugin
+                )
+            if str_plugin.lower() == 'mri_convert':
+                self.dataComponent_build(
+                    path    = s.cwd(),
+                    plugin  = str_plugin,
+                    treeConvertFrom = s.
+                )
+
 
 
 
