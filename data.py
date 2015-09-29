@@ -148,7 +148,7 @@ class data(object):
                 dataTree = self.dataTree_PACSPull_build(
                                 SeriesFilesCount   = SeriesFilesCount
                             )
-            if str_plugin.lower == 'mri_conver':
+            if str_plugin.lower == 'mri_convert':
                 if ft_convertFrom and len(str_convertTo):
                     dataTree = self.dataTree_mriConvert_build(
                         PACSPullTree    = ft_convertFrom,
@@ -212,15 +212,18 @@ class data(object):
         :param kwargs: 'path'=<path>
         :return:
         """
-        str_path            = '/contents/plugin'
+        str_outputPath      = '/contents/plugin'
+        str_inputPath       = '/contents/dataView/files'
+
         str_plugin          = 'mri_convert'
         for key,val in kwargs.iteritems():
-            if key == 'path':               str_path            = val
             if key == 'plugin':             str_plugin          = val
+            if key == 'inputPath':          str_inputPath       = val
+            if key == 'outputPath':         str_outputPath      = val
 
         s = self.stree
 
-        if s.cd(str_path)['status']:
+        if s.cd(str_outputPath)['status']:
             rand_date       = self.fake.date_time_this_decade()
             str_timestamp   = rand_date.isoformat()
             s.mkcd(str_timestamp)
@@ -236,13 +239,13 @@ class data(object):
                     plugin  = str_plugin
                 )
             if str_plugin.lower() == 'mri_convert':
+                inputTree   = C_snode.stree()
+
                 self.dataComponent_build(
                     path    = s.cwd(),
                     plugin  = str_plugin,
                     treeConvertFrom = s.
                 )
-
-
 
 
     def dataTree_mriConvert_build(self, **kwargs):
