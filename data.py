@@ -240,11 +240,14 @@ class data(object):
                 )
             if str_plugin.lower() == 'mri_convert':
                 inputTree   = C_snode.stree()
+                inputTree.cd('/')
+                inputTree.graft(s, str_inputPath)
 
                 self.dataComponent_build(
-                    path    = s.cwd(),
-                    plugin  = str_plugin,
-                    treeConvertFrom = s.
+                    path                = s.cwd(),
+                    plugin              = str_plugin,
+                    tree_convertFrom    = inputTree,
+                    type_convertTo      = "nii"
                 )
 
 
