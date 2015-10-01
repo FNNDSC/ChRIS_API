@@ -269,6 +269,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print("***********************************************")
         print(Colors.LIGHT_GREEN + json.dumps(str_reply) + Colors.NO_COLOUR)
         print("***********************************************")
+        print("Received %d bytes." % sys.getsizeof(str_reply))
         print("***********************************************")
         try:
             self.request.sendall(self.HTTPresponse_sendClient(json.dumps(str_reply),
