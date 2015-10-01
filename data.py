@@ -100,12 +100,44 @@ class data(object):
 
     def __init__(self, **kwargs):
 
-        self.contents   = ""
-        self.tree       = C_snode.C_stree
-        self.tree.cd('/')
-        self.tree.mknode(['contents'])
+        self.contents   = C_snode.C_stree()
+        self.contents.cd('/')
+        self.contents.mknode(['contents'])
         self.fake       = faker.Faker()
 
+
+    def contents_build_1(self, **kwargs):
+        """
+        Main entry point to constructing a data element.
+
+        Build option "1".
+
+        :param kwargs:
+        :return:
+        """
+
+        SeriesFilesCount    = 10
+        for key,val in kwargs.iteritems():
+            if key == 'SeriesFilesCount':   SeriesFilesCount    = val
+
+        # First, build a PACS_pull tree
+        self.dataComponent_build(
+            path                = '/contents',
+            plugin              = 'PACSPull',
+            SeriesFilesCount    = SeriesFilesCount
+        )
+
+        self.dataComponent_pluginBuild(
+            path                = '/contents/plugin'
+        )
+
+
+        # Now "run" an mri_convert to nifi
+        self.dataComponent_pluginRun(
+            inputPath           = '/contents/dataView/files',
+            outputPath          = '/contents/plugin/run',
+            plugin              = 'mri_convert'
+        )
 
     def dataComponent_build(self, **kwargs):
         """
@@ -139,29 +171,31 @@ class data(object):
             if key == 'type_convertTo':     str_convertTo       = val
             if key == 'SeriesFilesCount':   SeriesFilesCount    = val
 
-        s = self.stree
+        s = self.contents
 
         if s.cd(str_path)['status']:
             s.mknode(['dataView', 'fileView', 'plugin'])
-            s.cd('plugin')
             if str_plugin.lower() == 'pacspull':
                 dataTree = self.dataTree_PACSPull_build(
                                 SeriesFilesCount   = SeriesFilesCount
                             )
-            if str_plugin.lower == 'mri_convert':
+            # print(dataTree)
+            if str_plugin.lower() == 'mri_convert':
                 if ft_convertFrom and len(str_convertTo):
                     dataTree = self.dataTree_mriConvert_build(
                         PACSPullTree    = ft_convertFrom,
                         convertTo       = str_convertTo
                     )
             if str_plugin.lower() == 'recon-all':
-                dataTree    = self.dataTree_recon-all()
+                dataTree    = self.dataTree_reconall()
             if str_plugin.lower() == 'tractography':
                 dataTree    = self.dataTree_tractography()
             s.cd('dataView')
             s.graft(dataTree, '/files')
-            s.cd('fileView')
+            s.cd('../fileView')
             s.graft(dataTree, '/files')
+            s.cd('/')
+            s.tree_metaData_print(False)
 
     def dataComponent_pluginBuild(self, **kwargs):
         """
@@ -170,12 +204,10 @@ class data(object):
         :return:
         """
         str_path            = '/contents/plugin'
-        str_selected        = 'mri_convert'
         for key,val in kwargs.iteritems():
             if key == 'path':               str_path            = val
-            if key == 'selected':           str_selected        = val
 
-        s = self.stree
+        s = self.contents
 
         if s.cd(str_path)['status']:
             self.pluginList_withinFeed()
@@ -196,7 +228,7 @@ class data(object):
         for key,val in kwargs.iteritems():
             if key == 'path':           str_path        = val
 
-        s = self.tree
+        s = self.contents
 
         if s.cd(str_path)['status']:
             s.mkcd('available')
@@ -205,6 +237,8 @@ class data(object):
                 s.cd(node)
                 s.touch('detail', data._dict_plugin[node])
                 s.cd('../')
+            s.cd(str_path)
+            s.mkcd('run')
 
     def dataComponent_pluginRun(self, **kwargs):
         """
@@ -221,35 +255,38 @@ class data(object):
             if key == 'inputPath':          str_inputPath       = val
             if key == 'outputPath':         str_outputPath      = val
 
-        s = self.stree
+        s = self.contents
 
         if s.cd(str_outputPath)['status']:
             rand_date       = self.fake.date_time_this_decade()
             str_timestamp   = rand_date.isoformat()
-            s.mkcd(str_timestamp)
+            l_run           = s.lstr_lsnode()
+            str_newRun      = str(len(l_run))
+            s.mkcd(str_newRun)
+            s.touch('timestamp', str_timestamp)
             s.touch('detail', data._dict_plugin[str_plugin])
             s.mknode(['parameters', 'results'])
             s.touch('parameters/input', {
                 'input':    '<some dictionary of all input parameters>'
             })
             s.cd('results')
+            str_outputPath = s.cwd()
             if str_plugin.lower() != 'pacspull' and str_plugin.lower() != 'mri_convert':
                 self.dataComponent_build(
                     path    = s.cwd(),
                     plugin  = str_plugin
                 )
             if str_plugin.lower() == 'mri_convert':
-                inputTree   = C_snode.stree()
+                inputTree   = C_snode.C_stree()
                 inputTree.cd('/')
                 inputTree.graft(s, str_inputPath)
 
                 self.dataComponent_build(
-                    path                = s.cwd(),
+                    path                = str_outputPath,
                     plugin              = str_plugin,
                     tree_convertFrom    = inputTree,
                     type_convertTo      = "nii"
                 )
-
 
     def dataTree_mriConvert_build(self, **kwargs):
         """
@@ -271,7 +308,7 @@ class data(object):
             convertTo       = str_extension
         )
 
-        return ft_converted
+        return ft_converted.FS
 
     def dataTree_PACSPull_build(self, **kwargs):
         """
@@ -286,46 +323,11 @@ class data(object):
 
         ft_PACSPull         = dataTree.dataTree_PACSPull(SeriesFilesCount = SeriesFilesCount)
 
-        ft_dataView00   = dataTree.dataTree_convert(
-            PACSPullTree    = ft_PACSPull.FS,
-            convertTo       = 'nii'
-        )
-        ft_dataView01   = dataTree.dataTree_convert(
-            PACSPullTree    = ft_PACSPull.FS,
-            convertTo       = 'mgz'
-        )
-
-        s           = self.tree
-
-        # print(ft_dataView.FS)
-        # print(ft_dataView2.FS)
-        # sys.exit(0)
-
-        s.mknode(['dataView', 'fileView', 'plugin'])
-        for node in ft_dataView.FS.lstr_lsnode('/'):
-            s.cd('/dataView')
-            s.graft(ft_dataView.FS, '/' + node)
-            s.cd('/fileView')
-            s.graft(ft_dataView.FS, '/' + node)
-
-        s.cd('/plugin')
-        s.mknode(['0', '1'])
-        for node in ft_dataView00.FS.lstr_lsnode('/'):
-            s.cd('/plugin/0')
-            s.graft(ft_dataView00.FS, '/' + node)
-        for node in ft_dataView01.FS.lstr_lsnode('/'):
-            s.cd('/plugin/1')
-            s.graft(ft_dataView01.FS, '/' + node)
-        s.tree_metaData_print(False)
-
-        print(s.l_allPaths)
-        print(s.pathFromHere_explore('/'))
-        print(s)
-        self.contents = {'tree':    self.tree}
         return ft_PACSPull.FS
 
+
     def __iter__(self):
-        yield('data', dict(self.tree.snode_root))
+        yield(self.contents)
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
@@ -371,8 +373,8 @@ if __name__ == "__main__":
     args        = parser.parse_args()
 
     container   = data()
-    container.contents_build(SeriesFilesCount = args.SeriesFilesCount)
+    container.contents_build_1(SeriesFilesCount = args.SeriesFilesCount)
 
-    # print(container.tree)
+    print(container.contents)
     # print(json.dumps(dict(container)))
 
