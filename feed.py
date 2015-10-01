@@ -28,6 +28,7 @@ import  message
 import  title
 import  note
 import  comment
+import  data
 import  plugin
 
 class Feed(object):
@@ -188,12 +189,21 @@ class Feed_FS(Feed):
         :param kwargs: 'root' = <location>
         :return:
         """
-        s = self._stree
+        s                   = self._stree
+        SeriesFilesCount    = 3
         str_root    = '/'
         for key, val in kwargs.iteritems():
-            if key == 'root':   str_root    = val
+            if key == 'root':               str_root            = val
+            if key == 'SeriesFilesCount':   SeriesFilesCount    = val
+
+        sample      = data.data()
+        sample.contents_build_1(SeriesFilesCount = SeriesFilesCount)
+
         s.cd(str_root)
-        s.mknode(['visualView', 'fileView'])
+        s.graft(sample.contents, '/contents')
+        # s.mknode(['visualView', 'fileView'])
+
+        return(dict(sample.contents))
 
     def titleElement_create(self, **kwargs):
         """
@@ -210,7 +220,7 @@ class Feed_FS(Feed):
             if key == 'words':  words       = val
 
         sample      = title.title()
-        sample.contents_rikeripsumBuild(words=10)
+        sample.contents_rikeripsumBuild(words = words)
 
         # self.debug("\n%s" % sample.contents)
 
