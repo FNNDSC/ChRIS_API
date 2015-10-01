@@ -615,7 +615,9 @@ class C_stree:
 
             # Update internal space of possible paths.
             self.cd('../')
+            str_cwd = self.cwd()
             self.pathFromHere_explore(self.cwd())
+            self.cd(str_cwd)
 
         def touch(self, name, data):
             '''
@@ -624,7 +626,8 @@ class C_stree:
 
             The 'name' can contain a path specifier.
             '''
-            b_OK = True
+            b_OK        = True
+            str_here    = self.cwd()
             # print("here!")
             # print(self.snode_current)
             # print(self.snode_current.d_nodes)
@@ -634,6 +637,7 @@ class C_stree:
             name = l_path[-1]
             self.snode_current.d_data[name] = data
             # print(self.snode_current)
+            self.cd(str_here)
             return b_OK
 
         def append(self, name, data):
