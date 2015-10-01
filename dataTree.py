@@ -129,7 +129,7 @@ class dataTree_tractography(dataTree):
                     'stage-5-spline_filter'])
         self.FS.tree_metaData_print(False)
 
-class dataTree_recon-all(dataTree):
+class dataTree_reconall(dataTree):
     """
     Sub-class emulating a recon-all set of results
     """
