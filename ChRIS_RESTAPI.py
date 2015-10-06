@@ -55,6 +55,8 @@ import  ChRIS_SM
 import  serverInfo
 import  json
 
+import  inspect
+
 import  crun
 import  SocketServer
 import  argparse
@@ -154,11 +156,16 @@ class ChRIS_RESTAPI(object):
         :param kwargs:
         :return:
         '''
-        # print("In __call__")
+
+        currentFrame    = inspect.currentframe()
+        callerFrame     = inspect.getouterframes(currentFrame, 2)
+
+        self.debug("In REST __call__\n%s" % (callerFrame))
         for key,val in kwargs.iteritems():
             if key == 'APIcall':    self._str_apiCall   = val
         if self._str_apiCall    == "<void>": error.fatal(self, 'no_apiCall')
         # print(self._str_apiCall)
+        self.debug('Calling REST on "%s"...\n' % self._str_apiCall)
         self.d_return = self.parseCurrentCall(authmodule = self.auth)
         return(self.d_return)
 
