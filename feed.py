@@ -305,9 +305,9 @@ class Feed_FS(Feed):
         s = self._stree
         s.cd('/')
         s.mknode(['title', 'note', 'data', 'comment'])
-        self.log('Voor!')
-        self.log(s)
-        self.log('Agter!')
+        # self.log('Voor!')
+        # self.log(s)
+        # self.log('Agter!')
         self.titleElement_create(   root='/title',      words=10)
         self.noteElement_create(    root='/note',       paragraphs=4)
         self.commentElement_create( root='/comment',    conversations=7)
@@ -519,7 +519,7 @@ class FeedTree(object):
             if key == 'schema':         str_schema          = val
 
         # First get the feed itself from the tree of Feeds...
-        F = self._feedTree
+        F               = self._feedTree
         ret_status      = False
         ret_feed        = {}
         str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_searchTarget)
@@ -532,40 +532,42 @@ class FeedTree(object):
             ret_payload = ret_feeds['payload']
         else:
             self.feed   = C_snode.C_stree()
+            s           = self.feed
             if str_searchType.lower() == 'name':
                 if F.cd(str_searchTarget):
                     # self.feed   = f.cat('Feed')
-                    self.feed.graft(F, '/feeds/%s/title' % F.cwd())
-                    self.feed.graft(F, '/feeds/%s/note' % F.cwd())
+                    s.graft(F, '/feeds/%s/title' % F.cwd())
+                    s.graft(F, '/feeds/%s/note' % F.cwd())
                     # self.feed.graft(F, '/feeds/%s/data' % F.cwd())
                     # self.feed.graft(F, '/feeds/%s/comments' % F.cwd())
                     ret_status  = True
-                    self.debug(self.feed)
-                    ret_feed    = self.feed
-                    if b_returnAsDict: ret_feed = dict(ret_feed)
+                    # self.debug(s)
+                    ret_feed    = s
+                    s.metaData_print(False)
+                    if b_returnAsDict:
+                        # self.debug(type(s))
+                        # self.debug(s)
+                        ret_feed = dict(ret_feed)
             if str_searchType.lower() == 'id':
                 for feedNode in f.lstr_lsnode('/'):
                     F.cd('/feeds/%s' % feedNode)
                     if str_searchTarget == F.cat('ID'):
                         ret_status  = True
                         # self.feed   = F.cat('Feed')
-                        self.feed.graft(F, '/feeds/%s' % F.cwd())
-                        ret_feed    = self.feed
+                        s.graft(F, '/feeds/%s' % F.cwd())
+                        ret_feed    = s
                         if b_returnAsDict: ret_feed = dict(ret_feed)
                         break
 
             # self.feed._stree.cd('/')
-            self.feed.cd('/')
-            self.debug(str_pathInFeed)
-            self.debug(self.feed)
             # and now, check for any paths in the tree of this Feed
             if len(str_pathInFeed):
                 # ret         = self.feed._stree.cd(str_pathInFeed)
-                ret         = self.feed.cd(str_pathInFeed)
+                ret         = s.cd(str_pathInFeed)
                 ret_status  = ret['status']
                 ret_path    = ret['path']
                 # ret_feed    = self.feed._stree.snode_current
-                ret_feed    = self.feed.snode_current
+                ret_feed    = s
                 if b_returnAsDict: ret_feed = dict(ret_feed)
             ret_payload     = ret_feed
             l_URL_get       = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
@@ -593,15 +595,15 @@ class FeedTree_chrisUser(FeedTree):
         :return:
         '''
         FeedTree.__init__(self, **kwargs)
-        f       = self._feedTree
+        F       = self._feedTree
         l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
         l_FID   = ['000001', '000002', '000003', '000004']
-        f.cd('/')
-        f.mkcd('feeds')
-        f.mknode(l_Feed)
+        F.cd('/')
+        F.mkcd('feeds')
+        F.mknode(l_Feed)
         for node, id in zip(l_Feed, l_FID):
-            f.cd('/feeds/%s' % node)
-            f.touch("ID", id)
+            F.cd('/feeds/%s' % node)
+            F.touch("ID", id)
             # self.debug(f)
             singleFeed  = Feed_FS(
                 name    = node,
@@ -609,16 +611,18 @@ class FeedTree_chrisUser(FeedTree):
             )
             s = singleFeed._stree
             # self.debug(s)
-            f.graft(s, '/note')
+            F.graft(s, '/note')
             # f.graft(s, '/comment')
-            f.graft(s, '/title')
+            F.graft(s, '/title')
             # f.graft(s, '/data')
             # f.touch("Feed", Feed_FS(
             #                     name    = node,
             #                     id      = id
             #         ))
-        self.debug(f)
-        f.cd('/feeds')
+        F.cd('/feeds')
+        F.metaData_print(False)
+        self.debug(F)
+        sys.exit(0)
 
 if __name__ == "__main__":
     feed    = Feed_FS()
