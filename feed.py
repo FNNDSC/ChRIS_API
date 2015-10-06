@@ -19,8 +19,9 @@ This module implements a server side feed controller/model.
 
 """
 
-import abc
-import json
+import  abc
+import  json
+import  sys
 
 import  C_snode
 import  message
@@ -97,12 +98,7 @@ class Feed(object):
         self._log._b_syslog     = True
         self.__name             = "Feed"
 
-
         self._name              = ""
-        self._commentComponent  = {}
-        self._dataviewComponet  = []
-        self._noteComponent     = {}
-        self._dateComponent     = []
 
     def __iter__(self):
         yield('Feed', dict(self._stree.snode_root))
@@ -159,28 +155,28 @@ class Feed_FS(Feed):
         Feed.__init__(self, **kwargs)
         self.create(**kwargs)
 
-    def pluginElement_create(self, **kwargs):
-        """
-        Creates the 'plugin' element container -- it must be the direct child of
-        a 'data' element container.
-
-        :param kwargs: 'root' = <location>
-        :return:
-        """
-        s = self._stree
-        l_selected = ['selected-0', 'selected-1']
-        str_root = '/data'
-        for key, val in kwargs.iteritems():
-            if key == 'root': str_root = val
-        s.cd(str_root)
-        s.mkcd('plugin')
-        s.touch('contents', '<pluginList>')
-        s.touch('treeInfo', l_selected)
-        for select in l_selected:
-            s.mkcd(select)
-            s.touch('contents', '<pluginData>')
-            s.mkcd('data')
-            s.cd('../../')
+    # def pluginElement_create(self, **kwargs):
+    #     """
+    #     Creates the 'plugin' element container -- it must be the direct child of
+    #     a 'data' element container.
+    #
+    #     :param kwargs: 'root' = <location>
+    #     :return:
+    #     """
+    #     s = self._stree
+    #     l_selected = ['selected-0', 'selected-1']
+    #     str_root = '/data'
+    #     for key, val in kwargs.iteritems():
+    #         if key == 'root': str_root = val
+    #     s.cd(str_root)
+    #     s.mkcd('plugin')
+    #     s.touch('contents', '<pluginList>')
+    #     s.touch('treeInfo', l_selected)
+    #     for select in l_selected:
+    #         s.mkcd(select)
+    #         s.touch('contents', '<pluginData>')
+    #         s.mkcd('data')
+    #         s.cd('../../')
 
     def dataElement_create(self, **kwargs):
         """
@@ -299,20 +295,24 @@ class Feed_FS(Feed):
 
         """
 
-        str_id      = ''
-        str_name    = ''
-
-        for key, value in kwargs.iteritems():
-            if key == 'name':   str_name    = value
-            if key == 'id':     str_id      = value
+        # str_id      = ''
+        # str_name    = ''
+        #
+        # for key, value in kwargs.iteritems():
+        #     if key == 'name':   str_name    = value
+        #     if key == 'id':     str_id      = value
 
         s = self._stree
+        s.cd('/')
         s.mknode(['title', 'note', 'data', 'comment'])
+        self.log('Voor!')
+        self.log(s)
+        self.log('Agter!')
         self.titleElement_create(   root='/title',      words=10)
         self.noteElement_create(    root='/note',       paragraphs=4)
         self.commentElement_create( root='/comment',    conversations=7)
         self.dataElement_create(    root='/data')
-        self.pluginElement_create(  root='/data')
+        # self.pluginElement_create(  root='/data')
 
 
 class FeedTree(object):
@@ -321,13 +321,39 @@ class FeedTree(object):
     search.
     '''
 
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
     def __init__(self, **kwargs):
         '''Construct a tree -- typically there is one tree per user
 
         '''
-        self._feedTree  = C_snode.C_stree()
-        self.feed       = None
-        self.plugin     = plugin.Plugin_homePage()
+        self._feedTree          = C_snode.C_stree()
+        self.feed               = C_snode.C_stree()
+        self.plugin             = plugin.Plugin_homePage()
+        self.debug              = message.Message(logTo = './debug.log')
+        self.debug._b_syslog    = True
+        self._log               = message.Message()
+        self._log._b_syslog     = True
+        self.__name             = "FeedTree"
 
     def feed_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
@@ -385,7 +411,8 @@ class FeedTree(object):
         for key,val in kwargs.iteritems():
             if key == 'feedSpec':   feedSpec    = val
             if key == 'path':       str_path    = val
-        f           = self.feed._stree
+        # f           = self.feed._stree
+        f           = self.feed
         f.cd(str_path)
         str_path    = f.cwd()
         if str_path == '/': str_path = ''
@@ -492,8 +519,7 @@ class FeedTree(object):
             if key == 'schema':         str_schema          = val
 
         # First get the feed itself from the tree of Feeds...
-        f = self._feedTree
-        f.cd('/')
+        F = self._feedTree
         ret_status      = False
         ret_feed        = {}
         str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_searchTarget)
@@ -505,29 +531,41 @@ class FeedTree(object):
             l_URL_get   = ret_feeds['URL_GET']
             ret_payload = ret_feeds['payload']
         else:
+            self.feed   = C_snode.C_stree()
             if str_searchType.lower() == 'name':
-                if f.cd(str_searchTarget):
-                    self.feed   = f.cat('Feed')
+                if F.cd(str_searchTarget):
+                    # self.feed   = f.cat('Feed')
+                    self.feed.graft(F, '/feeds/%s/title' % F.cwd())
+                    self.feed.graft(F, '/feeds/%s/note' % F.cwd())
+                    # self.feed.graft(F, '/feeds/%s/data' % F.cwd())
+                    # self.feed.graft(F, '/feeds/%s/comments' % F.cwd())
                     ret_status  = True
+                    self.debug(self.feed)
                     ret_feed    = self.feed
                     if b_returnAsDict: ret_feed = dict(ret_feed)
             if str_searchType.lower() == 'id':
                 for feedNode in f.lstr_lsnode('/'):
-                    f.cd('/%s' % feedNode)
-                    if str_searchTarget == f.cat('ID'):
+                    F.cd('/feeds/%s' % feedNode)
+                    if str_searchTarget == F.cat('ID'):
                         ret_status  = True
-                        self.feed   = f.cat('Feed')
+                        # self.feed   = F.cat('Feed')
+                        self.feed.graft(F, '/feeds/%s' % F.cwd())
                         ret_feed    = self.feed
                         if b_returnAsDict: ret_feed = dict(ret_feed)
                         break
 
-            self.feed._stree.cd('/')
+            # self.feed._stree.cd('/')
+            self.feed.cd('/')
+            self.debug(str_pathInFeed)
+            self.debug(self.feed)
             # and now, check for any paths in the tree of this Feed
             if len(str_pathInFeed):
-                ret         = self.feed._stree.cd(str_pathInFeed)
+                # ret         = self.feed._stree.cd(str_pathInFeed)
+                ret         = self.feed.cd(str_pathInFeed)
                 ret_status  = ret['status']
                 ret_path    = ret['path']
-                ret_feed    = self.feed._stree.snode_current
+                # ret_feed    = self.feed._stree.snode_current
+                ret_feed    = self.feed.snode_current
                 if b_returnAsDict: ret_feed = dict(ret_feed)
             ret_payload     = ret_feed
             l_URL_get       = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
@@ -558,14 +596,29 @@ class FeedTree_chrisUser(FeedTree):
         f       = self._feedTree
         l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
         l_FID   = ['000001', '000002', '000003', '000004']
+        f.cd('/')
+        f.mkcd('feeds')
         f.mknode(l_Feed)
         for node, id in zip(l_Feed, l_FID):
-            f.cd('/%s' % node)
+            f.cd('/feeds/%s' % node)
             f.touch("ID", id)
-            f.touch("Feed", Feed_FS(
-                                name    = node,
-                                id      = id
-                    ))
+            # self.debug(f)
+            singleFeed  = Feed_FS(
+                name    = node,
+                id      = id
+            )
+            s = singleFeed._stree
+            # self.debug(s)
+            f.graft(s, '/note')
+            # f.graft(s, '/comment')
+            f.graft(s, '/title')
+            # f.graft(s, '/data')
+            # f.touch("Feed", Feed_FS(
+            #                     name    = node,
+            #                     id      = id
+            #         ))
+        self.debug(f)
+        f.cd('/feeds')
 
 if __name__ == "__main__":
     feed    = Feed_FS()
