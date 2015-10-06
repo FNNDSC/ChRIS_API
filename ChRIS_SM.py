@@ -61,7 +61,8 @@ class ChRIS_SMUserDB(object):
         s.touch("userName",     "chris")
         s.touch("fullName",     "ChRIS User")
         s.touch("passwd",       "chris1234")
-        s.mknode(['feed'])
+        # s.mknode(['feed'])
+        # The 'feeds' node is attached when the user is authenticated.
         s.mkcd('login')
 
     def user_checkAPIcanCall(self, **kwargs):
@@ -145,8 +146,9 @@ class ChRIS_SMUserDB(object):
         if not self._userTree:
             feedTree                = feed.FeedTree_chrisUser()
             # and attach it to the stree of this object
-            self._stree.cd('/users/%s/feed' % astr_user)
-            self._stree.touch('tree', feedTree)
+            self._stree.cd('/users/%s' % astr_user)
+            # self._stree.touch('tree', feedTree)
+            self._stree.graft(feedTree._feedTree, '/')
             self._userTree          = feedTree
 
     def user_logout(self, **kwargs):
