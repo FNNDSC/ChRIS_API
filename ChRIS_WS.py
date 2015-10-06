@@ -227,6 +227,22 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         str_res     = "%s %s" % (str_HTTPpre, str(res))
         return str_res
 
+    def byteSizeReturned(self, nbytes):
+        """
+        Return the <bytes> as a string in human
+        readable format.
+        :param bytes: input size in bytes
+        :return: human readable string
+        """
+        suffixes = ['B', 'kB', 'MB', 'GB', 'TB', 'PB']
+        if nbytes == 0: return '0 B'
+        i = 0
+        while nbytes >= 1024 and i < len(suffixes)-1:
+            nbytes /= 1024.
+            i += 1
+        f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+        return '%s %s' % (f, suffixes[i])
+
     def handle(self):
         str_authority   = ""
         str_raw         = self.request.recv(1024).strip()
@@ -268,8 +284,10 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print("reply from remote service:")
         print("***********************************************")
         print(Colors.LIGHT_GREEN + json.dumps(str_reply) + Colors.NO_COLOUR)
+        bytesReceived = sys.getsizeof(json.dumps(str_reply))
         print("***********************************************")
-        print("Received %d bytes." % sys.getsizeof(json.dumps(str_reply)))
+        print("Received %d bytes (%s)." % \
+              (bytesReceived, self.byteSizeReturned(bytesReceived)))
         print("***********************************************")
         try:
             self.request.sendall(self.HTTPresponse_sendClient(json.dumps(str_reply),
