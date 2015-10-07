@@ -50,11 +50,40 @@ import  serverInfo
 
 class ChRIS_SMUserDB(object):
     """A "DB" of users and passwords.
-
     """
 
+    _dictErr = {
+        'no_userInTree'   : {
+            'action'        : 'attempting to graft the userfeed to main tree, ',
+            'error'         : 'it seems the user is in the main tree.',
+            'exitCode'      : 11}
+    }
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
+
+
     def DB_build(self):
-        s               = self._stree
+        s               = self.DB
         s.cd('/')
         s.mkcd('users')
         s.mkcd('chris')
@@ -100,7 +129,7 @@ class ChRIS_SMUserDB(object):
                       #              user        = astr_user,
                                     **kwargs)
         self.user_attachFeedTree(   user        = astr_user)
-        self.chris.homePage   = self._userTree
+        self.chris.homePage   = self.userFeeds
         return {'status':   b_OK,
                 'code':     0,
                 'message':  str_message}
@@ -108,7 +137,7 @@ class ChRIS_SMUserDB(object):
     def user_getAuthInfo(self, **kwargs):
         """Gets the DB auth info of the user
         """
-        # s                   = self._stree
+        # s                   = self.DB
 
         for key,value in kwargs.iteritems():
             if key == 'user':           str_user            = value.translate(None, '\'\"')
@@ -143,13 +172,17 @@ class ChRIS_SMUserDB(object):
             if key == 'user':   astr_user   = val.translate(None, '\'\"')
         # Get the user's feed tree structure -- we only need to
         # do this *ONCE* per session/replay.
-        if not self._userTree:
+        if not self.userFeeds:
             feedTree                = feed.FeedTree_chrisUser()
             # and attach it to the stree of this object
-            self._stree.cd('/users/%s' % astr_user)
-            # self._stree.touch('tree', feedTree)
-            self._stree.graft(feedTree._feedTree, '/')
-            self._userTree          = feedTree
+            if self.DB.cd('/users/%s' % astr_user)['status']:
+                # self.DB.touch('tree', feedTree)
+                self.DB.graft(feedTree._feedTree, '/feeds')
+                self.userFeeds          = feedTree
+                self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
+            else:
+                error.fatal(self, 'no_userInTree')
+        self.debug('\nEntire DB tree:\n%s' % self.DB)
 
     def user_logout(self, **kwargs):
         """
@@ -196,7 +229,7 @@ class ChRIS_SMUserDB(object):
         for key, val in kwargs.iteritems():
             if key == 'user':   astr_user   = val.translate(None, '\'\"')
             if key == 'passwd': astr_passwd = val.translate(None, '\'\"')
-        s = self._stree
+        s = self.DB
         s.cdnode('/users')
 
         # login/session/canCall structure
@@ -211,7 +244,7 @@ class ChRIS_SMUserDB(object):
         ret['sessionSeed']      = "1"
         ret['APIcanCall']       = False
 
-        s = self._stree
+        s = self.DB
         s.cdnode('/users')
         if not s.cdnode(astr_user):
             ret['loginMessage']     = 'User %s not found in database.' % astr_user
@@ -241,14 +274,24 @@ class ChRIS_SMUserDB(object):
     def __init__(self, **kwargs):
         # This class contains a reference back to the chris parent object that
         # contains this DB
-        self.chris      = None
+        self._str_apiCall               = ""
+        self.debug                      = message.Message(logTo = './debug.log')
+        self.debug._b_syslog            = True
+        self._log                       = message.Message()
+        self._log._b_syslog             = True
+        self.__name                     = "ChRIS_RESTAPI"
+
+        self.chris                      = None
         for key,value in kwargs.iteritems():
-            if key == "chris":  self.chris  = value
-        self.debug              = message.Message(logTo = "./debug.log")
-        self.debug._b_syslog    = True
-        self._md5               = hashlib
-        self._stree             = C_snode.C_stree()
-        self._userTree          = None
+            if key == "chris":
+                self.chris              = value
+        self.debug                      = message.Message(logTo = "./debug.log")
+        self.debug._b_syslog            = True
+        self._md5                       = hashlib
+
+        # The entire DataBase is represented here as a tree
+        self.DB                         = C_snode.C_stree()
+        self.userFeeds                  = None
         self.DB_build()
 
 class ChRIS_SMCore(object):
