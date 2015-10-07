@@ -155,29 +155,6 @@ class Feed_FS(Feed):
         Feed.__init__(self, **kwargs)
         self.create(**kwargs)
 
-    # def pluginElement_create(self, **kwargs):
-    #     """
-    #     Creates the 'plugin' element container -- it must be the direct child of
-    #     a 'data' element container.
-    #
-    #     :param kwargs: 'root' = <location>
-    #     :return:
-    #     """
-    #     s = self._stree
-    #     l_selected = ['selected-0', 'selected-1']
-    #     str_root = '/data'
-    #     for key, val in kwargs.iteritems():
-    #         if key == 'root': str_root = val
-    #     s.cd(str_root)
-    #     s.mkcd('plugin')
-    #     s.touch('contents', '<pluginList>')
-    #     s.touch('treeInfo', l_selected)
-    #     for select in l_selected:
-    #         s.mkcd(select)
-    #         s.touch('contents', '<pluginData>')
-    #         s.mkcd('data')
-    #         s.cd('../../')
-
     def dataElement_create(self, **kwargs):
         """
         Creates the 'data' element container.
@@ -295,25 +272,13 @@ class Feed_FS(Feed):
 
         """
 
-        # str_id      = ''
-        # str_name    = ''
-        #
-        # for key, value in kwargs.iteritems():
-        #     if key == 'name':   str_name    = value
-        #     if key == 'id':     str_id      = value
-
         s = self._stree
         s.cd('/')
         s.mknode(['title', 'note', 'data', 'comment'])
-        # self.log('Voor!')
-        # self.log(s)
-        # self.log('Agter!')
         self.titleElement_create(   root='/title',      words=10)
         self.noteElement_create(    root='/note',       paragraphs=4)
         self.commentElement_create( root='/comment',    conversations=7)
         self.dataElement_create(    root='/data')
-        # self.pluginElement_create(  root='/data')
-
 
 class FeedTree(object):
     '''
@@ -411,7 +376,7 @@ class FeedTree(object):
         for key,val in kwargs.iteritems():
             if key == 'feedSpec':   feedSpec    = val
             if key == 'path':       str_path    = val
-        # f           = self.feed._stree
+        # f           = self.feed.DB
         f           = self.feed
         f.cd(str_path)
         str_path    = f.cwd()
@@ -536,15 +501,9 @@ class FeedTree(object):
             s           = self.feed
             if str_searchType.lower() == 'name':
                 if F.cd(str_searchTarget)['status']:
-                    # self.feed   = f.cat('Feed')
                     Froot = F.cwd()
                     s.graft(F, '%s/' % Froot)
-                    # s.graft(F, '%s/title' % Froot)
-                    # s.graft(F, '%s/note' % Froot)
-                    # self.feed.graft(F, '/feeds/%s/data' % F.cwd())
-                    # self.feed.graft(F, '/feeds/%s/comments' % F.cwd())
                     ret_status  = True
-                    # self.debug(s)
                     ret_feed    = s
                     s.metaData_print(False)
             if str_searchType.lower() == 'id':
@@ -552,19 +511,15 @@ class FeedTree(object):
                     if F.cd('/feeds/%s' % feedNode)['status']:
                         if str_searchTarget == F.cat('ID'):
                             ret_status  = True
-                            # self.feed   = F.cat('Feed')
                             s.graft(F, '%s/' % F.cwd())
                             ret_feed    = s
                             break
 
-            # self.feed._stree.cd('/')
             # and now, check for any paths in the tree of this Feed
             if len(str_pathInFeed):
-                # ret         = self.feed._stree.cd(str_pathInFeed)
                 ret         = s.cd(str_pathInFeed)
                 ret_status  = ret['status']
                 ret_path    = ret['path']
-                # ret_feed    = self.feed._stree.snode_current
                 ret_feed    = s
                 if b_returnAsDict: ret_feed = dict(ret_feed.snode_root)
             ret_payload     = ret_feed
@@ -608,20 +563,14 @@ class FeedTree_chrisUser(FeedTree):
                 id      = id
             )
             s = singleFeed._stree
-            # self.debug(s)
-            F.graft(s, '/')
-            # F.graft(s, '/note')
-            # F.graft(s, '/comment')
-            # F.graft(s, '/title')
-            # F.graft(s, '/data')
-            # F.touch("Feed", Feed_FS(
-            #                     name    = node,
-            #                     id      = id
-            #         ))
+            # Graft explicit parts of the singleFeed
+            F.graft(s, '/note')
+            F.graft(s, '/title')
+            F.graft(s, '/comment')
+            F.graft(s, '/data')
         F.cd('/feeds')
         F.metaData_print(False)
-        self.debug(F)
-        # sys.exit(0)
+        # self.debug(F)
 
 if __name__ == "__main__":
     feed    = Feed_FS()
