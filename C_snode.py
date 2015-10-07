@@ -581,43 +581,48 @@ class C_stree:
 
             :param atree: a tree
             :param apath: a path in atree
-            :return:
+            :return: True | False depending on successful graft
             """
-            atree.cd(apath)
-            atree_nodes                 = atree.lstr_lsnode()
+            ret = False
+            if atree.cd(apath)['status']:
+                atree_nodes                 = atree.lstr_lsnode()
+                str_self_cwd                = self.cwd()
+                str_atree_cwd               = atree.cwd()
 
-            b_childrenLink              = False
-            if apath != '/':
-                l_apath = apath.split('/')
-                # No trailing '/'
-                if l_apath[-1] != '':
-                    self.mkcd(apath.split('/')[-1])
-                    self.snode_current.d_nodes  = atree.snode_current.d_nodes
-                    self.snode_current.d_data   = atree.snode_current.d_data
-                # Trailing '/'
+                b_childrenLink              = False
+                if apath != '/':
+                    l_apath = apath.split('/')
+                    # No trailing '/'
+                    if l_apath[-1] != '':
+                        self.mkcd(apath.split('/')[-1])
+                        self.snode_current.d_nodes  = atree.snode_current.d_nodes
+                        self.snode_current.d_data   = atree.snode_current.d_data
+                    # Trailing '/'
+                    else:
+                        apath = apath[0:-1]
+                        if apath[-1] != '/':
+                            atree.cd(apath)
+                            atree_nodes     = atree.lstr_lsnode()
+                            b_childrenLink  = True
                 else:
-                    apath = apath[0:-1]
-                    if apath[-1] != '/':
-                        atree.cd(apath)
-                        atree_nodes     = atree.lstr_lsnode()
-                        b_childrenLink  = True
-            else:
-                b_childrenLink  = True
-            if b_childrenLink:
-                self.mknode(atree_nodes)
-                for node in atree_nodes:
-                    self.cd(node)
-                    atree.cd(apath + '/' + node)
-                    self.snode_current.d_nodes  = atree.snode_current.d_nodes
-                    self.snode_current.d_data   = atree.snode_current.d_data
-                    atree.cd('../')
-                    self.cd('../')
+                    b_childrenLink  = True
+                if b_childrenLink:
+                    self.mknode(atree_nodes)
+                    for node in atree_nodes:
+                        self.cd(node)
+                        atree.cd(apath + '/' + node)
+                        self.snode_current.d_nodes  = atree.snode_current.d_nodes
+                        self.snode_current.d_data   = atree.snode_current.d_data
+                        atree.cd('../')
+                        self.cd('../')
 
-            # Update internal space of possible paths.
-            self.cd('../')
-            str_cwd = self.cwd()
-            self.pathFromHere_explore(self.cwd())
-            self.cd(str_cwd)
+                # Update internal space of possible paths.
+                self.cd('../')
+                self.pathFromHere_explore(self.cwd())
+                self.cd(str_self_cwd)
+                atree.cd(str_atree_cwd)
+                ret = True
+            return ret
 
         def touch(self, name, data):
             '''
