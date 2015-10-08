@@ -437,21 +437,20 @@ class FeedTree(object):
         l_URI   = []
         l_keys  = []
 
-        if str_searchType.lower() == "name":
-            l_keys  = []
-            # Generate a list of feed elements
-            d_tree      = dict(self._feedTree.snode_root)
-            l_keys      = d_tree.keys()
-            l_URI       = ['Feeds/NAME_' + name for name in l_keys]
-            b_status    = True
-        if str_searchType.lower() == 'id':
-            f = self._feedTree
-            for feedNode in f.lstr_lsnode('/'):
-                f.cd('/%s' % feedNode)
-                str_ID = f.cat('ID')
-                l_keys.append(str_ID)
-                l_URI.append('Feeds/ID_' + str_ID)
-            b_status    = True
+        F           = self._feedTree
+        if  F.cd('/feeds')['status']:
+            if str_searchType.lower() == "name":
+                # Generate a list of feed elements
+                l_keys      = F.lstr_lsnode()
+                l_URI       = ['Feeds/NAME_' + name for name in l_keys]
+                b_status    = True
+            if str_searchType.lower() == 'id':
+                for feedNode in F.lstr_lsnode():
+                    F.cd('/feeds/%s' % feedNode)
+                    str_ID = F.cat('ID')
+                    l_keys.append(str_ID)
+                    l_URI.append('Feeds/ID_' + str_ID)
+                b_status    = True
 
         return {
                 'status':   b_status,
