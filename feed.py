@@ -502,26 +502,37 @@ class FeedTree(object):
             if str_searchType.lower() == 'name':
                 if F.cd(str_searchTarget)['status']:
                     Froot = F.cwd()
-                    s.graft(F, '%s/' % Froot)
+                    # s.graft(F, '%s/'      % F.cwd())
+                    s.graft(F, '%s/title'   % Froot)
+                    s.graft(F, '%s/note'    % Froot)
+                    s.graft(F, '%s/data'    % Froot)
+                    s.graft(F, '%s/comment' % Froot)
                     ret_status  = True
                     ret_feed    = s
-                    s.metaData_print(False)
+                    s.tree_metaData_print(False)
             if str_searchType.lower() == 'id':
                 for feedNode in f.lstr_lsnode('/'):
                     if F.cd('/feeds/%s' % feedNode)['status']:
                         if str_searchTarget == F.cat('ID'):
                             ret_status  = True
-                            s.graft(F, '%s/' % F.cwd())
+                            # s.graft(F, '%s/'      % F.cwd())
+                            s.graft(F, '%s/title'   % Froot)
+                            s.graft(F, '%s/note'    % Froot)
+                            s.graft(F, '%s/data'    % Froot)
+                            s.graft(F, '%s/comment' % Froot)
                             ret_feed    = s
                             break
 
             # and now, check for any paths in the tree of this Feed
-            if len(str_pathInFeed):
+            if len(str_pathInFeed) and str_pathInFeed != '/':
                 ret         = s.cd(str_pathInFeed)
                 ret_status  = ret['status']
                 ret_path    = ret['path']
-                ret_feed    = s
-                if b_returnAsDict: ret_feed = dict(ret_feed.snode_root)
+                subTree     = C_snode.C_stree()
+                if subTree.cd('/')['status']:
+                    subTree.graft(s, str_pathInFeed)
+                    ret_feed    = subTree
+            if b_returnAsDict: ret_feed = dict(ret_feed.snode_root)
             ret_payload     = ret_feed
             l_URL_get       = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
 
@@ -563,13 +574,18 @@ class FeedTree_chrisUser(FeedTree):
                 id      = id
             )
             s = singleFeed._stree
-            # Graft explicit parts of the singleFeed
+            # Graft explicit parts of this singleFeed (s) to the tree of
+            # all Feeds (F) of this user, i.e.
+            #   cd F:/feeds/Feed-<ID>
+            #   ln -s s:/note .
+            #   ln -s s:/title .
+            #       ... etc ...
             F.graft(s, '/note')
             F.graft(s, '/title')
             F.graft(s, '/comment')
             F.graft(s, '/data')
         F.cd('/feeds')
-        F.metaData_print(False)
+        F.tree_metaData_print(False)
         # self.debug(F)
 
 if __name__ == "__main__":
