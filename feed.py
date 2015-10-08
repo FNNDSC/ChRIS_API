@@ -490,11 +490,11 @@ class FeedTree(object):
         str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_searchTarget)
 
         if not len(str_searchType) or not len(str_searchTarget) or str_searchTarget == '*':
-            ret_feeds   = self.feedTree_feedsGet(searchType = str_searchType, schema = str_schema)
-            debugMessage    = ret_feeds
-            ret_status  = ret_feeds['status']
-            l_URL_get   = ret_feeds['URL_GET']
-            ret_payload = ret_feeds['payload']
+            ret_feeds       = self.feedTree_feedsGet(searchType = str_searchType, schema = str_schema)
+            debugMessage    = "Search for '%s' on type '%s'" % (str_searchTarget, str_searchType)
+            ret_status      = ret_feeds['status']
+            l_URL_get       = ret_feeds['URL_GET']
+            ret_payload     = ret_feeds['payload']
         else:
             self.feed   = C_snode.C_stree()
             s           = self.feed
