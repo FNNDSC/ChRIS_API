@@ -2,9 +2,11 @@
 
 ## The API specification of ChRIS
 
-This repository contains a set of mostly python code that creates a simulated ChRIS machine that serves as a test bed for the interacting with and developing the ChRIS REST API.
+This repository contains simulates a ChRIS instance that is REST conformant. It serves primarily as a test bed for the interacting with and developing the ChRIS REST API.
 
 ### Pre-requisites
+
+**The test/dev environment is unix based -- specifically Ubuntu (15.04+) and/or Mac OS (10.10+) -- and assumes unix type underpinnings. Behaviour on Windows is undefined and not expected to work.**
 
 Some of the modules in this package require external dependencies (mostly for filling up dummy loremipsum type text in comments / notes / title). These dependencies are installed/handled by <tt>bower</tt> (part of node.js).
 
@@ -16,7 +18,9 @@ On Ubuntu systems you might need to also install legacy node support:
 sudo apt-get install nodejs-legacy
 ```
 
-Now do 
+#### General Linux and Mac
+
+Assuming you have a working nodejs on your system, install bower with: 
 
 ```
 sudo npm -g install bower
