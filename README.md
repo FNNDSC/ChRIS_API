@@ -48,7 +48,13 @@ Note that this call sends a <tt>hash</tt> and not the user's password. For more 
 
 ### Call anatomy
 
-The client sends an http request to the server. The server services the call and returns a JSON formatted stream of data with the following fields:
+The client sends an http request to the server. A typical call, for example getting a list of available feeds for the logged in user, is:
+
+```
+curl  -s  "http://192.168.1.3:5555/v1/Feeds/NAME_*?auth=user=chris,hash=ABCDEF123456789"
+```
+
+The server services the call and returns a JSON formatted stream of data with the following fields:
 
 ````
 o
