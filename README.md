@@ -88,5 +88,5 @@ o
           +--- APIversion: "text of called API version"
 ````
 
-More information in the wiki [here](../../wiki/3.-Call-anatomy).
+More information in the wiki [here](../../wiki/3.-Call-anatomy) and [here](../../wiki/4.-Feed-Logical-Structure).
 
