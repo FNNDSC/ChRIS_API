@@ -26,7 +26,7 @@ Assuming of course that your machine has IP <tt>192.168.1.3</tt>  - see here for
 
 Before you can do anything, you need to "log in". Of course, this is all simulated, and the login state is recorded by writing a lock file to the filesystem. Login never times out, and only changes once you actually "log out".
 
-But no API calls will be serviced until you login.
+Importantly, _no API calls will be serviced until you login_.
 
 To log in, on a client, do
 
