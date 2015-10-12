@@ -14,7 +14,7 @@ To setup a server you will need either a Linux or Mac machine. The backend will 
 
 ### Starting the server
 
-Once setup, simply start up the <tt>ChRIS_WS.py<tt> server from the command line. In the simplest case, it is sufficient to run
+Once setup, simply start up the <tt>ChRIS_WS.py</tt> server from the command line. In the simplest case, it is sufficient to run
 
 ```
 ./ChRIS_WS.py -i 192.168.1.3 -p 5555--API REST
