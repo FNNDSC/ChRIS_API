@@ -2,9 +2,9 @@
 
 ## The API specification of ChRIS
 
-This repository contains simulates a ChRIS instance that is REST conformant. It serves primarily as a test bed for the interacting with and developing the ChRIS REST API. The main entry point to the simulated machine is the python script, <tt>ChRIS_SM</tt> (where the <tt>SM</tt> denotes "Simulated Machine").
+This repository contains simulates a ChRIS instance that is REST conformant. It serves primarily as a test bed for the interacting with and developing the ChRIS REST API. The main entry point to the simulated machine is the python script, <tt>ChRIS\_SM</tt> (where the <tt>SM</tt> denotes "Simulated Machine").
 
-A simple web-facing server is also available: <tt>ChRIS_WS.py</tt> (where the <tt>WS</tt> denotes "Web Server"). This module is suitable for http handling using any client. When http traffic is sent to <tt>ChRIS_WS.py</tt>,  spawns a new <tt>ChRIS_SM.py</tt> instance. A new instance is spawned each time a new API call is made. The state of a user's data is preserved between calls by a simple file-based database.
+A simple web-facing server is also available: <tt>ChRIS\_WS.py</tt> (where the <tt>WS</tt> denotes "Web Server"). This module is suitable for http handling using any client. When http traffic is sent to <tt>ChRIS\_WS.py</tt>, it spawns a new <tt>ChRIS\_SM.py</tt> instance. A new instance is spawned each time a new API call is made. The state of a user's data is preserved between calls by a simple file-based database.
 
 ## Getting up and running quickly
 
@@ -14,7 +14,7 @@ To setup a server you will need either a Linux or Mac machine. The backend will 
 
 ### Starting the server
 
-Once setup, start up the <tt>ChRIS_WS.py</tt> server from the command line. In the simplest case, it is sufficient to run
+Once setup, start up the <tt>ChRIS\_WS.py</tt> server from the command line. In the simplest case, it is sufficient to run
 
 ```
 ./ChRIS_WS.py -i 192.168.1.3 -p 5555 --API REST
