@@ -42,7 +42,7 @@ To log out, do
 curl  -s  "http://192.168.1.3:5555/v1/logout?auth=user=chris,hash=ABCDEF1234"
 ```
 
-Note that this call sends a <tt>hash</tt> and not the user's password. For more information, see [here](../../wiki/.3.-Login-out-and-Session-Authentication).
+Note that this call sends a <tt>hash</tt> and not the user's password. For more information, see [here](../../wiki/2.-Login,-logout,-and-Session-Authentication).
 
 ## Interacting with the API service
 
@@ -88,5 +88,5 @@ o
           +--- APIversion: "text of called API version"
 ````
 
-More information in the wiki [here](../../wiki/4.-Call-anatomy).
+More information in the wiki [here](../../wiki/3.-Call-anatomy).
 
