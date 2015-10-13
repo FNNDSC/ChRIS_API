@@ -2,7 +2,7 @@
 
 ## The API specification of ChRIS
 
-This repository contains a set of python scripts that simulates a REST conformant ChRIS instance. It serves primarily as a test bed for the interacting with and developing the ChRIS REST API. The main entry point to the simulated machine is the python script, <tt>ChRIS\_SM</tt> (where the <tt>SM</tt> denotes "Simulated Machine").
+This repository contains a set of python scripts that simulates a REST conformant ChRIS instance. It serves primarily as a test bed for the interacting with and developing the ChRIS REST API. The main entry point to the simulated machine is the python script, <tt>ChRIS\_SM.py</tt> (where the <tt>SM</tt> denotes "Simulated Machine").
 
 A simple web-facing server is also available: <tt>ChRIS\_WS.py</tt> (where the <tt>WS</tt> denotes "Web Server"). This module is suitable for handling <tt>http</tt> traffic originating from any client. When <tt>http</tt> traffic is sent to <tt>ChRIS\_WS.py</tt>, it spawns a new <tt>ChRIS\_SM.py</tt> instance to service the traffic --- in other words a new simulated machine is created for **each** call to the web service. The state of a user's data is preserved between calls by a simple file-based database.
 
