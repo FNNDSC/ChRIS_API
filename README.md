@@ -20,7 +20,7 @@ Once setup, start up the <tt>ChRIS\_WS.py</tt> server from the command line. In 
 ./ChRIS_WS.py -i 192.168.1.3 -p 5555 --API REST
 ```
 
-Assuming of course that your machine has IP <tt>192.168.1.3</tt>  - see here for more [information](../../1.-Starting-the-Server).
+Assuming of course that your machine has IP <tt>192.168.1.3</tt>  --- see here for more [information](../../wiki/1.-Starting-the-Server).
 
 ### First things first: logging in (and logging out)
 
