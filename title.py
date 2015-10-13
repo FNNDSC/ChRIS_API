@@ -73,7 +73,7 @@ class title(object):
         self.__name             = "Feed"
 
         self.contents.cd('/')
-        self.contents.mkcd('contents')
+        # self.contents.mkcd('contents')
 
     def contents_rikeripsumBuild(self, **kwargs):
         """
@@ -85,7 +85,7 @@ class title(object):
         for key,val in kwargs.iteritems():
             if key == 'wordCount':  wordCount = int(val)
 
-        self.contents.cd('/contents')
+        self.contents.cd('/')
         # self.debug('pwd = %s\n' % self.contents.pwd())
         self.contents.touch('body', rikeripsum.generate_sentence(word_count=wordCount))
 

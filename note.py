@@ -74,7 +74,6 @@ class note(object):
         self.__name             = "note"
 
         self.contents.cd('/')
-        self.contents.mkcd('contents')
 
     def contents_rikeripsumBuild(self, **kwargs):
         """
@@ -92,7 +91,7 @@ class note(object):
             str_p                   += rikeripsum.generate_paragraph()
             str_p                   += "\n"
 
-        self.contents.cd('/contents')
+        self.contents.cd('/')
         self.contents.touch('body', str_p)
 
 
