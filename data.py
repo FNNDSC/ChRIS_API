@@ -39,13 +39,39 @@ class data(object):
     This class implements a ChRIS style data object container, accessible
     in a tree like structure, i.e.:
 
-        /datafileView
-        /data/dataView
-        /data/plugin
-        /data/plugin/list
-        /data/plugin/<timeStamp>/parameters
-        /data/plugin/<timeStamp>/name
-        /data/plugin/<timeStamp>/results
+            /dataView
+            /dataView/files
+            /dataView/files/4693293-270
+            /dataView/files/4702512-431
+            /dataView/files/4322849-145
+            /fileView
+            /fileView/files
+            /fileView/files/4693293-270
+            /fileView/files/4702512-431
+            /fileView/files/4322849-145
+            /plugin
+            /plugin/available
+            /plugin/available/tractography
+            /plugin/available/mri_convert
+            /plugin/available/zip
+            /plugin/available/recon-all
+            /plugin/run
+            /plugin/run/0
+            /plugin/run/0/info
+            /plugin/run/0/parameters
+            /plugin/run/0/results
+            /plugin/run/0/results/dataView
+            /plugin/run/0/results/dataView/files
+            /plugin/run/0/results/dataView/files/4693293-365
+            /plugin/run/0/results/dataView/files/4702512-713
+            /plugin/run/0/results/dataView/files/4322849-292
+            /plugin/run/0/results/fileView
+            /plugin/run/0/results/fileView/files
+            /plugin/run/0/results/fileView/files/4693293-365
+            /plugin/run/0/results/fileView/files/4702512-713
+            /plugin/run/0/results/fileView/files/4322849-292
+            /plugin/run/0/results/plugin
+
 
     The data container encapsulates three components:
 
@@ -264,9 +290,8 @@ class data(object):
             str_newRun      = str(len(l_run))
             s.mkcd(str_newRun)
             s.touch('timestamp', str_timestamp)
-            s.touch('detail', data._dict_plugin[str_plugin])
-            s.mknode(['parameters', 'results', 'detail'])
-            s.touch('parameters/detail', {
+            s.mknode(['parameters', 'results', 'info'])
+            s.touch('info/detail', {
                 str_plugin: data._dict_plugin[str_plugin]
             })
             s.touch('parameters/input', {
