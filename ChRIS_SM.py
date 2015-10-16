@@ -83,7 +83,8 @@ class ChRIS_SMUserDB(object):
 
     def DB_build(self):
         s               = self.DB
-        if  self.b_ignorePersistentDB           or  \
+        if  True                                or  \
+            self.b_ignorePersistentDB           or  \
             self.b_createNewDB                  or  \
             not os.path.exists(self.str_DBfile):
             s.cd('/')
@@ -96,6 +97,7 @@ class ChRIS_SMUserDB(object):
             # The 'feeds' node is attached when the user is authenticated.
             s.mkcd('login')
         else:
+            # Need custom load for C_snode trees...
             s = pickle.load(open(self.str_DBfile, 'rb'))
             self.b_readDB   = True
 
@@ -172,9 +174,11 @@ class ChRIS_SMUserDB(object):
         json.dump(dict_sessionInfo, open("%s-login.json" % str_user, "w"))
 
     def user_attachFeedTree(self, **kwargs):
-        if self.b_ignorePersistentDB    or \
-                self.b_createNewDB      or \
+        if      True                                or \
+                self.b_ignorePersistentDB           or \
+                self.b_createNewDB                  or \
                 not os.path.exists(self.str_DBfile):
+
             """Attach the feed tree for this user"""
             for key, val in kwargs.iteritems():
                 if key == 'user':   astr_user   = val.translate(None, '\'\"')
@@ -585,6 +589,7 @@ class ChRIS_authenticate(object):
             error.fatal(self, 'no_loginFound')
         ret = f()
         if not os.path.isfile(self.chris.DB.str_DBfile):
+            # Need custom save for C_snode trees...
             pickle.dump(dict(self.chris.DB.DB), open(self.chris.DB.str_DBfile, 'wb'))
         return ret
 
