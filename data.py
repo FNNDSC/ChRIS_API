@@ -39,23 +39,49 @@ class data(object):
     This class implements a ChRIS style data object container, accessible
     in a tree like structure, i.e.:
 
-        /data/contents/fileView
-        /data/contents/dataView
-        /data/contents/plugin
-        /data/contents/plugin/list
-        /data/contents/plugin/<timeStamp>/parameters
-        /data/contents/plugin/<timeStamp>/name
-        /data/contents/plugin/<timeStamp>/results
+            /dataView
+            /dataView/files
+            /dataView/files/4693293-270
+            /dataView/files/4702512-431
+            /dataView/files/4322849-145
+            /fileView
+            /fileView/files
+            /fileView/files/4693293-270
+            /fileView/files/4702512-431
+            /fileView/files/4322849-145
+            /plugin
+            /plugin/available
+            /plugin/available/tractography
+            /plugin/available/mri_convert
+            /plugin/available/zip
+            /plugin/available/recon-all
+            /plugin/run
+            /plugin/run/0
+            /plugin/run/0/info
+            /plugin/run/0/parameters
+            /plugin/run/0/results
+            /plugin/run/0/results/dataView
+            /plugin/run/0/results/dataView/files
+            /plugin/run/0/results/dataView/files/4693293-365
+            /plugin/run/0/results/dataView/files/4702512-713
+            /plugin/run/0/results/dataView/files/4322849-292
+            /plugin/run/0/results/fileView
+            /plugin/run/0/results/fileView/files
+            /plugin/run/0/results/fileView/files/4693293-365
+            /plugin/run/0/results/fileView/files/4702512-713
+            /plugin/run/0/results/fileView/files/4322849-292
+            /plugin/run/0/results/plugin
+
 
     The data container encapsulates three components:
 
-        contents
+           o
             \
             +--- fileView
             \
             +--- visualView
             \
-            +--- plugins
+            +--- plugin
     """
 
     _dict_plugin = {
@@ -102,7 +128,7 @@ class data(object):
 
         self.contents   = C_snode.C_stree()
         self.contents.cd('/')
-        self.contents.mknode(['contents'])
+        # self.contents.mknode(['contents'])
         self.fake       = faker.Faker()
 
 
@@ -122,20 +148,20 @@ class data(object):
 
         # First, build a PACS_pull tree
         self.dataComponent_build(
-            path                = '/contents',
+            path                = '/',
             plugin              = 'PACSPull',
             SeriesFilesCount    = SeriesFilesCount
         )
 
         self.dataComponent_pluginBuild(
-            path                = '/contents/plugin'
+            path                = '/plugin'
         )
 
 
         # Now "run" an mri_convert to nifi
         self.dataComponent_pluginRun(
-            inputPath           = '/contents/dataView/files',
-            outputPath          = '/contents/plugin/run',
+            inputPath           = '/dataView/files',
+            outputPath          = '/plugin/run',
             plugin              = 'mri_convert'
         )
 
@@ -158,7 +184,7 @@ class data(object):
         :return:
         """
 
-        str_path            = '/contents'
+        str_path            = '/'
         str_plugin          = 'PACSPull'
         ft_convertFrom      = None
         str_convertTo       = ''
@@ -203,7 +229,7 @@ class data(object):
         :param kwargs: 'path'=<path>
         :return:
         """
-        str_path            = '/contents/plugin'
+        str_path            = '/plugin'
         for key,val in kwargs.iteritems():
             if key == 'path':               str_path            = val
 
@@ -224,7 +250,7 @@ class data(object):
         :return:
         """
 
-        str_path    = '/contents/plugin'
+        str_path    = '/plugin'
         for key,val in kwargs.iteritems():
             if key == 'path':           str_path        = val
 
@@ -246,8 +272,8 @@ class data(object):
         :param kwargs: 'path'=<path>
         :return:
         """
-        str_outputPath      = '/contents/plugin'
-        str_inputPath       = '/contents/dataView/files'
+        str_outputPath      = '/plugin'
+        str_inputPath       = '/dataView/files'
 
         str_plugin          = 'mri_convert'
         for key,val in kwargs.iteritems():
@@ -264,10 +290,12 @@ class data(object):
             str_newRun      = str(len(l_run))
             s.mkcd(str_newRun)
             s.touch('timestamp', str_timestamp)
-            s.touch('detail', data._dict_plugin[str_plugin])
-            s.mknode(['parameters', 'results'])
+            s.mknode(['parameters', 'results', 'info'])
+            s.touch('info/detail', {
+                str_plugin: data._dict_plugin[str_plugin]
+            })
             s.touch('parameters/input', {
-                'input':    '<some dictionary of all input parameters>'
+                str_plugin:    '<some dictionary of all input parameters>'
             })
             s.cd('results')
             str_outputPath = s.cwd()
@@ -359,6 +387,17 @@ def synopsis(ab_shortOnly = False):
     else:
         return shortSynopsis + description
 
+def paths_print(atree):
+    """
+    Print all the paths in the <atree>.
+    :param atree: tree whose paths should be printed
+    :return:
+    """
+
+    l = atree.pathFromHere_explore('/')
+    for d in l:
+        print(d)
+
 if __name__ == "__main__":
 
     parser      = argparse.ArgumentParser(description = synopsis(True))
@@ -376,5 +415,6 @@ if __name__ == "__main__":
     container.contents_build_1(SeriesFilesCount = args.SeriesFilesCount)
 
     print(container.contents)
-    # print(json.dumps(dict(container)))
+    print(json.dumps(dict(container.contents.snode_root)))
 
+    paths_print(container.contents)

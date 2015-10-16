@@ -173,10 +173,12 @@ class Feed_FS(Feed):
         sample.contents_build_1(SeriesFilesCount = SeriesFilesCount)
 
         s.cd(str_root)
-        s.graft(sample.contents, '/contents')
-        # s.mknode(['visualView', 'fileView'])
+        l_data   = sample.contents.lstr_lsnode('/')
+        if sample.contents.cd('/')['status']:
+            for d in l_data:
+                s.graft(sample.contents, '/%s' % d)
 
-        return(dict(sample.contents))
+        return(dict(sample.contents.snode_root))
 
     def titleElement_create(self, **kwargs):
         """
@@ -198,7 +200,8 @@ class Feed_FS(Feed):
         # self.debug("\n%s" % sample.contents)
 
         s.cd(str_root)
-        s.graft(sample.contents, '/contents')
+        s.touch("body", sample.contents.cat("body"))
+        # s.graft(sample.contents, '/')
 
         return(dict(sample.contents))
 
@@ -221,7 +224,8 @@ class Feed_FS(Feed):
         sample.contents_rikeripsumBuild(paragraphs=paragraphs)
 
         s.cd(str_root)
-        s.graft(sample.contents, '/contents')
+        s.touch("body", sample.contents.cat("body"))
+        # s.graft(sample.contents, '/contents')
 
         return(dict(sample.contents))
 
@@ -243,9 +247,12 @@ class Feed_FS(Feed):
         sample.contents_rikeripsumBuild(conversations=conversations)
 
         s.cd(str_root)
-        s.graft(sample.contents, '/contents')
+        l_comment   = sample.contents.lstr_lsnode('/')
+        if sample.contents.cd('/')['status']:
+            for c in l_comment:
+                s.graft(sample.contents, '/%s' % c)
 
-        return(dict(sample.contents))
+        return(dict(sample.contents.snode_root))
 
     def create(self, **kwargs):
         """Create a new feed.

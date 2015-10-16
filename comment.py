@@ -76,7 +76,7 @@ class comment(object):
         self.__name             = "note"
 
         self.contents.cd('/')
-        self.contents.mkcd('contents')
+        # self.contents.mkcd('contents')
 
     def contents_rikeripsumBuild(self, **kwargs):
         """
@@ -88,25 +88,18 @@ class comment(object):
         for key,val in kwargs.iteritems():
             if key == 'conversations':  conversations = int(val)
 
-        d_stamp = {}
-
-        self.contents.cd('/contents')
+        c = self.contents
+        c.cd('/')
 
         for loop in range(0, conversations):
             now                     = datetime.datetime.today()
             timeStamp               = now.strftime('%Y-%m-%d_%H:%M')
 
-            self.contents.mkcd(str(loop))
-            self.contents.touch('timestamp', timeStamp)
-            self.contents.touch('fullname', names.get_full_name())
-            self.contents.touch('comment', rikeripsum.generate_paragraph())
-            self.contents.cd('../')
-
-            # d_stamp[loop] = {'timestamp': timeStamp,
-            #                  'fullname': names.get_full_name(),
-            #                  'comment': rikeripsum.generate_paragraph()}
-
-        # self.contents = d_stamp
+            c.mkcd(str(loop))
+            c.touch('timestamp',    timeStamp)
+            c.touch('fullname',     names.get_full_name())
+            c.touch('comment',      rikeripsum.generate_paragraph())
+            c.cd('../')
 
 
     def __iter__(self):
@@ -156,5 +149,7 @@ if __name__ == "__main__":
     sample  = comment()
     sample.contents_rikeripsumBuild(conversations=args.conversations)
 
-    print(json.dumps(dict(sample)))
+    print(sample.contents)
+
+    print(json.dumps(dict(sample.contents.snode_root)))
 
