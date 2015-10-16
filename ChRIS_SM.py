@@ -38,6 +38,7 @@ import  os
 import  sys
 import  datetime
 import  json
+import  pickle
 
 import  error
 
@@ -80,19 +81,23 @@ class ChRIS_SMUserDB(object):
         else:
             return self.__name
 
-
-
     def DB_build(self):
         s               = self.DB
-        s.cd('/')
-        s.mkcd('users')
-        s.mkcd('chris')
-        s.touch("userName",     "chris")
-        s.touch("fullName",     "ChRIS User")
-        s.touch("passwd",       "chris1234")
-        # s.mknode(['feed'])
-        # The 'feeds' node is attached when the user is authenticated.
-        s.mkcd('login')
+        if  self.b_ignorePersistentDB           or  \
+            self.b_createNewDB                  or  \
+            not os.path.exists(self.str_DBfile):
+            s.cd('/')
+            s.mkcd('users')
+            s.mkcd('chris')
+            s.touch("userName",     "chris")
+            s.touch("fullName",     "ChRIS User")
+            s.touch("passwd",       "chris1234")
+            # s.mknode(['feed'])
+            # The 'feeds' node is attached when the user is authenticated.
+            s.mkcd('login')
+        else:
+            s = pickle.load(open(self.str_DBfile, 'rb'))
+            self.b_readDB   = True
 
     def user_checkAPIcanCall(self, **kwargs):
         """
@@ -167,21 +172,24 @@ class ChRIS_SMUserDB(object):
         json.dump(dict_sessionInfo, open("%s-login.json" % str_user, "w"))
 
     def user_attachFeedTree(self, **kwargs):
-        """Attach the feed tree for this user"""
-        for key, val in kwargs.iteritems():
-            if key == 'user':   astr_user   = val.translate(None, '\'\"')
-        # Get the user's feed tree structure -- we only need to
-        # do this *ONCE* per session/replay.
-        if not self.userFeeds:
-            feedTree                = feed.FeedTree_chrisUser()
-            # and attach it to the stree of this object
-            if self.DB.cd('/users/%s' % astr_user)['status']:
-                # self.DB.touch('tree', feedTree)
-                self.DB.graft(feedTree._feedTree, '/feeds')
-                self.userFeeds          = feedTree
-                self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
-            else:
-                error.fatal(self, 'no_userInTree')
+        if self.b_ignorePersistentDB    or \
+                self.b_createNewDB      or \
+                not os.path.exists(self.str_DBfile):
+            """Attach the feed tree for this user"""
+            for key, val in kwargs.iteritems():
+                if key == 'user':   astr_user   = val.translate(None, '\'\"')
+            # Get the user's feed tree structure -- we only need to
+            # do this *ONCE* per session/replay.
+            if not self.userFeeds:
+                feedTree                = feed.FeedTree_chrisUser()
+                # and attach it to the stree of this object
+                if self.DB.cd('/users/%s' % astr_user)['status']:
+                    # self.DB.touch('tree', feedTree)
+                    self.DB.graft(feedTree._feedTree, '/feeds')
+                    self.userFeeds          = feedTree
+                    self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
+                else:
+                    error.fatal(self, 'no_userInTree')
         self.debug('\nEntire DB tree:\n%s' % self.DB)
 
     def user_logout(self, **kwargs):
@@ -281,17 +289,26 @@ class ChRIS_SMUserDB(object):
         self._log._b_syslog             = True
         self.__name                     = "ChRIS_RESTAPI"
 
+        self.str_DBfile                 = 'DB.p'
+
         self.chris                      = None
+
+        self.b_createNewDB              = False
+        self.b_ignorePersistentDB       = False
+        self.b_readDB                   = False
+        self.DB                         = C_snode.C_stree()
+        self.userFeeds                  = None
+
         for key,value in kwargs.iteritems():
-            if key == "chris":
-                self.chris              = value
+            if key == "chris":          self.chris                      = value
+            if key == 'createNewDB':    self.b_createNewDB              = value
+            if key == 'ignorePersistentDB': self.b_ignorePersistentDB    = value
+            if key == 'DB':             self.str_DBfile                 = value
         self.debug                      = message.Message(logTo = "./debug.log")
         self.debug._b_syslog            = True
         self._md5                       = hashlib
 
         # The entire DataBase is represented here as a tree
-        self.DB                         = C_snode.C_stree()
-        self.userFeeds                  = None
         self.DB_build()
 
 class ChRIS_SMCore(object):
@@ -304,11 +321,19 @@ class ChRIS_SMCore(object):
     def __init__(self, **kwargs):
         # This class contains a reference back to the chris parent object that
         # contains this Core
-        self.chris      = None
+        self.chris                  = None
+        self.str_DBfile             = ""
+        self.b_ignorePersistentDB   = False
         for key,value in kwargs.iteritems():
-            if key == "chris":  self.chris  = value
+            if key == "chris":              self.chris                  = value
+            if key == "DB":                 self.str_DBfile             = value
+            if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = value
         self.s_tree     = C_snode.C_stree()
-        self._userDB    = ChRIS_SMUserDB(chris = self.chris)
+        self._userDB    = ChRIS_SMUserDB(
+                                chris               = self.chris,
+                                DB                  = self.str_DBfile,
+                                ignorePersistentDB  = self.b_ignorePersistentDB
+                            )
 
     def login(self, **kwargs):
         return(self._userDB.user_login(**kwargs))
@@ -385,12 +410,23 @@ class ChRIS_SM(object):
 
         self.__name                     = "ChRIS_SM"
 
+        self.str_DBfile                 = ''
+        self.b_ignorePersistentDB       = False
+        for key,val in kwargs.iteritems():
+            if key == 'DB':                 self.str_DBfile             = val
+            if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = val
+
         self._feedTree                  = C_snode.C_stree()
-        self._SMCore                    = ChRIS_SMCore(chris = self)
+        self._SMCore                    = ChRIS_SMCore(
+                                            chris               = self,
+                                            DB                  = self.str_DBfile,
+                                            ignorePersistentDB  = self.b_ignorePersistentDB
+                                        )
         self._name                      = ""
         self._log                       = message.Message()
         self._log.tee(True)
         self._log.syslog(True)
+
 
         # Convenience members
         self.DB                         = self._SMCore._userDB
@@ -520,9 +556,9 @@ class ChRIS_authenticate(object):
             aself_name (string):        this object's string name
         """
 
-        self._log                       = message.Message()
-        self._log._b_syslog             = True
-        self.__name                     = "ChRIS_authenticate"
+        self._log               = message.Message()
+        self._log._b_syslog     = True
+        self.__name             = "ChRIS_authenticate"
 
         self.chris              = achris_instance
         self._name              = aself_name
@@ -547,7 +583,10 @@ class ChRIS_authenticate(object):
         d_ret = db.user_checkAPIcanCall(**kwargs)
         if not d_ret['status'] and d_ret['code'] == 1:
             error.fatal(self, 'no_loginFound')
-        return f()
+        ret = f()
+        if not os.path.isfile(self.chris.DB.str_DBfile):
+            pickle.dump(dict(self.chris.DB.DB), open(self.chris.DB.str_DBfile, 'wb'))
+        return ret
 
 
 def warn(*objs):
@@ -561,6 +600,8 @@ def synopsis(ab_shortOnly = False):
             %s                                     \\
                             [--REST | --RPC --stateFile <stateFile>]       \\
                             [--authority <clientSideAuthority>]            \\
+                            [--ignorePersistenDB]                          \\
+                            [--DB <DBFile>]                                \\
                             --APIcall <APIcall>
 
 
@@ -591,6 +632,12 @@ def synopsis(ab_shortOnly = False):
 
        --APIcall <ACPIcall> (required)
        The actual API call to make, either REST or RPC type.
+
+       --ignorePersistentDB
+       If set, will ignore the file DB and create a new DB in memory.
+
+       --fileDB <fileDB>
+       The name of the fileDB to use for data state.
 
     NOTE
 
@@ -642,6 +689,20 @@ if __name__ == "__main__":
         default =   False
     )
     parser.add_argument(
+        '--ignorePersistentDB',
+        action  =   'store_true',
+        dest    =   'b_ignorePersistentDB',
+        help    =   'Ignore the file DB and create a new DB for this call.',
+        default =   False
+    )
+    parser.add_argument(
+        '-d', '--DB',
+        help    =   "The <DB> keeps track of data (not system!) state between calls.",
+        dest    =   'str_DBfile',
+        action  =   'store',
+        default =   "DB.p"
+    )
+    parser.add_argument(
         '-s', '--stateFile',
         help    =   "The <stateFile> keeps track of ChRIS state for RPC-type calling regimes.",
         dest    =   'str_stateFileName',
@@ -667,11 +728,15 @@ if __name__ == "__main__":
 
     if args.b_RPC:
         chris       = ChRIS_SM_RPC(
-                            stateFile   = args.str_stateFileName
+                            stateFile           = args.str_stateFileName,
+                            ignorePersistentDB  = args.b_ignorePersistentDB,
+                            DB                  = args.str_DBfile
                       )
     if args.b_REST:
         chris       = ChRIS_SM_REST(
-                            authority   = args.str_authority
+                            authority           = args.str_authority,
+                            ignorePersistentDB  = args.b_ignorePersistentDB,
+                            DB                  = args.str_DBfile
                       )
     chris.API.auth  = ChRIS_authenticate(chris, 'auth')
 
