@@ -224,8 +224,16 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         res.content_type = str_contentType
 
         str_HTTPpre = "HTTP 1.1 "
-        # str_res     = "%s %s" % (str_HTTPpre, str(res))
-        str_res     = "%s %s %s" % (str_HTTPpre,  "Access-Control-Allow-Origin: *", str(res))
+        str_res     = "%s %s" % (str_HTTPpre, str(res))
+        str_res.replace("UTF-8", "UTF-8\nAccess-Control-Allow-Origin: *\n")
+
+        print(Colors.NO_COLOUR)
+        print("***********************************************")
+        print("Transmitting to remote client:")
+        print("***********************************************")
+        print(Colors.GREEN + str_res + Colors.NO_COLOUR)
+        print("***********************************************")
+
         return str_res
 
     def byteSizeReturned(self, nbytes):
