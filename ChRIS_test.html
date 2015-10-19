@@ -162,7 +162,7 @@
                 console.log('xhdr.status        = ' +  xhdr.status);
                 console.log('thrownError        = ' +  thrownError);
                 var str = JSON.stringify(xhdr.responseText, null, 2);
-                $('#ChRISresponse_get').html("<pre>" +  xhdr.status + ": " + str + "</pre>");
+                output(syntaxHighlight(xhdr.status));
                 hdr=xhdr;
             }
         });
