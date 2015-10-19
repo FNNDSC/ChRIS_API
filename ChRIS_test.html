@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+
+
+    <title>API Test Server</title>
+
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+    <style type="text/css">
+        h3{
+            margin:5px;
+        }
+        button{
+            float:left;
+        }
+
+        .formLayout
+        {
+            background-color: #f3f3f3;
+            border: solid 1px #a1a1a1;
+            padding: 10px;
+            width: 878px;
+        }
+ 
+        pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
+        .string { font-family:courier; color: green; }
+        .number { font-family:courier; color: darkorange; }
+        .boolean { font-family:courier; color: blue; }
+        .null { font-family:courier; color: magenta; }
+        .key { font-family:courier; color: red; }
+ 
+        .input {
+            font-family: courier;
+        }
+        
+        .formLayout label, .formLayout input
+        {
+            display: block;
+            width: 120px;
+            float: left;
+            margin-bottom: 10px;
+        }
+     
+        .formLayout label
+        {
+            text-align: right;
+            padding-right: 20px;
+        }
+     
+        br
+        {
+            clear: left;
+        }
+
+        .result {
+            float:left;
+            width:60%;
+            height:900px;
+            border:1px solid #2b7d08;
+        }
+
+        .onlythree {     
+            width: 50px;    
+            border: 0;    
+        }    
+
+        .border {    
+            border: 1px solid gray;    
+            display: inline-block;    
+        }
+
+        * {
+            font-size: 1em;
+            color: #000;
+            margin-left: 0.5cm;
+        }
+  
+    </style>
+
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+</head>
+
+<body>
+    <div class="formLayout">
+        <label for="ServerIP">Server IP</label>
+        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>    
+        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>    
+        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>    
+        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="3"/>    
+        <br>
+        <label>Server Port</label>
+        <input style="width:60px;font-family:courier;"  id="port" name="port" value="5555"><br>
+        <label>VERB</label>
+        <input style="width:60px;font-family:courier;"  id="VERB" name="VERB" value="GET"><br>
+        <label>EXPR</label>
+        <input style="width:600px;font-family:courier;" id="EXPR" name="EXPR" value="/v1/Feeds/NAME_*"><br>
+        <label>AUTH</label>
+        <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
+        <button onclick="ChRISresponse_get()" class="pure-button pure-button-primary">Submit</button>
+    </div>
+
+    <script>
+
+    $(".onlythree").keyup(function () {    
+        if (this.value.length == this.maxLength) {    
+            $(this).next('.onlythree').focus();    
+        }    
+    });  
+
+    function output(inp) {
+        document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+    }
+
+    function syntaxHighlight(json) {
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+    
+    function ChRISresponse_get() {
+        var IP1	= $('#IP1').val();
+        var IP2	= $('#IP2').val();
+        var IP3	= $('#IP3').val();
+        var IP4	= $('#IP4').val();
+        
+        var str_hostIP  = "http://" + IP1 + "." + IP2 + "." + IP3 + "." + IP4;
+        var str_FQhost  = str_hostIP + ":" + $("#port").val();
+
+        hdr         = null;
+        ChRISresp   = null;
+        
+        console.log(str_hostIP);
+        APIcall     = str_FQhost + $('#EXPR').val() + "?" + $('#AUTH').val();
+        console.log(APIcall);
+        $.ajax({
+            url:        APIcall,
+            dataType:   'json',
+            success:    function (ChRISresp) {
+                console.log('AJAX call success.');
+                ChRISresp = JSON.stringify(ChRISresp, null, 2);
+                //output(ChRISresp);
+                output(syntaxHighlight(ChRISresp));
+            },
+            error:      function(xhdr, textStatus, thrownError) {
+                console.log('Some error was triggered.');
+                console.log('textStatus         = ' +  textStatus);
+                console.log('xhdr.statusText    = ' +  xhdr.statusText);
+                console.log('xhdr.responseText  = ' +  xhdr.responseText);
+                console.log('xhdr.status        = ' +  xhdr.status);
+                console.log('thrownError        = ' +  thrownError);
+                var str = JSON.stringify(xhdr.responseText, null, 2);
+                $('#ChRISresponse_get').html("<pre>" +  xhdr.status + ": " + str + "</pre>");
+                hdr=xhdr;
+            }
+        });
+    };
+    </script>
+
+</body>
+</html>
