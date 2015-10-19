@@ -223,9 +223,10 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         res  = Response(str_payload)
         res.content_type = str_contentType
 
-        str_HTTPpre = "HTTP 1.1 "
-        str_res     = "%s %s" % (str_HTTPpre, str(res))
-        str_res.replace("UTF-8", "UTF-8\nAccess-Control-Allow-Origin: *\n")
+        str_HTTPpre = "HTTP/1.x "
+        # str_HTTPpre = ""
+        str_res     = "%s%s" % (str_HTTPpre, str(res))
+        str_res     = str_res.replace("UTF-8", "UTF-8\nAccess-Control-Allow-Origin: *")
 
         print(Colors.NO_COLOUR)
         print("***********************************************")
