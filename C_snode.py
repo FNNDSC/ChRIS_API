@@ -426,8 +426,13 @@ class C_stree:
                                                         #+ added to the tree, its path
                                                         #+ list is appended to this
                                                         #+ list variable.
+            self.l_allFiles             = []            # A list of lists of of all files
+                                                        #+ in the tree
             self.l_lwd                  = []            # A scratch path list variable
                                                         #+ for the lwd() method.
+            self.l_fwd                  = []            # A scratch path list variable
+                                                        #+ for the fwd() method.
+
             if not len(al_rootBranch):
                 al_rootBranch           = ['/']
             if len(al_rootBranch):
@@ -760,12 +765,14 @@ class C_stree:
         def ls(self, astr_path="", **kwargs):
             b_lsData    = True
             b_lsNodes   = True
+            str_cwd       = self.cwd()
             if len(astr_path): self.cdnode(astr_path)
             str_nodes   = self.str_lsnode(astr_path)
             d_data      = self.snode_current.d_data
             for key, val in kwargs.iteritems():
                 if key == 'data':   b_lsData    = val
                 if key == 'nodes':  b_lsNodes   = val
+            if len(astr_path): self.cdnode(str_cwd)
             if b_lsData and b_lsNodes:
                 return str_nodes, d_data
             if b_lsData:
@@ -774,6 +781,16 @@ class C_stree:
                 return str_nodes
             return str_nodes, d_data
 
+        def lsf(self, astr_path=""):
+            """
+            List only the "files" in the astr_path.
+
+            :param astr_path: path to list
+            :return: "files" in astr_path, empty list if no files
+            """
+            d_files = self.ls(astr_path, nodes=False, data=True)
+            l_files = d_files.keys()
+            return l_files
 
         def str_lsnode(self, astr_path=""):
             """
@@ -785,7 +802,6 @@ class C_stree:
             for node in self.snode_current.d_nodes.keys():
                 self.sCore.write('%s\n' % node)
             str_ls = self.sCore.strget()
-            print(str_ls)
             if len(astr_path): self.cdnode(str_cwd)
             return str_ls
 
@@ -810,7 +826,6 @@ class C_stree:
             if len(astr_path): self.cdnode(astr_path)
             self.sCore.write('%s' % self.sbranch_current.dict_branch.keys())
             str_ls = self.sCore.strget()
-            print(str_ls)
             if len(astr_path): self.cdnode(str_cwd)
             return str_ls
 
@@ -1001,11 +1016,41 @@ class C_stree:
             Return the cwd in treeRecurse compatible format.
             :return: Return the cwd in treeRecurse compatible format.
             """
-            self.cd(astr_startPath)
-            self.l_lwd.append(self.cwd())
+            if self.cd(astr_startPath)['status']:
+                self.l_lwd.append(self.cwd())
 
             return {'status': True, 'cwd': self.cwd()}
 
+        def fwd(self, astr_startPath, **kwargs):
+            """
+            Return the files-in-working-directory in treeRecurse
+            compatible format.
+            :return: Return the cwd in treeRecurse compatible format.
+            """
+            status = self.cd(astr_startPath)['status']
+            if status:
+                l = self.lsf()
+                if len(l):
+                    lf = [self.cwd() + '/' + f for f in l]
+                    for entry in lf:
+                        self.l_fwd.append(entry)
+
+            return {'status': status, 'cwd': self.cwd()}
+
+        def filesFromHere_explore(self, astr_startPath = '/'):
+            """
+            Return a list of path/files from "here" in the stree, using
+            the child explore access.
+
+            :param astr_startPath: path from which to start
+            :return:
+            """
+            self.l_fwd  = []
+            self.treeExplore(startPath = astr_startPath, f=self.fwd)
+            self.l_allFiles = [f.split('/') for f in self.l_fwd]
+            for i in range(0, len(self.l_allFiles)):
+                self.l_allFiles[i][0] = '/'
+            return self.l_fwd
 
         def pathFromHere_walk(self, astr_startPath = '/'):
             """
@@ -1024,6 +1069,7 @@ class C_stree:
             Return a list of paths from "here" in the stree, using the
             child explore access.
 
+            :param astr_startPath: path from which to start
             :return: a list of paths from "here"
             """
 
@@ -1051,6 +1097,12 @@ if __name__ == "__main__":
     aTree.mkcd('a')
     aTree.mknode(['b', 'c'])
     aTree.cd('b')
+    aTree.touch('file1', 10)
+    aTree.touch('file2', "Rudolph Pienaar")
+    aTree.touch('file3', ['this', 'is', 'a', 'list'])
+    aTree.touch('file4', ('this', 'is', 'a', 'tuple'))
+    aTree.touch('file5', {'name': 'rudolph', 'address': '505 Washington'})
+
     aTree.mknode(['d', 'e'])
     aTree.cd('d')
     aTree.mknode(['h', 'i'])
@@ -1072,6 +1124,12 @@ if __name__ == "__main__":
     ATree.mknode(['H', 'I'])
     ATree.cd('/A/B/E')
     ATree.mknode(['J', 'K'])
+    ATree.cd('/A/B/E/K')
+    ATree.touch('file1', 11)
+    ATree.touch('file2', "Reza Pienaar")
+    ATree.touch('file3', ['this', 'is', 'another', 'list'])
+    ATree.touch('file4', ('this', 'is', 'another', 'tuple'))
+    ATree.touch('file5', {'name': 'reza', 'address': '505 Washington'})
     ATree.cd('/A/C')
     ATree.mknode(['F', 'G'])
     ATree.cd('F')
@@ -1123,4 +1181,5 @@ if __name__ == "__main__":
     print(aTree)
     print(aTree.pathFromHere_explore('/'))
     print(aTree.l_allPaths)
-
+    print(aTree.filesFromHere_explore('/'))
+    print(aTree.l_allFiles)
