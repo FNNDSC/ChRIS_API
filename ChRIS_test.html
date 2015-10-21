@@ -6,6 +6,11 @@
     <title>API Test Server</title>
 
     <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+
     <style type="text/css">
         h3{
             margin:5px;
@@ -14,14 +19,31 @@
             float:left;
         }
 
+        h2:hover .overlay {
+            display:block;
+            background-color:white;
+            opacity:0.75;
+        }
+
         .formLayout
         {
             background-color: #f3f3f3;
             border: solid 1px #a1a1a1;
             padding: 10px;
-            width: 878px;
+            width: 880px;
+            margin-left: auto;
+            margin-right:auto;
         }
- 
+
+        .resultLayout
+        {
+            padding: 10px;
+            width: 880px;
+            margin-left: auto;
+            margin-right:auto;
+        }
+
+
         pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
         .string { font-family:courier; color: green; }
         .number { font-family:courier; color: darkorange; }
@@ -32,15 +54,7 @@
         .input {
             font-family: courier;
         }
-        
-        .formLayout label, .formLayout input
-        {
-            display: block;
-            width: 120px;
-            float: left;
-            margin-bottom: 10px;
-        }
-     
+
         .formLayout label
         {
             text-align: right;
@@ -52,54 +66,142 @@
             clear: left;
         }
 
-        .result {
-            float:left;
-            width:60%;
-            height:900px;
-            border:1px solid #2b7d08;
-        }
-
         .onlythree {     
             width: 50px;    
             border: 0;    
         }    
 
-        .border {    
-            border: 1px solid gray;    
-            display: inline-block;    
+        .modal {
+            display:    none;
+            position:   fixed;
+            z-index:    1000;
+            top:        0;
+            left:       0;
+            height:     100%;
+            width:      100%;
+            background: rgba( 255, 255, 255, .8 )
+            url('http://i.stack.imgur.com/FhHRx.gif')
+            50% 50%
+            no-repeat;
         }
 
-        * {
-            font-size: 1em;
-            color: #000;
-            margin-left: 0.5cm;
+        /* When the body has the loading class, we turn
+           the scrollbar off with overflow:hidden */
+        body.loading {
+            overflow: hidden;
         }
-  
+
+        /* Anytime the body has the loading class, our
+           modal element will be visible */
+        body.loading .modal {
+            display: block;
+        }
+
     </style>
 
-    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
 </head>
 
 <body>
+
+        <h2 class="formLayout">Interact with the ChRIS REST API</h2>
+ 
     <div class="formLayout">
-        <label for="ServerIP">Server IP</label>
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>    
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>    
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>    
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="3"/>    
-        <br>
-        <label>Server Port</label>
-        <input style="width:60px;font-family:courier;"  id="port" name="port" value="5555"><br>
-        <label>VERB</label>
-        <input style="width:60px;font-family:courier;"  id="VERB" name="VERB" value="GET"><br>
-        <label>EXPR</label>
-        <input style="width:600px;font-family:courier;" id="EXPR" name="EXPR" value="/v1/Feeds/NAME_*"><br>
-        <label>AUTH</label>
-        <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
-        <button onclick="ChRISresponse_get()" class="pure-button pure-button-primary">Submit</button>
+
+        <button id="opener">help</button>
+        <div id="dialog" title="help">
+        <p>some help!</p>
+        </div><br>
+
+        <form class="pure-form pure-form-aligned">
+            <fieldset>
+                <legend>REST Call Detail</legend>
+
+                <div class="pure-control-group">
+                    <label>Server IP:port</label>
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="10"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="17"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="24"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="55"/>:
+                    <input style="width:60px;font-family:courier;" type="text" id="port" value="5555"/>
+                </div>
+
+                <div class="pure-control-group">
+                    <label>VERB</label>
+                    <select id="VERB" class="pure-input-1-2">
+                        <option>GET</option>
+                        <option>PUT</option>
+                        <option>POST</option>
+                        <option>DELETE</option>
+                    </select>
+                </div>
+
+                <div class="pure-control-group">
+                    <label>login/logout</label>
+                    <select id="loginout" class="pure-input-1-2">
+                        <option></option>
+                        <option>/v1/login?auth=user=chris,passwd=chris1234</option>
+                        <option>/v1/logout?auth=user=chris,auth=ABCDEF</option>
+                    </select>
+                </div>
+
+
+                <div class="pure-control-group">
+                    <label>EXPR prefix</label>
+                    <input style="width:600px;font-family:courier;" id="EXPRprefix" name="EXPR prefix" value="/v1/Feeds/NAME_"><br>
+                </div>
+
+                <div class="pure-control-group">
+                    <label>Feed</label>
+                    <input style="width:600px;font-family:courier;" id="Feed" name="Feed" value="" placeholder="Feed-1"><br>
+                </div>
+
+                <div class="pure-control-group">
+                    <label for="EXPRcore">EXPR core</label>
+                    <select id="EXPRcore" class="pure-input-1-2">
+                        <option></option>
+                        <option>/title</option>
+                        <option>/note</option>
+                        <option>/comment</option>
+                        <option>/data</option>
+                    </select>
+                </div>
+
+                <div class="pure-control-group">
+                    <label>EXPR suffix</label>
+                    <input style="width:600px;font-family:courier;" id="EXPRsuffix" name="EXPR suffix" value=""><br>
+                </div>
+
+                <div class="pure-control-group">
+                    <label>AUTH</label>
+                    <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
+                </div>
+
+                    <button onclick="return REST_call()" class="pure-button pure-button-primary">Submit</button>
+                </div>
+            </fieldset>
+        </form>
     </div>
 
+    <div class="resultLayout" id="result">
+
+    </div>
+
+    <div class="modal"><!-- Place at bottom of page --></div>
+
     <script>
+    $body       = $("body");
+    DIV_result  = document.getElementById("result")
+    APIcall     = "";
+
+    $(document).on({
+        ajaxStart: function() { $body.addClass("loading");  output(APIcall);  },
+        ajaxStop: function() { $body.removeClass("loading"); }
+    });
+
+    $( "#dialog" ).dialog({ autoOpen: false });
+    $( "#opener" ).click(function() {
+        $( "#dialog" ).dialog( "open" );
+    });
 
     $(".onlythree").keyup(function () {    
         if (this.value.length == this.maxLength) {    
@@ -108,7 +210,7 @@
     });  
 
     function output(inp) {
-        document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+        DIV_result.innerHTML = "<pre>" + inp + "</pre>";
     }
 
     function syntaxHighlight(json) {
@@ -129,22 +231,34 @@
             return '<span class="' + cls + '">' + match + '</span>';
         });
     }
-    
-    function ChRISresponse_get() {
+
+    function REST_call() {
         var IP1	= $('#IP1').val();
         var IP2	= $('#IP2').val();
         var IP3	= $('#IP3').val();
         var IP4	= $('#IP4').val();
-        
+
         var str_hostIP  = "http://" + IP1 + "." + IP2 + "." + IP3 + "." + IP4;
         var str_FQhost  = str_hostIP + ":" + $("#port").val();
 
         hdr         = null;
         ChRISresp   = null;
-        
+
         console.log(str_hostIP);
-        APIcall     = str_FQhost + $('#EXPR').val() + "?" + $('#AUTH').val();
+
+        APIloginout = $('#loginout').val();
+        if(APIloginout.length) {
+            APIcall = str_FQhost + APIloginout;
+        } else {
+            APIcall = str_FQhost +
+                    $('#EXPRprefix').val() +
+                    $('#Feed').val() +
+                    $('#EXPRcore').val() +
+                    $('#EXPRsuffix').val() +
+                    "?" + $('#AUTH').val();
+        }
         console.log(APIcall);
+
         $.ajax({
             url:        APIcall,
             dataType:   'json',
@@ -166,7 +280,9 @@
                 hdr=xhdr;
             }
         });
-    };
+        return false; //stop the form from initially submitting
+    }
+
     </script>
 
 </body>
