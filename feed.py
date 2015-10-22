@@ -544,7 +544,7 @@ class FeedTree(object):
 
         return {
                 'debug':        debugMessage,
-                'path':         str_pathInFeed,
+                'path':         str_searchTarget + str_pathInFeed,
                 'pathInFeed':   ret_path,
                 'status':       ret_status,
                 'payload':      ret_payload,
