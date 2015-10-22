@@ -103,14 +103,51 @@
 
 <body>
 
-        <h2 class="formLayout">Interact with the ChRIS REST API</h2>
- 
+    <h2 class="formLayout">Interact with the ChRIS REST API</h2>
+
     <div class="formLayout">
 
-        <button id="opener">help</button>
+        <div>
+            <style scoped>
+                .button-xsmall {
+                    font-size: 70%;
+                }
+
+                .button-login,
+                .button-logout,
+                .button-help {
+                    color: white;
+                    /*border-radius: 4px;*/
+                    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+                }
+
+                .button-login {
+                    background: rgb(28, 184, 65); /* this is a green */
+                }
+
+                .button-logout {
+                    background: rgb(223, 117, 20); /* this is an orange */
+                }
+
+                .button-help {
+                    background: rgb(66, 184, 221); /* this is a light blue */
+                    float: right;
+                }
+
+
+            </style>
+
+            <button class="button-xsmall button-login  pure-button" onclick="login()"  id="login">login</button>
+            <button class="button-xsmall button-logout pure-button" onclick="logout()" id="logout">logout</button>
+            <button class="button-xsmall button-help   pure-button" id="opener">help</button>
+            <br>
+        </div>
+
         <div id="dialog" title="help">
-        <p>some help!</p>
-        </div><br>
+            <p>some help!</p>
+        </div>
+
+        <!--<button id="opener">help</button>-->
 
         <form class="pure-form pure-form-aligned">
             <fieldset>
@@ -118,10 +155,10 @@
 
                 <div class="pure-control-group">
                     <label>Server IP:port</label>
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="10"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="17"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="24"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="55"/>:
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="6"/>:
                     <input style="width:60px;font-family:courier;" type="text" id="port" value="5555"/>
                 </div>
 
@@ -136,16 +173,6 @@
                 </div>
 
                 <div class="pure-control-group">
-                    <label>login/logout</label>
-                    <select id="loginout" class="pure-input-1-2">
-                        <option></option>
-                        <option>/v1/login?auth=user=chris,passwd=chris1234</option>
-                        <option>/v1/logout?auth=user=chris,auth=ABCDEF</option>
-                    </select>
-                </div>
-
-
-                <div class="pure-control-group">
                     <label>EXPR prefix</label>
                     <input style="width:600px;font-family:courier;" id="EXPRprefix" name="EXPR prefix" value="/v1/Feeds/NAME_"><br>
                 </div>
@@ -156,8 +183,8 @@
                 </div>
 
                 <div class="pure-control-group">
-                    <label for="EXPRcore">EXPR core</label>
-                    <select id="EXPRcore" class="pure-input-1-2">
+                    <label for="URLexplore">EXPR core</label>
+                    <select class="pure-input-1-2" id="URLexplore">
                         <option></option>
                         <option>/title</option>
                         <option>/note</option>
@@ -176,7 +203,7 @@
                     <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
                 </div>
 
-                    <button onclick="return REST_call()" class="pure-button pure-button-primary">Submit</button>
+                    <button onclick="return REST_call(null)" class="pure-button pure-button-primary">Submit</button>
                 </div>
             </fieldset>
         </form>
@@ -207,7 +234,18 @@
         if (this.value.length == this.maxLength) {    
             $(this).next('.onlythree').focus();    
         }    
-    });  
+    });
+
+    var URLoptions = {
+        val1 : 'text1',
+        val2 : 'text2'
+    };
+    var URLexplore = $('#URLexplore');
+    $.each(URLoptions, function(val, text) {
+        URLexplore.append(
+                $('<option></option>').val(val).html(text)
+        );
+    });
 
     function output(inp) {
         DIV_result.innerHTML = "<pre>" + inp + "</pre>";
@@ -232,7 +270,15 @@
         });
     }
 
-    function REST_call() {
+    function login() {
+        REST_call('/v1/login?auth=user=chris,passwd=chris1234');
+    }
+
+    function logout() {
+        REST_call('/v1/logout?auth=user=chris,auth=ABCDEF');
+    }
+
+    function REST_call(APIcallOverride) {
         var IP1	= $('#IP1').val();
         var IP2	= $('#IP2').val();
         var IP3	= $('#IP3').val();
@@ -245,17 +291,17 @@
         ChRISresp   = null;
 
         console.log(str_hostIP);
-
-        APIloginout = $('#loginout').val();
-        if(APIloginout.length) {
-            APIcall = str_FQhost + APIloginout;
-        } else {
+        console.log('test: ' + typeof(APIcallOverride)===undefined );
+        console.log('APIcallOverride = ' + APIcallOverride);
+        if(APIcallOverride===null) {
             APIcall = str_FQhost +
-                    $('#EXPRprefix').val() +
-                    $('#Feed').val() +
-                    $('#EXPRcore').val() +
-                    $('#EXPRsuffix').val() +
+                    $('#EXPRprefix').val()  +
+                    $('#Feed').val()        +
+                    $('#URLexplore').val()  +
+                    $('#EXPRsuffix').val()  +
                     "?" + $('#AUTH').val();
+        } else {
+            APIcall = str_FQhost + APIcallOverride;
         }
         console.log(APIcall);
 
@@ -264,8 +310,8 @@
             dataType:   'json',
             success:    function (ChRISresp) {
                 console.log('AJAX call success.');
-                ChRISresp = JSON.stringify(ChRISresp, null, 2);
-                //output(ChRISresp);
+                ChRISresp       = JSON.stringify(ChRISresp, null, 2);
+                json_ChRISresp  = JSON.parse(ChRISresp);
                 output(syntaxHighlight(ChRISresp));
             },
             error:      function(xhdr, textStatus, thrownError) {
