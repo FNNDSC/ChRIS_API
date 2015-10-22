@@ -45,11 +45,11 @@
 
 
         pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
-        .string { font-family:courier; color: green; }
-        .number { font-family:courier; color: darkorange; }
-        .boolean { font-family:courier; color: blue; }
-        .null { font-family:courier; color: magenta; }
-        .key { font-family:courier; color: red; }
+        .string     { font-family:courier; color: green; }
+        .number     { font-family:courier; color: darkorange; }
+        .boolean    { font-family:courier; color: blue; }
+        .null       { font-family:courier; color: magenta; }
+        .key        { font-family:courier; color: red; }
  
         .input {
             font-family: courier;
@@ -102,127 +102,123 @@
 </head>
 
 <body>
-
     <h2 class="formLayout">Interact with the ChRIS REST API</h2>
 
     <div class="formLayout">
+        <style scoped>
+            .button-xsmall {
+                font-size: 70%;
+            }
 
+            .button-login,
+            .button-logout,
+            .button-help {
+                color: white;
+                /*border-radius: 4px;*/
+                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+            }
+
+            .button-login {
+                background: rgb(28, 184, 65); /* this is a green */
+            }
+
+            .button-logout {
+                background: rgb(223, 117, 20); /* this is an orange */
+            }
+
+            .button-help {
+                background: rgb(66, 184, 221); /* this is a light blue */
+                float: right;
+            }
+
+            .button-reset {
+                background: rgb(223, 117, 20); /* this is an orange */
+                float: right;
+            }
+        </style>
         <div>
-            <style scoped>
-                .button-xsmall {
-                    font-size: 70%;
-                }
-
-                .button-login,
-                .button-logout,
-                .button-help {
-                    color: white;
-                    /*border-radius: 4px;*/
-                    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-                }
-
-                .button-login {
-                    background: rgb(28, 184, 65); /* this is a green */
-                }
-
-                .button-logout {
-                    background: rgb(223, 117, 20); /* this is an orange */
-                }
-
-                .button-help {
-                    background: rgb(66, 184, 221); /* this is a light blue */
-                    float: right;
-                }
-
-
-            </style>
-
             <button class="button-xsmall button-login  pure-button" onclick="login()"  id="login">login</button>
             <button class="button-xsmall button-logout pure-button" onclick="logout()" id="logout">logout</button>
             <button class="button-xsmall button-help   pure-button" id="opener">help</button>
             <br>
         </div>
-
         <div id="dialog" title="help">
             <p>some help!</p>
         </div>
-
-        <!--<button id="opener">help</button>-->
-
         <form class="pure-form pure-form-aligned">
             <fieldset>
                 <legend>REST Call Detail</legend>
 
                 <div class="pure-control-group">
                     <label>Server IP:port</label>
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="6"/>:
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="172"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="20"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="50"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="23"/>:
                     <input style="width:60px;font-family:courier;" type="text" id="port" value="5555"/>
                 </div>
 
                 <div class="pure-control-group">
                     <label>VERB</label>
-                    <select id="VERB" class="pure-input-1-2">
+                    <select id="VERB" class="pure-input-4-24">
                         <option>GET</option>
                         <option>PUT</option>
                         <option>POST</option>
                         <option>DELETE</option>
                     </select>
-                </div>
-
-                <div class="pure-control-group">
-                    <label>EXPR prefix</label>
-                    <input style="width:600px;font-family:courier;" id="EXPRprefix" name="EXPR prefix" value="/v1/Feeds/NAME_"><br>
-                </div>
-
-                <div class="pure-control-group">
-                    <label>Feed</label>
-                    <input style="width:600px;font-family:courier;" id="Feed" name="Feed" value="" placeholder="Feed-1"><br>
-                </div>
-
-                <div class="pure-control-group">
-                    <label for="URLexplore">EXPR core</label>
-                    <select class="pure-input-1-2" id="URLexplore">
-                        <option></option>
-                        <option>/title</option>
-                        <option>/note</option>
-                        <option>/comment</option>
-                        <option>/data</option>
+                    <label>API version</label>
+                    <select id="version" class="pure-input-4-24">
+                        <option>v1</option>
+                        <option>v2</option>
+                        <option>v3</option>
+                        <option>v4</option>
+                    </select>
+                    <label>Feed Key</label>
+                    <select id="key" class="pure-input-4-24">
+                        <option>NAME</option>
+                        <option>ID</option>
                     </select>
                 </div>
-
                 <div class="pure-control-group">
-                    <label>EXPR suffix</label>
-                    <input style="width:600px;font-family:courier;" id="EXPRsuffix" name="EXPR suffix" value=""><br>
+                    <label for="URLsFromChRIS">URLs available</label>
+                    <select class="pure-input-1-2" id="URLsFromChRIS">
+                    </select>
                 </div>
-
                 <div class="pure-control-group">
                     <label>AUTH</label>
                     <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
                 </div>
-
-                    <button onclick="return REST_call(null)" class="pure-button pure-button-primary">Submit</button>
-                </div>
+                <button onclick="return REST_call()" class="pure-button pure-button-primary">Call</button>
+                <button onclick="window.location.reload(true)" class="pure-button pure-button-primary button-reset">Reset</button>
+                <!--</div>-->
             </fieldset>
         </form>
     </div>
 
     <div class="resultLayout" id="result">
-
     </div>
 
     <div class="modal"><!-- Place at bottom of page --></div>
 
     <script>
-    $body       = $("body");
-    DIV_result  = document.getElementById("result")
-    APIcall     = "";
+    // Some "global" variables.
+
+    // The whole document
+    $body                       = $("body");
+    // Some specific parts of the document
+    result_DOM                  = document.getElementById("result");
+    URLsFromChRIS_DOM           = $('#URLsFromChRIS');
+    key_DOM                     = $('#key');
+    // API call return strings
+    APIcall                     = '';
+    json_ChRISresp              = '';
+    // Some default/persistent URL select options.
+    str_FeedBase                = '';
+    str_allFeedsBase            = '';
 
     $(document).on({
-        ajaxStart: function() { $body.addClass("loading");  output(APIcall);  },
-        ajaxStop: function() { $body.removeClass("loading"); }
+        ajaxStart:  function() { $body.addClass("loading");  output(APIcall);  },
+        ajaxStop:   function() { $body.removeClass("loading"); }
     });
 
     $( "#dialog" ).dialog({ autoOpen: false });
@@ -235,20 +231,31 @@
             $(this).next('.onlythree').focus();    
         }    
     });
-
-    var URLoptions = {
-        val1 : 'text1',
-        val2 : 'text2'
-    };
-    var URLexplore = $('#URLexplore');
-    $.each(URLoptions, function(val, text) {
-        URLexplore.append(
-                $('<option></option>').val(val).html(text)
-        );
-    });
+    
+    function URLsFromChRIS_build(d_URLoptions) {
+        URLsFromChRIS_DOM.empty();
+        // Now build the URLs from this point *forward* in the datatree space
+        // as returned by ChRIS
+        if(str_FeedBase.length) {
+            console.log('In URLsFromChRIS_build... appending back paths...');
+            d_URLoptions.push(str_FeedBase);
+            d_URLoptions.push(str_allFeedsBase);
+            console.log(d_URLoptions);
+        }
+        $.each(d_URLoptions, function(key, val) {
+            l_path      = val.split('/');
+            if(!str_FeedBase.length) {
+                str_FeedBase = l_path[0] + '/' + l_path[1];
+                str_allFeedsBase = 'Feeds/' + key_DOM.val();
+            }
+            URLsFromChRIS_DOM.append(
+                    $('<option></option>').val(key).html(val)
+            );
+        });
+    }
 
     function output(inp) {
-        DIV_result.innerHTML = "<pre>" + inp + "</pre>";
+        result_DOM.innerHTML = "<pre>" + inp + "</pre>";
     }
 
     function syntaxHighlight(json) {
@@ -290,16 +297,21 @@
         hdr         = null;
         ChRISresp   = null;
 
-        console.log(str_hostIP);
-        console.log('test: ' + typeof(APIcallOverride)===undefined );
-        console.log('APIcallOverride = ' + APIcallOverride);
-        if(APIcallOverride===null) {
-            APIcall = str_FQhost +
-                    $('#EXPRprefix').val()  +
-                    $('#Feed').val()        +
-                    $('#URLexplore').val()  +
-                    $('#EXPRsuffix').val()  +
-                    "?" + $('#AUTH').val();
+        if(typeof(APIcallOverride)==='undefined') {
+            str_URLsFromChRIS_selected  = URLsFromChRIS_DOM.val();
+            if(typeof(str_URLsFromChRIS_selected)==="object") {
+                APIcall = str_FQhost                        +
+                        '/'         + $('#version').val()   +
+                        '/Feeds/'   + key_DOM.val()         +
+                        "?" + $('#AUTH').val();
+            } else {
+                URLsFromChRIS_selected  = parseInt(str_URLsFromChRIS_selected);
+                str_URL                 = json_ChRISresp.return.URL_get[URLsFromChRIS_selected];
+                APIcall                 = str_FQhost +
+                                            '/' + $('#version').val()  + '/'    +
+                                            str_URL                             +
+                                            "?" + $('#AUTH').val();
+            }
         } else {
             APIcall = str_FQhost + APIcallOverride;
         }
@@ -312,6 +324,9 @@
                 console.log('AJAX call success.');
                 ChRISresp       = JSON.stringify(ChRISresp, null, 2);
                 json_ChRISresp  = JSON.parse(ChRISresp);
+                d_URLsFromChRIS = json_ChRISresp.return.URL_get;
+                console.log(d_URLsFromChRIS);
+                URLsFromChRIS_build(d_URLsFromChRIS);
                 output(syntaxHighlight(ChRISresp));
             },
             error:      function(xhdr, textStatus, thrownError) {
