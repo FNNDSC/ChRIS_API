@@ -97,6 +97,47 @@
             display: block;
         }
 
+        .ui-widget.helpInfo-dialog {
+            font-family:    Verdana,Arial,sans-serif;
+            font-size:      .8em;
+        }
+
+        .ui-widget-content.helpInfo-dialog {
+            background:     #F9F9F9;
+            border:         1px solid #90d93f;
+            color:          #222222;
+        }
+
+        .ui-dialog.helpInfo-dialog {
+            left:           0;
+            outline:        0 none;
+            padding:        0 !important;
+            position:       absolute;
+            top:            0;
+        }
+
+        .ui-dialog.helpInfo-dialog .ui-dialog-content {
+            background:     none repeat scroll 0 0 transparent;
+            border:         0 none;
+            overflow:       auto;
+            position:       relative;
+            padding:        20;
+            margin:         0;
+        }
+
+        .ui-dialog.helpInfo-dialog .ui-widget-header {
+            background:     #b0de78;
+            border:         0;
+            color:          #fff;
+            font-weight:    normal;
+        }
+
+        .ui-dialog.helpInfo-dialog .ui-dialog-titlebar {
+            padding:        0.1em .5em;
+            position:       relative;
+            font-size:      1em;
+        }
+
     </style>
 
 </head>
@@ -142,8 +183,19 @@
             <button class="button-xsmall button-help   pure-button" id="opener">help</button>
             <br>
         </div>
-        <div id="dialog" title="help">
-            <p>some help!</p>
+        <div id="helpInfo" title="help">
+
+            <h3>Interacting with the ChRIS REST API backend</h3>
+            <h4>Preliminaries</h4>
+            <p>Make sure that the ChRIS REST Web Service has been started:</p>
+            <p style="text-indent: 2.0em; border-color: #000;"><tt>./ChRIS_WS -i &lt;someIP&gt; -h &lt;somePort&gt; --API REST</tt></p>
+            <h4>Operation</h4>
+            <p>For the most, interacting with the ChRIS REST Web Service API requires no "input" from the user, other than perhaps manually specifying the ChRIS web service IP and port.</p>
+            <p>Each call to the ChRIS API returns a description of available URL actions that can be accessed, dependent on the current call. In this manner, software agents can self-discover the data/action space exposed by the ChRIS REST API.</p>
+            <h4>Usage</h4>
+            <p>To start, hit the <tt>login</tt> button. Once logged in, the service remains in that state indefinitely until <tt>logout</tt> has been clicked.</p>
+            <p>Once logged in for the first time, or on each time this page is visited, hit the <tt>Call</tt> button to call the current URL (shown in the <i>URLs available</i> select box). With each call of a URL, the contents of this box will change. Simply keep choosing URLs as they are made available to explore the data space.</p>
+
         </div>
         <form class="pure-form pure-form-aligned">
             <fieldset>
@@ -151,10 +203,10 @@
 
                 <div class="pure-control-group">
                     <label>Server IP:port</label>
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="172"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="20"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="50"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="23"/>:
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="10"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="17"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="24"/>.
+                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="55"/>:
                     <input style="width:60px;font-family:courier;" type="text" id="port" value="5555"/>
                 </div>
 
@@ -169,9 +221,6 @@
                     <label>API version</label>
                     <select id="version" class="pure-input-4-24">
                         <option>v1</option>
-                        <option>v2</option>
-                        <option>v3</option>
-                        <option>v4</option>
                     </select>
                     <label>Feed Key</label>
                     <select id="key" class="pure-input-4-24">
@@ -201,6 +250,9 @@
     <div class="modal"><!-- Place at bottom of page --></div>
 
     <script>
+    // ---------------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------------
+
     // Some "global" variables.
 
     // The whole document
@@ -213,7 +265,7 @@
     APIcall                     = '';
     json_ChRISresp              = '';
     // Some default/persistent URL select options.
-    str_FeedBase                = '';
+    str_pathUp                  = '';
     str_allFeedsBase            = '';
 
     $(document).on({
@@ -221,9 +273,14 @@
         ajaxStop:   function() { $body.removeClass("loading"); }
     });
 
-    $( "#dialog" ).dialog({ autoOpen: false });
+    $( "#helpInfo" ).dialog({
+        autoOpen:       false,
+        height:         520,
+        width:          500,
+        dialogClass:    'helpInfo-dialog'
+    });
     $( "#opener" ).click(function() {
-        $( "#dialog" ).dialog( "open" );
+        $( "#helpInfo" ).dialog( "open" );
     });
 
     $(".onlythree").keyup(function () {    
@@ -231,22 +288,29 @@
             $(this).next('.onlythree').focus();    
         }    
     });
-    
-    function URLsFromChRIS_build(d_URLoptions) {
+
+    function URLsFromChRIS_build(json_ChRISresp) {
         URLsFromChRIS_DOM.empty();
+        d_URLsFromChRIS = json_ChRISresp.return.URL_get;
         // Now build the URLs from this point *forward* in the datatree space
         // as returned by ChRIS
-        if(str_FeedBase.length) {
+        if(str_pathUp.length) {
+            l_path              = json_ChRISresp.return.path.split('/');
+            l_pathUp            = l_path.slice(0, -1);
+            str_pathUp          = str_allFeedsBase + '_' + l_pathUp.join('/');
             console.log('In URLsFromChRIS_build... appending back paths...');
-            d_URLoptions.push(str_FeedBase);
-            d_URLoptions.push(str_allFeedsBase);
-            console.log(d_URLoptions);
+            console.log('In URLsFromChRIS_build... ' + str_pathUp);
+            console.log('In URLsFromChRIS_build... ' + str_allFeedsBase);
+            if(str_pathUp != str_allFeedsBase + '_')
+                d_URLsFromChRIS.push(str_pathUp);
+            d_URLsFromChRIS.push(str_allFeedsBase);
+            console.log(d_URLsFromChRIS);
         }
-        $.each(d_URLoptions, function(key, val) {
+        $.each(d_URLsFromChRIS, function(key, val) {
             l_path      = val.split('/');
-            if(!str_FeedBase.length) {
-                str_FeedBase = l_path[0] + '/' + l_path[1];
-                str_allFeedsBase = 'Feeds/' + key_DOM.val();
+            if(!str_pathUp.length) {
+                str_allFeedsBase    = 'Feeds/' + key_DOM.val();
+                str_pathUp        = str_allFeedsBase + '_' + json_ChRISresp.return.path;
             }
             URLsFromChRIS_DOM.append(
                     $('<option></option>').val(key).html(val)
@@ -286,11 +350,23 @@
     }
 
     function REST_call(APIcallOverride) {
+        /*
+            The main entry point to calling the service. The specific arguments to pass to the
+            back end service are typically parsed from the HTML content; however if <APIcallOverride>
+            is defined, then this will be passed instead. This is useful for specific "canned"
+            calls, i.e. the login and logout calls -- the login() and logout() functions above.
+
+            ARGS
+
+                APIcallOverride     string      if passed, this will be presented to the backend
+                                                service.
+         */
+
+        // Assemble the service address and port:
         var IP1	= $('#IP1').val();
         var IP2	= $('#IP2').val();
         var IP3	= $('#IP3').val();
         var IP4	= $('#IP4').val();
-
         var str_hostIP  = "http://" + IP1 + "." + IP2 + "." + IP3 + "." + IP4;
         var str_FQhost  = str_hostIP + ":" + $("#port").val();
 
@@ -324,9 +400,7 @@
                 console.log('AJAX call success.');
                 ChRISresp       = JSON.stringify(ChRISresp, null, 2);
                 json_ChRISresp  = JSON.parse(ChRISresp);
-                d_URLsFromChRIS = json_ChRISresp.return.URL_get;
-                console.log(d_URLsFromChRIS);
-                URLsFromChRIS_build(d_URLsFromChRIS);
+                URLsFromChRIS_build(json_ChRISresp);
                 output(syntaxHighlight(ChRISresp));
             },
             error:      function(xhdr, textStatus, thrownError) {
