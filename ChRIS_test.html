@@ -6,6 +6,11 @@
     <title>API Test Server</title>
 
     <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+
     <style type="text/css">
         h3{
             margin:5px;
@@ -14,33 +19,42 @@
             float:left;
         }
 
+        h2:hover .overlay {
+            display:block;
+            background-color:white;
+            opacity:0.75;
+        }
+
         .formLayout
         {
             background-color: #f3f3f3;
             border: solid 1px #a1a1a1;
             padding: 10px;
-            width: 878px;
+            width: 880px;
+            margin-left: auto;
+            margin-right:auto;
         }
- 
+
+        .resultLayout
+        {
+            padding: 10px;
+            width: 880px;
+            margin-left: auto;
+            margin-right:auto;
+        }
+
+
         pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
-        .string { font-family:courier; color: green; }
-        .number { font-family:courier; color: darkorange; }
-        .boolean { font-family:courier; color: blue; }
-        .null { font-family:courier; color: magenta; }
-        .key { font-family:courier; color: red; }
+        .string     { font-family:courier; color: green; }
+        .number     { font-family:courier; color: darkorange; }
+        .boolean    { font-family:courier; color: blue; }
+        .null       { font-family:courier; color: magenta; }
+        .key        { font-family:courier; color: red; }
  
         .input {
             font-family: courier;
         }
-        
-        .formLayout label, .formLayout input
-        {
-            display: block;
-            width: 120px;
-            float: left;
-            margin-bottom: 10px;
-        }
-     
+
         .formLayout label
         {
             text-align: right;
@@ -52,66 +66,333 @@
             clear: left;
         }
 
-        .result {
-            float:left;
-            width:60%;
-            height:900px;
-            border:1px solid #2b7d08;
-        }
-
         .onlythree {     
             width: 50px;    
             border: 0;    
         }    
 
-        .border {    
-            border: 1px solid gray;    
-            display: inline-block;    
+        .modal {
+            display:    none;
+            position:   fixed;
+            z-index:    1000;
+            top:        0;
+            left:       0;
+            height:     100%;
+            width:      100%;
+            background: rgba( 255, 255, 255, .8 )
+            url('http://i.stack.imgur.com/FhHRx.gif')
+            50% 50%
+            no-repeat;
         }
 
-        * {
-            font-size: 1em;
-            color: #000;
-            margin-left: 0.5cm;
+        /* When the body has the loading class, we turn
+           the scrollbar off with overflow:hidden */
+        body.loading {
+            overflow: hidden;
         }
-  
+
+        /* Anytime the body has the loading class, our
+           modal element will be visible */
+        body.loading .modal {
+            display: block;
+        }
+
+        .ui-widget.helpInfo-dialog {
+            font-family:    Verdana,Arial,sans-serif;
+            font-size:      .8em;
+        }
+
+        .ui-widget-content.helpInfo-dialog {
+            background:     #F9F9F9;
+            border:         1px solid #90d93f;
+            color:          #222222;
+        }
+
+        .ui-dialog.helpInfo-dialog {
+            left:           0;
+            outline:        0 none;
+            padding:        0 !important;
+            position:       absolute;
+            top:            0;
+        }
+
+        .ui-dialog.helpInfo-dialog .ui-dialog-content {
+            background:     none repeat scroll 0 0 transparent;
+            border:         0 none;
+            overflow:       auto;
+            position:       relative;
+            padding:        20;
+            margin:         0;
+        }
+
+        .ui-dialog.helpInfo-dialog .ui-widget-header {
+            background:     #b0de78;
+            border:         0;
+            color:          #fff;
+            font-weight:    normal;
+        }
+
+        .ui-dialog.helpInfo-dialog .ui-dialog-titlebar {
+            padding:        0.1em .5em;
+            position:       relative;
+            font-size:      1em;
+        }
+
     </style>
 
-    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
 </head>
 
 <body>
+    <h2 class="formLayout">Interact with the ChRIS REST API</h2>
+
     <div class="formLayout">
-        <label for="ServerIP">Server IP</label>
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>    
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>    
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>    
-        <input class="border" style="width:30px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="3"/>    
-        <br>
-        <label>Server Port</label>
-        <input style="width:60px;font-family:courier;"  id="port" name="port" value="5555"><br>
-        <label>VERB</label>
-        <input style="width:60px;font-family:courier;"  id="VERB" name="VERB" value="GET"><br>
-        <label>EXPR</label>
-        <input style="width:600px;font-family:courier;" id="EXPR" name="EXPR" value="/v1/Feeds/NAME_*"><br>
-        <label>AUTH</label>
-        <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
-        <button onclick="ChRISresponse_get()" class="pure-button pure-button-primary">Submit</button>
+        <style scoped>
+            .button-xsmall {
+                font-size: 70%;
+            }
+
+            .button-login,
+            .button-logout,
+            .button-help {
+                color: white;
+                /*border-radius: 4px;*/
+                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+            }
+
+            .button-login {
+                background: rgb(28, 184, 65); /* this is a green */
+            }
+
+            .button-logout {
+                background: rgb(223, 117, 20); /* this is an orange */
+            }
+
+            .button-loginStatus-loggedOut {
+                background: lightyellow;
+            }
+
+            .button-loginStatus-loggedIn {
+                background: lightblue;
+            }
+
+            .button-help {
+                background: rgb(66, 184, 221); /* this is a light blue */
+                float: right;
+            }
+
+            .button-reset {
+                background: rgb(223, 117, 20); /* this is an orange */
+                float: right;
+            }
+        </style>
+        <div>
+            <button class="button-xsmall button-login  pure-button"     id="login"      onclick="login()" >login</button>
+            <button class="button-xsmall button-logout pure-button"     id="logout"     onclick="logout()">logout</button>
+            <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus">login status</button>
+            <button class="button-xsmall button-help   pure-button"     id="opener">help</button>
+            <br>
+        </div>
+        <div id="helpInfo" title="help">
+            <h3>Interacting with the ChRIS REST API backend</h3>
+            <h4>Preliminaries</h4>
+            <p>Make sure that the ChRIS REST Web Service has been started:</p>
+            <p style="text-indent: 2.0em; border-color: #000;"><tt>./ChRIS_WS -i &lt;someIP&gt; -h &lt;somePort&gt; --API REST</tt></p>
+            <h4>Operation</h4>
+            <p>For the most, interacting with the ChRIS REST Web Service API requires no "input" from the user, other than perhaps manually specifying the ChRIS web service IP and port.</p>
+            <p>Each call to the ChRIS API returns a description of available URL actions that can be accessed, dependent on the current call. In this manner, software agents can self-discover the data/action space exposed by the ChRIS REST API.</p>
+            <h4>Usage</h4>
+            <p>To start, hit the <tt>login</tt> button. Once logged in, the service remains in that state indefinitely until <tt>logout</tt> has been clicked.</p>
+            <p>Once logged in for the first time, or on each time this page is visited, hit the <tt>Call</tt> button to call the current URL (shown in the <i>URLs available</i> select box). With each call of a URL, the contents of this box will change. Simply keep choosing URLs as they are made available to explore the data space.</p>
+        </div>
+        <form class="pure-form pure-form-aligned">
+            <fieldset>
+                <legend>REST Call Detail</legend>
+
+                <div class="pure-control-group">
+                    <label>Server IP:port</label>
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="6"/>:
+                    <input style="width:70px;font-family:courier;" type="text" id="port" value="5555"/>
+                </div>
+
+                <div class="pure-control-group">
+                    <label>VERB</label>
+                    <select id="VERB" class="pure-input-4-24">
+                        <option>GET</option>
+                        <option>PUT</option>
+                        <option>POST</option>
+                        <option>DELETE</option>
+                    </select>
+                    <label>API version</label>
+                    <select id="version" class="pure-input-4-24">
+                        <option>v1</option>
+                    </select>
+                    <label>Feed Key</label>
+                    <select id="key" class="pure-input-4-24">
+                        <option>NAME</option>
+                        <option>ID</option>
+                    </select>
+                </div>
+                <div class="pure-control-group">
+                    <label for="URLsFromChRIS">URLs available</label>
+                    <select class="pure-input-1-2" id="URLsFromChRIS">
+                    </select>
+                </div>
+                <div class="pure-control-group">
+                    <label>AUTH</label>
+                    <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
+                </div>
+                <button onclick="return REST_call()" class="pure-button pure-button-primary">Call</button>
+                <button onclick="window.location.reload(true)" class="pure-button pure-button-primary button-reset">Reset</button>
+                <!--</div>-->
+            </fieldset>
+        </form>
     </div>
 
+    <div class="resultLayout" id="result">
+    </div>
+
+    <div class="modal"><!-- Place at bottom of page --></div>
+
     <script>
+    // ---------------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // Some "global" variables.
+
+    // The whole document
+    $body                       = $("body");
+    // Some specific parts of the document
+    result_DOM                  = document.getElementById("result");
+    URLsFromChRIS_DOM           = $('#URLsFromChRIS');
+    key_DOM                     = $('#key');
+    // API call return strings
+    APIcall                     = '';
+    json_ChRISresp              = '';
+    // Some default/persistent URL select options.
+    str_pathUp                  = '';
+    str_allFeedsBase            = '';
+    str_loginFile               = '';
+    b_URLsBuild                 = true;
+
+    $(document).on({
+        ajaxStart:  function() { $body.addClass("loading");  output(APIcall);  },
+        ajaxStop:   function() { $body.removeClass("loading"); }
+    });
+
+    $( "#helpInfo" ).dialog({
+        autoOpen:       false,
+        height:         520,
+        width:          500,
+        dialogClass:    'helpInfo-dialog'
+    });
+    $( "#opener" ).click(function() {
+        $( "#helpInfo" ).dialog( "open" );
+    });
 
     $(".onlythree").keyup(function () {    
         if (this.value.length == this.maxLength) {    
             $(this).next('.onlythree').focus();    
         }    
-    });  
+    });
+
+    function file_exist(str_filename) {
+        var http = new XMLHttpRequest();
+        http.open('HEAD', str_filename, false);
+        http.send();
+        return http.status!=404;
+    }
+
+    function loginStatus_show(ab_status) {
+        loginStatus_DOM = document.getElementById("loginStatus");
+        console.log('login status = ' + ab_status);
+        if(ab_status) {
+            loginStatus_DOM.innerHTML           = 'logged in';
+            loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedIn pure-button';
+        } else {
+            loginStatus_DOM.innerHTML           = 'not logged in';
+            loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedOut pure-button';
+        }
+    }
+
+    function loginStatus_fileTagGenerate() {
+        serverAddress       = window.location.href;
+        console.log(serverAddress);
+        l_p = serverAddress.split('/');
+        str_loginFile       = 'chris-login.json';
+        l_p[l_p.length - 1] = str_loginFile;
+        str_loginURLtag     = l_p.join('/');
+        console.log(str_loginURLtag);
+    }
+
+    window.onload = function() {
+        loginStatus_fileTagGenerate();
+        loginStatus_show(file_exist(str_loginURLtag));
+    };
+
+    function URLsFromChRIS_build(json_ChRISresp) {
+        /*
+        This function parses the URL component of the response to
+        build a list of possible navigable links from this
+        point in the dataspace.
+
+        ARGS
+            json_ChRISresp  json-object     the response from ChRIS
+
+        */
+        console.log('In URLsFromChRIS_build...');
+        URLsFromChRIS_DOM.empty();
+        d_URLsFromChRIS = json_ChRISresp.return.URL_get;
+        console.log('d_URLsFromChRIS: ' + d_URLsFromChRIS);
+        console.log("typeof(str_pathUP): " + typeof(str_pathUP));
+        // First, build a breadcrumb path back through the dataspace
+        if (str_pathUp.length) {
+            console.log('In URLsFromChRIS_build... appending back paths...');
+            str_path    = json_ChRISresp.return.path;
+            console.log('str_path = ' + str_path);
+            d_URLsFromChRIS.push(str_path);
+            l_path      = str_path.split('/');
+            console.log('l_path = ' + l_path);
+            for(d=1; d<l_path.length; d++) {
+                l_breadCrumb    = l_path.slice(0, d);
+                console.log('d = ' + d + ' l_breadCrumb = ' + l_breadCrumb);
+//                str_pathUP      = str_allFeedsBase + '_' + l_breadCrumb.join('/');
+                str_pathUP      = l_breadCrumb.join('/');
+                console.log('appending ' + str_pathUP);
+                d_URLsFromChRIS.push(str_pathUp);
+            }
+//            l_pathUp    = l_path.slice(0, -1);
+//            str_pathUp = str_allFeedsBase + '_' + l_pathUp.join('/');
+//            console.log('In URLsFromChRIS_build... ' + str_pathUp);
+//            if (str_pathUp != str_allFeedsBase + '_')
+//                d_URLsFromChRIS.push(str_pathUp);
+//
+//            console.log('In URLsFromChRIS_build... ' + str_allFeedsBase);
+//            d_URLsFromChRIS.push(str_allFeedsBase);
+            console.log(d_URLsFromChRIS);
+        }
+        // Now build the URLs from this point *forward* in the datatree space
+        // as returned by ChRIS
+        $.each(d_URLsFromChRIS, function (key, val) {
+            l_pathNext = val.split('/');
+            if (!str_pathUp.length) {
+                str_allFeedsBase    = 'Feeds/' + key_DOM.val();
+                str_pathUp          = str_allFeedsBase + '_' + json_ChRISresp.return.path;
+            }
+            URLsFromChRIS_DOM.append(
+                    $('<option></option>').val(key).html(val)
+            );
+        });
+    }
 
     function output(inp) {
-        document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+        result_DOM.innerHTML = "<pre>" + inp + "</pre>";
     }
 
     function syntaxHighlight(json) {
+//        console.log(json);
         json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
             var cls = 'number';
@@ -129,30 +410,79 @@
             return '<span class="' + cls + '">' + match + '</span>';
         });
     }
-    
-    function ChRISresponse_get() {
+
+    function login() {
+        REST_call('/v1/login?auth=user=chris,passwd=chris1234');
+        loginStatus_show(file_exist(str_loginURLtag));
+        b_URLsBuild = false;
+    }
+
+    function logout() {
+        REST_call('/v1/logout?auth=user=chris,auth=ABCDEF');
+        loginStatus_show(file_exist(str_loginURLtag));
+        b_URLsBuild = false;
+    }
+
+    function REST_call(APIcallOverride) {
+        /*
+            The main entry point to calling the service. The specific arguments to pass to the
+            back end service are typically parsed from the HTML content; however if <APIcallOverride>
+            is defined, then this will be passed instead. This is useful for specific "canned"
+            calls, i.e. the login and logout calls -- the login() and logout() functions above.
+
+            ARGS
+
+                APIcallOverride     string      if passed, this will be presented to the backend
+                                                service.
+         */
+
+        loginStatus_fileTagGenerate();
+
+        // Assemble the service address and port:
         var IP1	= $('#IP1').val();
         var IP2	= $('#IP2').val();
         var IP3	= $('#IP3').val();
         var IP4	= $('#IP4').val();
-        
         var str_hostIP  = "http://" + IP1 + "." + IP2 + "." + IP3 + "." + IP4;
         var str_FQhost  = str_hostIP + ":" + $("#port").val();
 
         hdr         = null;
         ChRISresp   = null;
-        
-        console.log(str_hostIP);
-        APIcall     = str_FQhost + $('#EXPR').val() + "?" + $('#AUTH').val();
+
+        if(typeof(APIcallOverride)==='undefined') {
+            str_URLsFromChRIS_selected  = URLsFromChRIS_DOM.val();
+            if(typeof(str_URLsFromChRIS_selected)==="object") {
+                APIcall = str_FQhost                        +
+                        '/'         + $('#version').val()   +
+                        '/Feeds/'   + key_DOM.val()         +
+                        "?" + $('#AUTH').val();
+            } else {
+                URLsFromChRIS_selected  = parseInt(str_URLsFromChRIS_selected);
+                str_URL                 = json_ChRISresp.return.URL_get[URLsFromChRIS_selected];
+                APIcall                 = str_FQhost +
+                                            '/' + $('#version').val()  + '/'    +
+                                            str_URL                             +
+                                            "?" + $('#AUTH').val();
+            }
+        } else {
+            APIcall = str_FQhost + APIcallOverride;
+        }
         console.log(APIcall);
+
         $.ajax({
             url:        APIcall,
             dataType:   'json',
             success:    function (ChRISresp) {
                 console.log('AJAX call success.');
-                ChRISresp = JSON.stringify(ChRISresp, null, 2);
-                //output(ChRISresp);
+                ChRISresp       = JSON.stringify(ChRISresp, null, 2);
+                json_ChRISresp  = JSON.parse(ChRISresp);
+                console.log(json_ChRISresp);
+                if(!b_URLsBuild)
+                    b_URLsBuild = true;
+                else
+                    URLsFromChRIS_build(json_ChRISresp);
                 output(syntaxHighlight(ChRISresp));
+                loginStatus_show(file_exist(str_loginURLtag));
             },
             error:      function(xhdr, textStatus, thrownError) {
                 console.log('Some error was triggered.');
@@ -166,7 +496,9 @@
                 hdr=xhdr;
             }
         });
-    };
+        return false; //stop the form from initially submitting
+    }
+
     </script>
 
 </body>
