@@ -167,6 +167,14 @@
                 background: rgb(223, 117, 20); /* this is an orange */
             }
 
+            .button-loginStatus-loggedOut {
+                background: lightyellow;
+            }
+
+            .button-loginStatus-loggedIn {
+                background: lightblue;
+            }
+
             .button-help {
                 background: rgb(66, 184, 221); /* this is a light blue */
                 float: right;
@@ -178,13 +186,13 @@
             }
         </style>
         <div>
-            <button class="button-xsmall button-login  pure-button" onclick="login()"  id="login">login</button>
-            <button class="button-xsmall button-logout pure-button" onclick="logout()" id="logout">logout</button>
-            <button class="button-xsmall button-help   pure-button" id="opener">help</button>
+            <button class="button-xsmall button-login  pure-button"     id="login"      onclick="login()" >login</button>
+            <button class="button-xsmall button-logout pure-button"     id="logout"     onclick="logout()">logout</button>
+            <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus">login status</button>
+            <button class="button-xsmall button-help   pure-button"     id="opener">help</button>
             <br>
         </div>
         <div id="helpInfo" title="help">
-
             <h3>Interacting with the ChRIS REST API backend</h3>
             <h4>Preliminaries</h4>
             <p>Make sure that the ChRIS REST Web Service has been started:</p>
@@ -195,7 +203,6 @@
             <h4>Usage</h4>
             <p>To start, hit the <tt>login</tt> button. Once logged in, the service remains in that state indefinitely until <tt>logout</tt> has been clicked.</p>
             <p>Once logged in for the first time, or on each time this page is visited, hit the <tt>Call</tt> button to call the current URL (shown in the <i>URLs available</i> select box). With each call of a URL, the contents of this box will change. Simply keep choosing URLs as they are made available to explore the data space.</p>
-
         </div>
         <form class="pure-form pure-form-aligned">
             <fieldset>
@@ -203,11 +210,11 @@
 
                 <div class="pure-control-group">
                     <label>Server IP:port</label>
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="10"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="17"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="24"/>.
-                    <input style="width:50px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="55"/>:
-                    <input style="width:60px;font-family:courier;" type="text" id="port" value="5555"/>
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="6"/>:
+                    <input style="width:70px;font-family:courier;" type="text" id="port" value="5555"/>
                 </div>
 
                 <div class="pure-control-group">
@@ -267,6 +274,8 @@
     // Some default/persistent URL select options.
     str_pathUp                  = '';
     str_allFeedsBase            = '';
+    str_loginFile               = '';
+    b_URLsBuild                 = true;
 
     $(document).on({
         ajaxStart:  function() { $body.addClass("loading");  output(APIcall);  },
@@ -289,28 +298,88 @@
         }    
     });
 
+    function file_exist(str_filename) {
+        var http = new XMLHttpRequest();
+        http.open('HEAD', str_filename, false);
+        http.send();
+        return http.status!=404;
+    }
+
+    function loginStatus_show(ab_status) {
+        loginStatus_DOM = document.getElementById("loginStatus");
+        console.log('login status = ' + ab_status);
+        if(ab_status) {
+            loginStatus_DOM.innerHTML           = 'logged in';
+            loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedIn pure-button';
+        } else {
+            loginStatus_DOM.innerHTML           = 'not logged in';
+            loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedOut pure-button';
+        }
+    }
+
+    function loginStatus_fileTagGenerate() {
+        serverAddress       = window.location.href;
+        console.log(serverAddress);
+        l_p = serverAddress.split('/');
+        str_loginFile       = 'chris-login.json';
+        l_p[l_p.length - 1] = str_loginFile;
+        str_loginURLtag     = l_p.join('/');
+        console.log(str_loginURLtag);
+    }
+
+    window.onload = function() {
+        loginStatus_fileTagGenerate();
+        loginStatus_show(file_exist(str_loginURLtag));
+    };
+
     function URLsFromChRIS_build(json_ChRISresp) {
+        /*
+        This function parses the URL component of the response to
+        build a list of possible navigable links from this
+        point in the dataspace.
+
+        ARGS
+            json_ChRISresp  json-object     the response from ChRIS
+
+        */
+        console.log('In URLsFromChRIS_build...');
         URLsFromChRIS_DOM.empty();
         d_URLsFromChRIS = json_ChRISresp.return.URL_get;
-        // Now build the URLs from this point *forward* in the datatree space
-        // as returned by ChRIS
-        if(str_pathUp.length) {
-            l_path              = json_ChRISresp.return.path.split('/');
-            l_pathUp            = l_path.slice(0, -1);
-            str_pathUp          = str_allFeedsBase + '_' + l_pathUp.join('/');
+        console.log('d_URLsFromChRIS: ' + d_URLsFromChRIS);
+        console.log("typeof(str_pathUP): " + typeof(str_pathUP));
+        // First, build a breadcrumb path back through the dataspace
+        if (str_pathUp.length) {
             console.log('In URLsFromChRIS_build... appending back paths...');
-            console.log('In URLsFromChRIS_build... ' + str_pathUp);
-            console.log('In URLsFromChRIS_build... ' + str_allFeedsBase);
-            if(str_pathUp != str_allFeedsBase + '_')
+            str_path    = json_ChRISresp.return.path;
+            console.log('str_path = ' + str_path);
+            d_URLsFromChRIS.push(str_path);
+            l_path      = str_path.split('/');
+            console.log('l_path = ' + l_path);
+            for(d=1; d<l_path.length; d++) {
+                l_breadCrumb    = l_path.slice(0, d);
+                console.log('d = ' + d + ' l_breadCrumb = ' + l_breadCrumb);
+//                str_pathUP      = str_allFeedsBase + '_' + l_breadCrumb.join('/');
+                str_pathUP      = l_breadCrumb.join('/');
+                console.log('appending ' + str_pathUP);
                 d_URLsFromChRIS.push(str_pathUp);
-            d_URLsFromChRIS.push(str_allFeedsBase);
+            }
+//            l_pathUp    = l_path.slice(0, -1);
+//            str_pathUp = str_allFeedsBase + '_' + l_pathUp.join('/');
+//            console.log('In URLsFromChRIS_build... ' + str_pathUp);
+//            if (str_pathUp != str_allFeedsBase + '_')
+//                d_URLsFromChRIS.push(str_pathUp);
+//
+//            console.log('In URLsFromChRIS_build... ' + str_allFeedsBase);
+//            d_URLsFromChRIS.push(str_allFeedsBase);
             console.log(d_URLsFromChRIS);
         }
-        $.each(d_URLsFromChRIS, function(key, val) {
-            l_path      = val.split('/');
-            if(!str_pathUp.length) {
+        // Now build the URLs from this point *forward* in the datatree space
+        // as returned by ChRIS
+        $.each(d_URLsFromChRIS, function (key, val) {
+            l_pathNext = val.split('/');
+            if (!str_pathUp.length) {
                 str_allFeedsBase    = 'Feeds/' + key_DOM.val();
-                str_pathUp        = str_allFeedsBase + '_' + json_ChRISresp.return.path;
+                str_pathUp          = str_allFeedsBase + '_' + json_ChRISresp.return.path;
             }
             URLsFromChRIS_DOM.append(
                     $('<option></option>').val(key).html(val)
@@ -323,6 +392,7 @@
     }
 
     function syntaxHighlight(json) {
+//        console.log(json);
         json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
             var cls = 'number';
@@ -343,10 +413,14 @@
 
     function login() {
         REST_call('/v1/login?auth=user=chris,passwd=chris1234');
+        loginStatus_show(file_exist(str_loginURLtag));
+        b_URLsBuild = false;
     }
 
     function logout() {
         REST_call('/v1/logout?auth=user=chris,auth=ABCDEF');
+        loginStatus_show(file_exist(str_loginURLtag));
+        b_URLsBuild = false;
     }
 
     function REST_call(APIcallOverride) {
@@ -361,6 +435,8 @@
                 APIcallOverride     string      if passed, this will be presented to the backend
                                                 service.
          */
+
+        loginStatus_fileTagGenerate();
 
         // Assemble the service address and port:
         var IP1	= $('#IP1').val();
@@ -400,8 +476,13 @@
                 console.log('AJAX call success.');
                 ChRISresp       = JSON.stringify(ChRISresp, null, 2);
                 json_ChRISresp  = JSON.parse(ChRISresp);
-                URLsFromChRIS_build(json_ChRISresp);
+                console.log(json_ChRISresp);
+                if(!b_URLsBuild)
+                    b_URLsBuild = true;
+                else
+                    URLsFromChRIS_build(json_ChRISresp);
                 output(syntaxHighlight(ChRISresp));
+                loginStatus_show(file_exist(str_loginURLtag));
             },
             error:      function(xhdr, textStatus, thrownError) {
                 console.log('Some error was triggered.');
