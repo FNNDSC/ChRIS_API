@@ -192,10 +192,10 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             if key == 'authority':      self._str_authority = val
 
         if args.API == 'REST':
-            cmd     = 'ChRIS_SM.py --APIcall \"%s\" --REST --authority %s' % (astr_URLargs, self._str_authority)
+            cmd     = './ChRIS_SM.py --APIcall \"%s\" --REST --authority %s' % (astr_URLargs, self._str_authority)
 
         if args.API == 'RPC':
-            cmd     = 'ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile)
+            cmd     = './ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile)
 
 
         print(Colors.CYAN_BCKGRND + "\n%s" % cmd + Colors.NO_COLOUR + "\n")
