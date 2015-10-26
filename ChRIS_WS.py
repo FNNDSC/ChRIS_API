@@ -205,6 +205,9 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             shell(cmd)
             self.d_error     = {
                 'status':    False,
+                'API': {
+                    'APIcall':  astr_URLargs
+                        },
                 'return':   {
                     'payload':  {
                         'message':      'Some error was detected!',
