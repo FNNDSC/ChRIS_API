@@ -194,15 +194,20 @@
         </div>
         <div id="helpInfo" title="help">
             <h3>Interacting with the ChRIS REST API backend</h3>
-            <h4>Preliminaries</h4>
+            <h4>Start the ChRIS REST API services</h4>
             <p>Make sure that the ChRIS REST Web Service has been started:</p>
             <p style="text-indent: 2.0em; border-color: #000;"><tt>./ChRIS_WS -i &lt;someIP&gt; -h &lt;somePort&gt; --API REST</tt></p>
+            <h4>Start a Web Server in the checkout directory</h4>
+            <p>The best way to run this interaction page is via a server (i.e. do not directly load this page into your browser using the <tt>file:///</tt> directive). Simply start a python web server in the repository check out directory:</p>
+            <p style="text-indent: 2.0em; border-color: #000;"><tt>python -m SimpleHTTPServer [&lt;port&gt;]</tt></p>
+            <p>Now, point your browser at</p>
+            <p style="text-indent: 2.0em; border-color: #000;"><tt>http://&lt;hostIP&gt;[:&lt;port&gt;]</tt></p>
+            <h4>Login</h4>
+            <p>Check the status button next to the "login" and "logout" buttons. On first run, this should say "not logged in". Simply hit the "login" button and wait for the status to change to "logged in". Login never expires, only when you explicitly hit "logout". </p>
+            <p>Once logged in for the first time, or on each time this page is visited, hit the <tt>Call</tt> button to call the current URL (shown in the <i>URLs available</i> select box). With each call of a URL, the contents of this box will change. Simply keep choosing URLs as they are made available to explore the data space.</p>
             <h4>Operation</h4>
             <p>For the most, interacting with the ChRIS REST Web Service API requires no "input" from the user, other than perhaps manually specifying the ChRIS web service IP and port.</p>
             <p>Each call to the ChRIS API returns a description of available URL actions that can be accessed, dependent on the current call. In this manner, software agents can self-discover the data/action space exposed by the ChRIS REST API.</p>
-            <h4>Usage</h4>
-            <p>To start, hit the <tt>login</tt> button. Once logged in, the service remains in that state indefinitely until <tt>logout</tt> has been clicked.</p>
-            <p>Once logged in for the first time, or on each time this page is visited, hit the <tt>Call</tt> button to call the current URL (shown in the <i>URLs available</i> select box). With each call of a URL, the contents of this box will change. Simply keep choosing URLs as they are made available to explore the data space.</p>
         </div>
         <form class="pure-form pure-form-aligned">
             <fieldset>
@@ -210,10 +215,10 @@
 
                 <div class="pure-control-group">
                     <label>Server IP:port</label>
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="6"/>:
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="10"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="17"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="24"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="111"/>:
                     <input style="width:70px;font-family:courier;" type="text" id="port" value="5555"/>
                 </div>
 
@@ -267,6 +272,7 @@
     // Some specific parts of the document
     result_DOM                  = document.getElementById("result");
     URLsFromChRIS_DOM           = $('#URLsFromChRIS');
+    d_URLsFromChRIS             = null;
     key_DOM                     = $('#key');
     // API call return strings
     APIcall                     = '';
@@ -319,12 +325,10 @@
 
     function loginStatus_fileTagGenerate() {
         serverAddress       = window.location.href;
-        console.log(serverAddress);
         l_p = serverAddress.split('/');
         str_loginFile       = 'chris-login.json';
         l_p[l_p.length - 1] = str_loginFile;
         str_loginURLtag     = l_p.join('/');
-        console.log(str_loginURLtag);
     }
 
     window.onload = function() {
@@ -342,43 +346,33 @@
             json_ChRISresp  json-object     the response from ChRIS
 
         */
-        console.log('In URLsFromChRIS_build...');
         URLsFromChRIS_DOM.empty();
         d_URLsFromChRIS = json_ChRISresp.return.URL_get.slice();
-        console.log('d_URLsFromChRIS: ' + d_URLsFromChRIS);
-        console.log("typeof(str_pathUp): " + typeof(str_pathUp));
         // First, build a breadcrumb path back through the dataspace
         if (str_pathUp.length) {
-            console.log('In URLsFromChRIS_build... appending back paths...');
             str_path    = json_ChRISresp.return.path;
-            console.log('str_path = ' + str_path);
             l_path      = str_path.split('/');
-            console.log('l_path = ' + l_path);
+            // Get rid of the trailing '/' if it exists.
+            if(!l_path[l_path.length-1].length) l_path.pop();
             for(d=l_path.length-1; d>=0; d--) {
                 l_breadCrumb    = l_path.slice(0, d+1);
                 str_breadCrumb  = l_breadCrumb.join('/');
-                console.log('d = ' + d + ' l_breadCrumb = ' + l_breadCrumb);
-                console.log('d = ' + d + ' str_breadCrumb = ' + str_breadCrumb);
                 str_pathUp      = str_allFeedsBase + '_' + str_breadCrumb;
                 if (str_pathUp == 'Feeds/' + key_DOM.val() + '_') {
                     console.log('cleaning!!');
                     str_pathUp = 'Feeds/' + key_DOM.val();
                 }
 
-                console.log('appending ' + str_pathUp);
                 d_URLsFromChRIS.push(str_pathUp);
             }
-            console.log(d_URLsFromChRIS);
         }
         // Now build the URLs from this point *forward* in the datatree space
         // as returned by ChRIS
         $.each(d_URLsFromChRIS, function (key, val) {
-//            l_pathNext = val.split('/');
             if (!str_pathUp.length) {
                 str_allFeedsBase    = 'Feeds/' + key_DOM.val();
                 str_pathUp          = str_allFeedsBase + '_' + json_ChRISresp.return.path;
             }
-            console.log('In $.each... -- key = ' + key + ' val = ' + val);
             URLsFromChRIS_DOM.append(
                     $('<option></option>').val(key).html(val)
             );
@@ -390,7 +384,6 @@
     }
 
     function syntaxHighlight(json) {
-//        console.log(json);
         json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
             var cls = 'number';
@@ -423,14 +416,17 @@
 
     function REST_call(APIcallOverride) {
         /*
-            The main entry point to calling the service. The specific arguments to pass to the
-            back end service are typically parsed from the HTML content; however if <APIcallOverride>
-            is defined, then this will be passed instead. This is useful for specific "canned"
-            calls, i.e. the login and logout calls -- the login() and logout() functions above.
+            The main entry point to calling the service. The specific arguments
+            to pass to the back end service are typically parsed from the HTML
+            content; however if <APIcallOverride> is defined, then this will be
+            passed instead. This is useful for specific "canned" calls, i.e.
+            the login and logout calls -- the login() and logout() functions
+            above.
 
             ARGS
 
-                APIcallOverride     string      if passed, this will be presented to the backend
+                APIcallOverride     string      if passed, this will be
+                                                presented to the backend
                                                 service.
          */
 
@@ -458,7 +454,8 @@
                         "?" + $('#AUTH').val();
             } else {
                 URLsFromChRIS_selected  = parseInt(str_URLsFromChRIS_selected);
-                str_URL                 = json_ChRISresp.return.URL_get[URLsFromChRIS_selected];
+                // Remember, the d_URLsFromChRIS has been appended to by the URLsFromChRIS_build() method.
+                str_URL                 = d_URLsFromChRIS[URLsFromChRIS_selected];
                 APIcall                 = str_FQhost +
                                             '/' + $('#version').val()  + '/'    +
                                             str_URL                             +
