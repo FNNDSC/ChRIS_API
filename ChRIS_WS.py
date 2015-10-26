@@ -186,6 +186,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self._log._b_syslog             = True
         self.__name                     = "ChRIS_client"
         self._str_authority             = ""
+        self.d_error                    = {}
 
         for key,val in kwargs.iteritems():
             if key == 'sessionFile':    astr_sessionFile    = val
@@ -202,13 +203,28 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
 
         try:
             shell(cmd)
+            self.d_error     = {
+                'status':    False,
+                'return':   {
+                    'payload':  {
+                        'message':      'Some error was detected!',
+                        'explanation':  'Are you logged in?',
+                        'exitCode':     shell._exitCode,
+                        'stderr':       shell.stderr(),
+                        'stdout':       shell.stdout()
+                    },
+                    'URL_get':  []
+                }
+            }
         except:
-            error.fatal(self, 'shellFailure',
-                    '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
-                    (shell._str_cmd, shell.stdout(), shell.stderr()))
+            return(self.d_error)
+            # error.fatal(self, 'shellFailure',
+            #         '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
+            #         (shell._str_cmd, shell.stdout(), shell.stderr()))
         if shell._exitCode:
-            error.fatal(self, 'shellFailure', '\nExit code failure:\t%s\n%s\n%s\n%s' %
-                        (shell._exitCode, shell._str_cmd, shell.stdout(), shell.stderr()))
+            return(self.d_error)
+            # error.fatal(self, 'shellFailure', '\nExit code failure:\t%s\n%s\n%s\n%s' %
+            #             (shell._exitCode, shell._str_cmd, shell.stdout(), shell.stderr()))
 
         return(json.loads(shell.stdout()))
 
