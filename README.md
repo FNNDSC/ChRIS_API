@@ -30,7 +30,13 @@ The easiest way to interact with the API service is using the bundled <tt>ChRIS_
 python -m SimpleHTTPServer 8001
 ```
 
-This will start a server on port 8001. 
+This will start a server on port 8001. Now, point your browser at
+
+```
+http://localhost:8001/ChRIS_test.html
+```
+
+to access the tester.
 
 <iframe width="420" height="315" src="http://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
 
