@@ -344,43 +344,41 @@
         */
         console.log('In URLsFromChRIS_build...');
         URLsFromChRIS_DOM.empty();
-        d_URLsFromChRIS = json_ChRISresp.return.URL_get;
+        d_URLsFromChRIS = json_ChRISresp.return.URL_get.slice();
         console.log('d_URLsFromChRIS: ' + d_URLsFromChRIS);
-        console.log("typeof(str_pathUP): " + typeof(str_pathUP));
+        console.log("typeof(str_pathUp): " + typeof(str_pathUp));
         // First, build a breadcrumb path back through the dataspace
         if (str_pathUp.length) {
             console.log('In URLsFromChRIS_build... appending back paths...');
             str_path    = json_ChRISresp.return.path;
             console.log('str_path = ' + str_path);
-            d_URLsFromChRIS.push(str_path);
             l_path      = str_path.split('/');
             console.log('l_path = ' + l_path);
-            for(d=1; d<l_path.length; d++) {
-                l_breadCrumb    = l_path.slice(0, d);
+            for(d=l_path.length-1; d>=0; d--) {
+                l_breadCrumb    = l_path.slice(0, d+1);
+                str_breadCrumb  = l_breadCrumb.join('/');
                 console.log('d = ' + d + ' l_breadCrumb = ' + l_breadCrumb);
-//                str_pathUP      = str_allFeedsBase + '_' + l_breadCrumb.join('/');
-                str_pathUP      = l_breadCrumb.join('/');
-                console.log('appending ' + str_pathUP);
+                console.log('d = ' + d + ' str_breadCrumb = ' + str_breadCrumb);
+                str_pathUp      = str_allFeedsBase + '_' + str_breadCrumb;
+                if (str_pathUp == 'Feeds/' + key_DOM.val() + '_') {
+                    console.log('cleaning!!');
+                    str_pathUp = 'Feeds/' + key_DOM.val();
+                }
+
+                console.log('appending ' + str_pathUp);
                 d_URLsFromChRIS.push(str_pathUp);
             }
-//            l_pathUp    = l_path.slice(0, -1);
-//            str_pathUp = str_allFeedsBase + '_' + l_pathUp.join('/');
-//            console.log('In URLsFromChRIS_build... ' + str_pathUp);
-//            if (str_pathUp != str_allFeedsBase + '_')
-//                d_URLsFromChRIS.push(str_pathUp);
-//
-//            console.log('In URLsFromChRIS_build... ' + str_allFeedsBase);
-//            d_URLsFromChRIS.push(str_allFeedsBase);
             console.log(d_URLsFromChRIS);
         }
         // Now build the URLs from this point *forward* in the datatree space
         // as returned by ChRIS
         $.each(d_URLsFromChRIS, function (key, val) {
-            l_pathNext = val.split('/');
+//            l_pathNext = val.split('/');
             if (!str_pathUp.length) {
                 str_allFeedsBase    = 'Feeds/' + key_DOM.val();
                 str_pathUp          = str_allFeedsBase + '_' + json_ChRISresp.return.path;
             }
+            console.log('In $.each... -- key = ' + key + ' val = ' + val);
             URLsFromChRIS_DOM.append(
                     $('<option></option>').val(key).html(val)
             );
@@ -448,6 +446,8 @@
 
         hdr         = null;
         ChRISresp   = null;
+
+        URLsFromChRIS_DOM           = $('#URLsFromChRIS');
 
         if(typeof(APIcallOverride)==='undefined') {
             str_URLsFromChRIS_selected  = URLsFromChRIS_DOM.val();
