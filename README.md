@@ -38,8 +38,6 @@ http://localhost:8001/ChRIS_test.html
 
 to access the tester.
 
-<iframe width="420" height="315" src="http://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
-
 ### First things first: logging in (and logging out)
 
 Before you can do anything, you need to "log in". Of course, this is all simulated, and the login state is recorded by writing a lock file to the filesystem. Login never times out, and only changes once you actually "log out".
