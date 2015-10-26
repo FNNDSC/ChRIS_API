@@ -12,7 +12,7 @@ A simple web-facing server is also available: <tt>ChRIS\_WS.py</tt> (where the <
 
 To setup a server you will need either a Linux or Mac machine. The backend will not run on Windows. See here for more [information](../../wiki/0.-Getting-Set-Up).
 
-### Starting the server
+### Starting the API service
 
 Once setup, start up the <tt>ChRIS\_WS.py</tt> server from the command line. In the simplest case, it is sufficient to run
 
@@ -21,6 +21,18 @@ Once setup, start up the <tt>ChRIS\_WS.py</tt> server from the command line. In 
 ```
 
 Assuming of course that your machine has IP <tt>192.168.1.3</tt>  --- see here for more [information](../../wiki/1.-Starting-the-Server).
+
+### Start a web server to access the service using <tt>ChRIS_test.html</tt>
+
+The easiest way to interact with the API service is using the bundled <tt>ChRIS_test.html</tt>. To use this, you need to start a web server in the checkout directory. 
+
+```
+python -m SimpleHTTPServer 8001
+```
+
+This will start a server on port 8001. 
+
+<iframe width="420" height="315" src="http://www.youtube.com/embed/dQw4w9WgXcQ" frameborder="0" allowfullscreen></iframe>
 
 ### First things first: logging in (and logging out)
 
