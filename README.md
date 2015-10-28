@@ -24,7 +24,7 @@ Assuming of course that your machine has IP <tt>192.168.1.3</tt>  --- see here f
 
 ### Start a web server to access the service
 
-The easiest way to interact with the API service is using the bundled <tt>idex.html</tt>. To use this, you need to start a web server in the checkout directory. 
+The easiest way to interact with the API service is using the bundled <tt>index.html</tt>. To use this, you need to start a web server in the checkout directory. 
 
 ```
 python -m SimpleHTTPServer 8001
