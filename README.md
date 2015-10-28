@@ -10,7 +10,7 @@ A simple web-facing server is also available: <tt>ChRIS\_WS.py</tt> (where the <
 
 ### Setup a server to run the simulated machine.
 
-To setup a server you will need either a Linux or Mac machine. The backend will not run on Windows. See here for more [information](../../wiki/0.-Getting-Set-Up).
+To setup a server you will need either a Linux or Mac machine. The backend will not run on Windows. See [here](../../wiki/0.-Getting-Set-Up) for more information.
 
 ### Starting the API service
 
@@ -20,7 +20,9 @@ Once setup, start up the <tt>ChRIS\_WS.py</tt> server from the command line. In 
 ./ChRIS_WS.py -i 192.168.1.3 -p 5555 --API REST
 ```
 
-Assuming of course that your machine has IP <tt>192.168.1.3</tt>  --- see here for more [information](../../wiki/1.-Starting-the-Server).
+(Assuming of course that your machine has IP <tt>192.168.1.3</tt>)
+
+See [here](../../wiki/1.-Starting-the-Server) for more information.
 
 ### Start a web server to access the service
 
@@ -58,7 +60,7 @@ To log out, do
 curl  -s  "http://192.168.1.3:5555/v1/logout?auth=user=chris,hash=ABCDEF1234"
 ```
 
-Note that this call sends a <tt>hash</tt> and not the user's password. For more information, see [here](../../wiki/2.-Login,-logout,-and-Session-Authentication).
+Note that this call sends a <tt>hash</tt> and not the user's password. See [here](../../wiki/2.-Login,-logout,-and-Session-Authentication) for more information.
 
 ## Interacting with the API service
 
@@ -104,5 +106,5 @@ o
           +--- APIversion: "text of called API version"
 ````
 
-More information in the wiki [here](../../wiki/3.-Call-anatomy) and [here](../../wiki/4.-Feed-Logical-Structure).
+More information available in the wiki able [the call anatomy](../../wiki/3.-Call-anatomy) and [the feed logical structure](../../wiki/4.-Feed-Logical-Structure).
 
