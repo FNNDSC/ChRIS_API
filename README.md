@@ -106,5 +106,5 @@ o
           +--- APIversion: "text of called API version"
 ````
 
-More information available in the wiki able [the call anatomy](../../wiki/3.-Call-anatomy) and [the feed logical structure](../../wiki/4.-Feed-Logical-Structure).
+More information about [the call anatomy](../../wiki/3.-Call-anatomy) and [the feed logical structure](../../wiki/4.-Feed-Logical-Structure) available in the wiki.
 
