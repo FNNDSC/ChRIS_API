@@ -481,6 +481,7 @@
                 else
                     URLsFromChRIS_build(json_ChRISresp);
                 output(syntaxHighlight(ChRISresp));
+//                output((ChRISresp));
                 loginStatus_show(file_exist(str_loginURLtag));
             },
             error:      function(xhdr, textStatus, thrownError) {
