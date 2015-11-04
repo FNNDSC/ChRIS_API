@@ -203,6 +203,8 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
 
         try:
             shell(cmd)
+            str_html_stderr = shell.stderr().replace('\n', '<br />')
+            str_html_stdout = shell.stdout().replace('\n', '<br />')
             self.d_error     = {
                 'status':    False,
                 'API': {
@@ -213,8 +215,10 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                         'message':      'Some error was detected!',
                         'explanation':  'Are you logged in?',
                         'exitCode':     shell._exitCode,
-                        'stderr':       shell.stderr(),
-                        'stdout':       shell.stdout()
+                        # 'stderr':       shell.stderr(),
+                        # 'stdout':       shell.stdout()
+                        'stderr':       str_html_stderr,
+                        'stdout':       str_html_stdout
                     },
                     'URL_get':  []
                 }
