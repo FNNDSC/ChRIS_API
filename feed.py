@@ -204,6 +204,7 @@ class Feed_FS(Feed):
         # s.graft(sample.contents, '/')
 
         return(dict(sample.contents))
+        # return(dict(sample.contents.snode_root))
 
 
     def noteElement_create(self, **kwargs):
