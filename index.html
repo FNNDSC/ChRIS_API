@@ -151,8 +151,8 @@
                 font-size: 70%;
             }
 
-            .button-login,
-            .button-logout,
+            .button-loginStatus-loggedIn,
+            .button-loginStatus-loggedOut,
             .button-help {
                 color: white;
                 /*border-radius: 4px;*/
@@ -168,11 +168,19 @@
             }
 
             .button-loginStatus-loggedOut {
-                background: lightyellow;
+                background: rgb(223, 117, 20); /* this is an orange */
             }
 
             .button-loginStatus-loggedIn {
-                background: lightblue;
+                background: rgb(28, 184, 65); /* this is a green */
+            }
+
+            .button-jsonHighlight-on {
+                background: rgb(28, 184, 65); /* this is a green */
+            }
+
+            .button-jsonHighlight-off {
+                background: rgb(223, 117, 20); /* this is an orange */
             }
 
             .button-help {
@@ -186,9 +194,9 @@
             }
         </style>
         <div>
-            <button class="button-xsmall button-login  pure-button"     id="login"      onclick="login()" >login</button>
-            <button class="button-xsmall button-logout pure-button"     id="logout"     onclick="logout()">logout</button>
-            <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus">login status</button>
+            <!--<button class="button-xsmall button-login  pure-button"     id="login"      onclick="login()" >login</button>-->
+            <!--<button class="button-xsmall button-logout pure-button"     id="logout"     onclick="logout()">logout</button>-->
+            <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus" onclick="loginStatus_toggle()">login status: logged in</button>
             <button class="button-xsmall button-help   pure-button"     id="opener">help</button>
             <br>
         </div>
@@ -215,10 +223,10 @@
 
                 <div class="pure-control-group">
                     <label>Server IP:port</label>
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="10"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="17"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="24"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="111"/>:
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="3"/>:
                     <input style="width:70px;font-family:courier;" type="text" id="port" value="5555"/>
                 </div>
 
@@ -254,6 +262,8 @@
                 <!--</div>-->
             </fieldset>
         </form>
+        <button onclick="jsonSyntaxHightlight_toggle()" class="pure-button pure-button-primary button-jsonHighlight-on" id="JSON_status">JSON syntax highlight: ON</button>
+        <br />
     </div>
 
     <div class="resultLayout" id="result">
@@ -282,6 +292,8 @@
     str_allFeedsBase            = '';
     str_loginFile               = '';
     b_URLsBuild                 = true;
+    b_jsonSyntaxHighlight       = true;
+    b_loginStatus               = false;
 
     $(document).on({
         ajaxStart:  function() { $body.addClass("loading");  output(APIcall);  },
@@ -304,6 +316,31 @@
         }    
     });
 
+    function jsonSyntaxHightlight_toggle() {
+        JSON_syntaxButton_DOM = document.getElementById("JSON_status");
+        console.log('In JSON_syntaxHighlight... bjsonSyntaxHighlight = ' + b_jsonSyntaxHighlight);
+        b_jsonSyntaxHighlight = !b_jsonSyntaxHighlight;
+        console.log('In JSON_syntaxHighlight... bjsonSyntaxHighlight = ' + b_jsonSyntaxHighlight);
+        if(b_jsonSyntaxHighlight) {
+            JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: ON';
+            JSON_syntaxButton_DOM.className     = 'pure-button pure-button-primary button-jsonHighlight-on';
+        }
+        if(!b_jsonSyntaxHighlight) {
+            JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: OFF';
+            JSON_syntaxButton_DOM.className     = 'pure-button pure-button-primary button-jsonHighlight-off';
+        }
+    }
+
+    function loginStatus_toggle() {
+        b_loginStatus   = !b_loginStatus;
+        console.log('b_loginStatus = ' + b_loginStatus);
+        if(b_loginStatus) {
+            login();
+        } else {
+            logout();
+        }
+    }
+
     function file_exist(str_filename) {
         var http = new XMLHttpRequest();
         http.open('HEAD', str_filename, false);
@@ -314,11 +351,12 @@
     function loginStatus_show(ab_status) {
         loginStatus_DOM = document.getElementById("loginStatus");
         console.log('login status = ' + ab_status);
+        b_loginStatus = ab_status;
         if(ab_status) {
-            loginStatus_DOM.innerHTML           = 'logged in';
+            loginStatus_DOM.innerHTML           = 'login status: logged in';
             loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedIn pure-button';
         } else {
-            loginStatus_DOM.innerHTML           = 'not logged in';
+            loginStatus_DOM.innerHTML           = 'login statyus: logged out';
             loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedOut pure-button';
         }
     }
@@ -329,6 +367,18 @@
         str_loginFile       = 'chris-login.json';
         l_p[l_p.length - 1] = str_loginFile;
         str_loginURLtag     = l_p.join('/');
+    }
+
+    function login() {
+        REST_call('/v1/login?auth=user=chris,passwd=chris1234');
+        loginStatus_show(file_exist(str_loginURLtag));
+        b_URLsBuild = false;
+    }
+
+    function logout() {
+        REST_call('/v1/logout?auth=user=chris,auth=ABCDEF');
+        loginStatus_show(file_exist(str_loginURLtag));
+        b_URLsBuild = false;
     }
 
     window.onload = function() {
@@ -404,18 +454,6 @@
         });
     }
 
-    function login() {
-        REST_call('/v1/login?auth=user=chris,passwd=chris1234');
-        loginStatus_show(file_exist(str_loginURLtag));
-        b_URLsBuild = false;
-    }
-
-    function logout() {
-        REST_call('/v1/logout?auth=user=chris,auth=ABCDEF');
-        loginStatus_show(file_exist(str_loginURLtag));
-        b_URLsBuild = false;
-    }
-
     function REST_call(APIcallOverride) {
         /*
             The main entry point to calling the service. The specific arguments
@@ -480,8 +518,10 @@
                     b_URLsBuild = true;
                 else
                     URLsFromChRIS_build(json_ChRISresp);
-                output(syntaxHighlight(ChRISresp));
-//                output((ChRISresp));
+                if(b_jsonSyntaxHighlight)
+                    output(syntaxHighlight(ChRISresp));
+                else
+                    output((ChRISresp));
                 loginStatus_show(file_exist(str_loginURLtag));
             },
             error:      function(xhdr, textStatus, thrownError) {
