@@ -197,6 +197,7 @@
             <!--<button class="button-xsmall button-login  pure-button"     id="login"      onclick="login()" >login</button>-->
             <!--<button class="button-xsmall button-logout pure-button"     id="logout"     onclick="logout()">logout</button>-->
             <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus" onclick="loginStatus_toggle()">login status: logged in</button>
+            <button onclick="jsonSyntaxHightlight_toggle()" class="button-xsmall pure-button pure-button-primary button-jsonHighlight-on" id="JSON_status">JSON syntax highlight: ON</button>
             <button class="button-xsmall button-help   pure-button"     id="opener">help</button>
             <br>
         </div>
@@ -211,8 +212,11 @@
             <p>Now, point your browser at</p>
             <p style="text-indent: 2.0em; border-color: #000;"><tt>http://&lt;hostIP&gt;[:&lt;port&gt;]</tt></p>
             <h4>Login</h4>
-            <p>Check the status button next to the "login" and "logout" buttons. On first run, this should say "not logged in". Simply hit the "login" button and wait for the status to change to "logged in". Login never expires, only when you explicitly hit "logout". </p>
+            <p>On the top left of the control panel is the login status toggle button. On first run, this should say "login status: logged out". Simply hit the button and wait for the status to change to "logged in". Login never expires, only when you explicitly hit "logout". </p>
+            <h4>Call</h4>
             <p>Once logged in for the first time, or on each time this page is visited, hit the <tt>Call</tt> button to call the current URL (shown in the <i>URLs available</i> select box). With each call of a URL, the contents of this box will change. Simply keep choosing URLs as they are made available to explore the data space.</p>
+            <h4>JSON syntax highlight</h4>
+            <p>By default, the JSON syntax highlight is ON. Hitting the button on the top left will toggle this state. The OFF state is best for viewing error returns from the API because error messages from the python backend run across multiple lines. The syntax highlight ON would show a multi-line return as one long line with a scroll bar.</p>
             <h4>Operation</h4>
             <p>For the most, interacting with the ChRIS REST Web Service API requires no "input" from the user, other than perhaps manually specifying the ChRIS web service IP and port.</p>
             <p>Each call to the ChRIS API returns a description of available URL actions that can be accessed, dependent on the current call. In this manner, software agents can self-discover the data/action space exposed by the ChRIS REST API.</p>
@@ -262,8 +266,6 @@
                 <!--</div>-->
             </fieldset>
         </form>
-        <button onclick="jsonSyntaxHightlight_toggle()" class="pure-button pure-button-primary button-jsonHighlight-on" id="JSON_status">JSON syntax highlight: ON</button>
-        <br />
     </div>
 
     <div class="resultLayout" id="result">
@@ -323,11 +325,11 @@
         console.log('In JSON_syntaxHighlight... bjsonSyntaxHighlight = ' + b_jsonSyntaxHighlight);
         if(b_jsonSyntaxHighlight) {
             JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: ON';
-            JSON_syntaxButton_DOM.className     = 'pure-button pure-button-primary button-jsonHighlight-on';
+            JSON_syntaxButton_DOM.className     = 'button-xsmall pure-button pure-button-primary button-jsonHighlight-on';
         }
         if(!b_jsonSyntaxHighlight) {
             JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: OFF';
-            JSON_syntaxButton_DOM.className     = 'pure-button pure-button-primary button-jsonHighlight-off';
+            JSON_syntaxButton_DOM.className     = 'button-xsmall pure-button pure-button-primary button-jsonHighlight-off';
         }
     }
 
@@ -356,7 +358,7 @@
             loginStatus_DOM.innerHTML           = 'login status: logged in';
             loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedIn pure-button';
         } else {
-            loginStatus_DOM.innerHTML           = 'login statyus: logged out';
+            loginStatus_DOM.innerHTML           = 'login status: logged out';
             loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedOut pure-button';
         }
     }
@@ -517,7 +519,8 @@
                 if(!b_URLsBuild)
                     b_URLsBuild = true;
                 else
-                    URLsFromChRIS_build(json_ChRISresp);
+                    if(b_loginStatus)
+                        URLsFromChRIS_build(json_ChRISresp);
                 if(b_jsonSyntaxHighlight)
                     output(syntaxHighlight(ChRISresp));
                 else
