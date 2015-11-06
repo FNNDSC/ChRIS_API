@@ -393,6 +393,9 @@ class FeedTree(object):
         l_URI       = []
         for node in l_branch:
             l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, node))
+        if not len(l_branch):
+            for terminus in f.lsf(str_path):
+                l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, terminus))
         return l_URI
 
     def feeds_organize(self, **kwargs):
@@ -531,15 +534,33 @@ class FeedTree(object):
                             break
 
             # and now, check for any paths in the tree of this Feed
+            b_returnTree    = True
             if len(str_pathInFeed) and str_pathInFeed != '/':
-                ret         = s.cd(str_pathInFeed)
-                ret_status  = ret['status']
-                ret_path    = ret['path']
-                subTree     = C_snode.C_stree()
-                if subTree.cd('/')['status']:
-                    subTree.graft(s, str_pathInFeed)
-                    ret_feed    = subTree
-            if b_returnAsDict: ret_feed = dict(ret_feed.snode_root)
+                debugMessage    = 'str_pathInFeed = %s' % str_pathInFeed
+                ret             = s.cd(str_pathInFeed)
+                if ret['status']:
+                    # We are retrieving a directory
+                    ret_status  = ret['status']
+                    ret_path    = ret['path']
+                    subTree     = C_snode.C_stree()
+                    if subTree.cd('/')['status']:
+                        subTree.graft(s, str_pathInFeed)
+                        ret_feed    = subTree
+                else:
+                    b_returnTree = False
+                    # Check if we are in fact retrieving a "file"
+                    l_p         = str_pathInFeed.split('/')
+                    str_dirUp   = '/'.join(l_p[0:-1])
+                    ret         = s.cd(str_dirUp)
+                    if ret['status']:
+                        debugMessage    = '../ = %s, file = %s' % (str_dirUp, l_p[-1])
+                        ret_status      = ret['status']
+                        ret_path        = ret['path']
+                        str_fileName    = l_p[-1]
+                        ret_feed        = {str_fileName: s.cat(l_p[-1])}
+                        self.debug('Returning file contents in payload: "%s"' % ret_feed)
+            if b_returnAsDict and b_returnTree:
+                ret_feed = dict(ret_feed.snode_root)
             ret_payload     = ret_feed
             l_URL_get       = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
 
