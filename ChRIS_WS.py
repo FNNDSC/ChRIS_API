@@ -211,12 +211,11 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                     'APIcall':  astr_URLargs
                         },
                 'return':   {
+                    'path': "",
                     'payload':  {
                         'message':      'Some error was detected!',
                         'explanation':  'Are you logged in?',
                         'exitCode':     shell._exitCode,
-                        # 'stderr':       shell.stderr(),
-                        # 'stdout':       shell.stdout()
                         'stderr':       str_html_stderr,
                         'stdout':       str_html_stdout
                     },
