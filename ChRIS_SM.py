@@ -191,10 +191,10 @@ class ChRIS_SMUserDB(object):
                     # self.DB.touch('tree', feedTree)
                     self.DB.graft(feedTree._feedTree, '/feeds')
                     self.userFeeds          = feedTree
-                    self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
+                    # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
                 else:
                     error.fatal(self, 'no_userInTree')
-        self.debug('\nEntire DB tree:\n%s' % self.DB)
+        # self.debug('\nEntire DB tree:\n%s' % self.DB)
 
     def user_logout(self, **kwargs):
         """
