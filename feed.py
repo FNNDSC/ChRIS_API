@@ -283,6 +283,8 @@ class Feed_FS(Feed):
         s = self._stree
         s.cd('/')
         s.mknode(['title', 'note', 'data', 'comment'])
+        s.touch('status',       'Status of this Feed')
+        s.touch('timestamp',    'DD-MM-YYYY HH:MM:SS')
         self.titleElement_create(   root='/title',      words=10)
         self.noteElement_create(    root='/note',       paragraphs=4)
         self.commentElement_create( root='/comment',    conversations=7)
@@ -393,9 +395,8 @@ class FeedTree(object):
         l_URI       = []
         for node in l_branch:
             l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, node))
-        if not len(l_branch):
-            for terminus in f.lsf(str_path):
-                l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, terminus))
+        for terminus in f.lsf(str_path):
+            l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, terminus))
         return l_URI
 
     def feeds_organize(self, **kwargs):
