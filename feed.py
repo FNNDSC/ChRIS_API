@@ -395,8 +395,10 @@ class FeedTree(object):
         l_URI       = []
         for node in l_branch:
             l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, node))
-        for terminus in f.lsf(str_path):
-            l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, terminus))
+        # Need to check this conditional?
+        if not len(l_branch)
+            for terminus in f.lsf(str_path):
+                l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, terminus))
         return l_URI
 
     def feeds_organize(self, **kwargs):
