@@ -86,7 +86,7 @@ class ChRIS_SMUserDB(object):
         if  True                                or  \
             self.b_ignorePersistentDB           or  \
             self.b_createNewDB                  or  \
-            not os.path.exists(self.str_DBfile):
+            not os.path.isdir(self.str_DBpath):
             s.cd('/')
             s.mkcd('users')
             s.mkcd('chris')
@@ -98,7 +98,10 @@ class ChRIS_SMUserDB(object):
             s.mkcd('login')
         else:
             # Need custom load for C_snode trees...
-            s = pickle.load(open(self.str_DBfile, 'rb'))
+            s = C_snode.C_stree.tree_load(
+                    pathDiskRoot    = self.str_DBpath,
+                    loadJSON        = False,
+                    loadPickle      = True)
             self.b_readDB   = True
 
     def user_checkAPIcanCall(self, **kwargs):
@@ -135,8 +138,11 @@ class ChRIS_SMUserDB(object):
         self.login_writePersistent( sessionInfo = d_currentSessionInfo,
                       #              user        = astr_user,
                                     **kwargs)
-        self.user_attachFeedTree(   user        = astr_user)
-        self.chris.homePage   = self.userFeeds
+        if self.b_ignorePersistentDB:
+            self.user_attachFeedTree(   user        = astr_user)
+            self.chris.homePage   = self.userFeeds
+        else:
+            # read from disk
         return {'status':   b_OK,
                 'code':     0,
                 'message':  str_message}
@@ -177,7 +183,7 @@ class ChRIS_SMUserDB(object):
         if      True                                or \
                 self.b_ignorePersistentDB           or \
                 self.b_createNewDB                  or \
-                not os.path.exists(self.str_DBfile):
+                not os.path.isdir(self.str_DBpath):
 
             """Attach the feed tree for this user"""
             for key, val in kwargs.iteritems():
@@ -293,7 +299,7 @@ class ChRIS_SMUserDB(object):
         self._log._b_syslog             = True
         self.__name                     = "ChRIS_RESTAPI"
 
-        self.str_DBfile                 = 'DB.p'
+        self.str_DBpath                 = '/tmp'
 
         self.chris                      = None
 
@@ -304,10 +310,10 @@ class ChRIS_SMUserDB(object):
         self.userFeeds                  = None
 
         for key,value in kwargs.iteritems():
-            if key == "chris":          self.chris                      = value
-            if key == 'createNewDB':    self.b_createNewDB              = value
-            if key == 'ignorePersistentDB': self.b_ignorePersistentDB    = value
-            if key == 'DB':             self.str_DBfile                 = value
+            if key == "chris":              self.chris                      = value
+            if key == 'createNewDB':        self.b_createNewDB              = value
+            if key == 'ignorePersistentDB': self.b_ignorePersistentDB       = value
+            if key == 'DB':                 self.str_DBpath                 = value
         self.debug                      = message.Message(logTo = "./debug.log")
         self.debug._b_syslog            = True
         self._md5                       = hashlib
@@ -326,16 +332,16 @@ class ChRIS_SMCore(object):
         # This class contains a reference back to the chris parent object that
         # contains this Core
         self.chris                  = None
-        self.str_DBfile             = ""
+        self.str_DBpath             = ""
         self.b_ignorePersistentDB   = False
         for key,value in kwargs.iteritems():
             if key == "chris":              self.chris                  = value
-            if key == "DB":                 self.str_DBfile             = value
+            if key == "DB":                 self.str_DBpath             = value
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = value
         self.s_tree     = C_snode.C_stree()
         self._userDB    = ChRIS_SMUserDB(
                                 chris               = self.chris,
-                                DB                  = self.str_DBfile,
+                                DB                  = self.str_DBpath,
                                 ignorePersistentDB  = self.b_ignorePersistentDB
                             )
 
@@ -414,16 +420,16 @@ class ChRIS_SM(object):
 
         self.__name                     = "ChRIS_SM"
 
-        self.str_DBfile                 = ''
+        self.str_DBpath                 = ''
         self.b_ignorePersistentDB       = False
         for key,val in kwargs.iteritems():
-            if key == 'DB':                 self.str_DBfile             = val
+            if key == 'DB':                 self.str_DBpath             = val
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = val
 
         self._feedTree                  = C_snode.C_stree()
         self._SMCore                    = ChRIS_SMCore(
                                             chris               = self,
-                                            DB                  = self.str_DBfile,
+                                            DB                  = self.str_DBpath,
                                             ignorePersistentDB  = self.b_ignorePersistentDB
                                         )
         self._name                      = ""
@@ -588,10 +594,17 @@ class ChRIS_authenticate(object):
         if not d_ret['status'] and d_ret['code'] == 1:
             error.fatal(self, 'no_loginFound')
         ret = f()
-        if not os.path.isfile(self.chris.DB.str_DBfile):
+        if not os.path.isdir(self.chris.DB.str_DBpath):
             # Need custom save for C_snode trees...
-            pickle.dump(dict(self.chris.DB.DB), open(self.chris.DB.str_DBfile, 'wb'))
-        return ret
+            pickle.dump(dict(self.chris.DB.DB), open(self.chris.DB.str_DBpath, 'wb'))
+            aTree.tree_save(startPath       = '/',
+                            pathDiskRoot    = '/home/rudolphpienaar/tmp/aTree',
+                            failOnDirExist  = True,
+                            saveJSON        = False,
+                            savePickle      = True)
+
+
+    return ret
 
 
 def warn(*objs):
@@ -703,9 +716,9 @@ if __name__ == "__main__":
     parser.add_argument(
         '-d', '--DB',
         help    =   "The <DB> keeps track of data (not system!) state between calls.",
-        dest    =   'str_DBfile',
+        dest    =   'str_DBpath',
         action  =   'store',
-        default =   "DB.p"
+        default =   "/tmp"
     )
     parser.add_argument(
         '-s', '--stateFile',
@@ -735,13 +748,13 @@ if __name__ == "__main__":
         chris       = ChRIS_SM_RPC(
                             stateFile           = args.str_stateFileName,
                             ignorePersistentDB  = args.b_ignorePersistentDB,
-                            DB                  = args.str_DBfile
+                            DB                  = args.str_DBpath
                       )
     if args.b_REST:
         chris       = ChRIS_SM_REST(
                             authority           = args.str_authority,
                             ignorePersistentDB  = args.b_ignorePersistentDB,
-                            DB                  = args.str_DBfile
+                            DB                  = args.str_DBpath
                       )
     chris.API.auth  = ChRIS_authenticate(chris, 'auth')
 
