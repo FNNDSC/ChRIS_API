@@ -30,6 +30,9 @@ import  sys
 import  re
 import  copy
 from    string                  import  *
+import  shutil
+import  pickle
+import  json
 
 from    C_stringCore            import  *
 
@@ -532,6 +535,27 @@ class C_stree:
                 self.l_allPaths.append(l_pwd)
             return self.l_allPaths
 
+        def mkdir(self, astr_dirSpec):
+            """
+
+            Given an <astr_dirSpec> in form '/a/b/c/d/.../f',
+            create that path in the intenal stree, creating all
+            intermediate nodes as necessary
+
+            :param astr_dirSpec:
+            :return:
+            """
+            str_currentPath = self.cwd()
+            l_pathSpec = astr_dirSpec.split('/')
+            if not len(l_pathSpec[0]):
+                self.cd('/')
+                l_nodesDepth = l_pathSpec[1:]
+            else:
+                l_nodesDepth = l_pathSpec
+            for d in l_nodesDepth:
+                self.mkcd(d)
+            self.cd(str_currentPath)
+
         def mknode(self, al_branchNodes):
             """
             Create a set of nodes (branches) at current node. Analogous to
@@ -549,6 +573,8 @@ class C_stree:
                 #print self.b_pathOK(l_path)
                 if not self.b_pathOK(l_path):
                     l_branchNodes.append(node)
+            if not len(l_branchNodes):
+                return False
             snodeBranch   = C_snodeBranch(l_branchNodes)
             for node in l_branchNodes:
                 depth = self.snode_current.depth()
@@ -871,6 +897,164 @@ class C_stree:
             self.snode_current.metaData_print(self.b_printMetaData)
             return {'status': True}
 
+        def node_save(self, astr_pathInTree, **kwargs):
+            """
+            Typically called by the explore()/recurse() methods and of form:
+
+                f(pathInTree, **kwargs)
+
+            and returns dictionary of which one element is
+
+                'status':   True|False
+
+            recursion continuation flag is returned:
+
+                'continue': True|False
+
+            to signal calling parent whether or not to continue with tree
+            transversal.
+
+            Save the node specified by a path in the data tree to disk.
+
+            Given a "root" on the disk storage, create the path relative
+            to that root, and in that location, save the contents of the internal
+            node's d_data at that tree path location.
+
+            :param kwargs:
+            :return:
+            """
+            str_pathDiskRoot    = '/tmp'
+            str_pathDiskOrig    = os.getcwd()
+            srt_pathDiskFull    = ''
+            str_pathTree        = ''
+            str_pathTreeOrig    = self.pwd()
+            b_failOnDirExist    = True
+            b_saveJSON          = True
+            b_savePickle        = False
+            for key, val in kwargs.iteritems():
+                if key == 'startPath':      str_pathTree        = val
+                if key == 'pathDiskRoot':   str_pathDiskRoot    = val
+                if key == 'failOnDirExist': b_failOnDirExist    = val
+                if key == 'saveJSON':       b_saveJSON          = val
+                if key == 'savePickle':     b_savePickle        = val
+
+            str_pathDiskFull    = str_pathDiskRoot + str_pathTree
+            # print('\n')
+            # print('In self.node_save():')
+            # print('memTree:  %s' % (str_pathTree))
+            # print('diskRoot: %s' % str_pathDiskRoot)
+            # print('distPath: %s' % str_pathDiskFull)
+            # print(kwargs.keys())
+            # print(kwargs.values())
+            # print('\n')
+
+            if len(str_pathDiskRoot):
+                if not os.path.isdir(str_pathDiskRoot):
+                    print('Processing path: %s' % str_pathDiskRoot)
+                    try:
+                        # print('mkdir %s' % str_pathDiskRoot)
+                        os.makedirs(str_pathDiskRoot)
+                    except OSError as exception:
+                        return {'status' :      False,
+                                'continue':     False,
+                                'message':      'unable to create pathDiskRoot: %s' % str_pathDiskRoot,
+                                'exception':    exception}
+                # print('cd to %s' % str_pathDiskRoot)
+                os.chdir(str_pathDiskRoot)
+                if self.cd(str_pathTree)['status']:
+                    if str_pathTree != '/':
+                        # print('mkdir %s' % str_pathDiskFull)
+                        try:
+                            os.makedirs(str_pathDiskFull)
+                        except OSError as exception:
+                            if b_failOnDirExist:
+                                return {'status' :      False,
+                                        'continue':     False,
+                                        'message':      'unable to create pathDiskRoot: %s' % str_pathDiskRoot,
+                                        'exception':    exception}
+
+                    os.chdir(str_pathDiskFull)
+                    for str_filename, contents in self.snode_current.d_data.iteritems():
+                        with open(str_filename, 'w') as f:
+                            if b_saveJSON:      json.dump(contents,     f)
+                            if b_savePickle:    pickle.dump(contents,   f)
+                            f.close()
+                else:
+                    return{'status':    False,
+                           'continue':  False,
+                           'message':   'pathTree invalid'}
+                self.cd(str_pathTreeOrig)
+                os.chdir(str_pathDiskOrig)
+                return {'status':   True,
+                        'continue': True}
+            return {'status':   False,
+                    'continue': False,
+                    'message':  'pathDisk not specified'}
+
+        def tree_save(self, **kwargs):
+            """
+            Save a tree to disk.
+
+            Essentially, this creates a mirror of the internal tree
+            structure on disk.
+
+            For kwargs, see node_save()
+
+            :param kwargs:
+            :return:
+            """
+
+            kwargs['f']         = self.node_save
+            self.treeExplore(**kwargs)
+
+        @staticmethod
+        def tree_load(**kwargs):
+            """
+            Load a tree from disk.
+
+            Essentially, this reads a disk filetree into an snode tree.
+
+            :param kwargs:
+            :return:
+            """
+            str_pathDiskRoot    = ''
+            b_loadJSON          = True
+            b_loadPickle        = False
+            for key, val in kwargs.iteritems():
+                if key == 'pathDiskRoot':   str_pathDiskRoot    = val
+                if key == 'loadJSON':       b_loadJSON          = val
+                if key == 'loadPickle':     b_loadPickle        = val
+
+            l_dir   = []
+            l_file  = []
+            for str_root, l_directories, l_filenames in os.walk(str_pathDiskRoot):
+                for str_dir in l_directories:
+                    l_dir.append(os.path.join(str_root, str_dir))
+                for str_file in l_filenames:
+                    l_file.append(os.path.join(str_root, str_file))
+            stree_dirs  = [d.replace(str_pathDiskRoot, '') for d in l_dir]
+            stree_files = [f.replace(str_pathDiskRoot, '') for f in l_file]
+
+            # Create the tree
+            rtree       = C_stree()
+            # Build the directory structures
+            for d in stree_dirs:
+                # print(d)
+                rtree.mkdir(d)
+            # Now read any files
+            for f in stree_files:
+                dirname     = os.path.dirname(f)
+                filename    = os.path.basename(f)
+                # print(f)
+                with open(str_pathDiskRoot + '/' + f) as fp:
+                    if b_loadJSON:      contents = json.load(fp)
+                    if b_loadPickle:    contents = pickle.load(fp)
+                if rtree.cd(dirname)['status']:
+                    rtree.touch(filename, contents)
+
+            return rtree
+
+
         def treeExplore(self, **kwargs):
             """
             Recursively walk through a C_stree, applying a passed function
@@ -922,9 +1106,9 @@ class C_stree:
                         l_recursePath[0]    = '/'
                         if not l_recursePath in self.l_allPaths:
                             self.l_allPaths.append(l_recursePath)
-                        self.treeExplore(f = f, startPath = str_recursePath)
+                        kwargs['startPath'] = str_recursePath
+                        self.treeExplore(**kwargs)
             return ret
-
 
         def treeWalk(self, **kwargs):
             """
@@ -1153,7 +1337,6 @@ if __name__ == "__main__":
     bTree.cd('/1/3/7')
     bTree.mknode(['14', '15'])
 
-
     aTree.tree_metaData_print(False)
     ATree.tree_metaData_print(False)
     bTree.tree_metaData_print(False)
@@ -1178,8 +1361,31 @@ if __name__ == "__main__":
     print(bTree)
     print(bTree.pathFromHere_walk('/'))
     print(bTree.l_allPaths)
+
     print(aTree)
     print(aTree.pathFromHere_explore('/'))
     print(aTree.l_allPaths)
     print(aTree.filesFromHere_explore('/'))
     print(aTree.l_allFiles)
+
+    print('Saving bTree...')
+    bTree.tree_save(startPath       = '/',
+                    pathDiskRoot    = '/home/rudolphpienaar/tmp/bTree',
+                    failOnDirExist  = True,
+                    saveJSON        = False,
+                    savePickle      = True)
+
+    print('Saving aTree...')
+    aTree.tree_save(startPath       = '/',
+                    pathDiskRoot    = '/home/rudolphpienaar/tmp/aTree',
+                    failOnDirExist  = True,
+                    saveJSON        = False,
+                    savePickle      = True)
+
+    print('Reading aTree into cTree...')
+    cTree = C_stree.tree_load(
+                    pathDiskRoot    = '/home/rudolphpienaar/tmp/aTree',
+                    loadJSON        = False,
+                    loadPickle      = True)
+    cTree.tree_metaData_print(False)
+    print(cTree)
