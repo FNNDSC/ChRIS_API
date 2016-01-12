@@ -396,7 +396,7 @@ class FeedTree(object):
         for node in l_branch:
             l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, node))
         # Need to check this conditional?
-        if not len(l_branch)
+        if not len(l_branch):
             for terminus in f.lsf(str_path):
                 l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, terminus))
         return l_URI
