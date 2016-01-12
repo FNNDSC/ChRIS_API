@@ -97,7 +97,7 @@ class ChRIS_SMUserDB(object):
             # The 'feeds' node is attached when the user is authenticated.
             s.mkcd('login')
         else:
-            # Need custom load for C_snode trees...
+            # Load the whole tree (including feeds) from disk
             s = C_snode.C_stree.tree_load(
                     pathDiskRoot    = self.str_DBpath,
                     loadJSON        = False,
@@ -136,13 +136,9 @@ class ChRIS_SMUserDB(object):
             str_message         = "User '%s' can not call API." % astr_user
         d_currentSessionInfo['APIcanCall']      = b_OK
         self.login_writePersistent( sessionInfo = d_currentSessionInfo,
-                      #              user        = astr_user,
                                     **kwargs)
-        if self.b_ignorePersistentDB:
-            self.user_attachFeedTree(   user        = astr_user)
-            self.chris.homePage   = self.userFeeds
-        else:
-            # read from disk
+        self.user_attachFeedTree(user = astr_user)
+        self.chris.homePage   = self.userFeeds
         return {'status':   b_OK,
                 'code':     0,
                 'message':  str_message}
@@ -191,15 +187,23 @@ class ChRIS_SMUserDB(object):
             # Get the user's feed tree structure -- we only need to
             # do this *ONCE* per session/replay.
             if not self.userFeeds:
-                feedTree                = feed.FeedTree_chrisUser()
-                # and attach it to the stree of this object
-                if self.DB.cd('/users/%s' % astr_user)['status']:
-                    # self.DB.touch('tree', feedTree)
-                    self.DB.graft(feedTree._feedTree, '/feeds')
-                    self.userFeeds          = feedTree
-                    # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
+                if self.b_createNewDB or True:
+                    feedTree                = feed.FeedTree_chrisUser()
+                    # and attach it to the stree of this object
+                    if self.DB.cd('/users/%s' % astr_user)['status']:
+                        # self.DB.touch('tree', feedTree)
+                        self.DB.graft(feedTree._feedTree, '/feeds')
+                        self.userFeeds          = feedTree
+                        # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
+                    else:
+                        error.fatal(self, 'no_userInTree')
                 else:
-                    error.fatal(self, 'no_userInTree')
+                    # The DB has already been created... we just need to add the
+                    # user feed to the base structure userFeed hook...
+Oh                    self.userFeeds              = C_snode.C_stree()
+                    self.userFeeds.cd('/')
+                    self.userFeeds.graft(self.DB, '/users/%s/feeds' % astr_user)
+
         # self.debug('\nEntire DB tree:\n%s' % self.DB)
 
     def user_logout(self, **kwargs):
@@ -531,7 +535,13 @@ class ChRIS_authenticate(object):
         'no_loginFound'     : {
             'action'        : 'checking on API call, ',
             'error'         : 'it seems that the user has not logged in.',
-            'exitCode'      : 11}
+            'exitCode'      : 11
+            },
+        'no_chrisInstance'  : {
+            'action'        : 'initializing authentication module, ',
+            'error'         : 'it seems that an invalid <chris> object was passed.',
+            'exitCode'      : 12
+            }
     }
 
     def log(self, *args):
@@ -555,7 +565,7 @@ class ChRIS_authenticate(object):
         else:
             return self.__name
 
-    def __init__(self, achris_instance, aself_name):
+    def __init__(self, **kwargs):
         """Constructor.
 
         Builds a ChRIS_authenticate object. This object acts as a functor that calls
@@ -569,9 +579,13 @@ class ChRIS_authenticate(object):
         self._log               = message.Message()
         self._log._b_syslog     = True
         self.__name             = "ChRIS_authenticate"
+        self._name              = 'auth'
+        self.chris              = None
 
-        self.chris              = achris_instance
-        self._name              = aself_name
+        for key, val in kwargs.iteritems():
+            if key == 'chris':  self.chris  = val
+            if key == 'name':   self._name  = val
+
         self.debug              = message.Message(logTo = './debug.log')
         self.debug._b_syslog    = True
 
@@ -594,17 +608,14 @@ class ChRIS_authenticate(object):
         if not d_ret['status'] and d_ret['code'] == 1:
             error.fatal(self, 'no_loginFound')
         ret = f()
-        if not os.path.isdir(self.chris.DB.str_DBpath):
+        if not self.chris.b_ignorePersistentDB:
             # Need custom save for C_snode trees...
-            pickle.dump(dict(self.chris.DB.DB), open(self.chris.DB.str_DBpath, 'wb'))
-            aTree.tree_save(startPath       = '/',
-                            pathDiskRoot    = '/home/rudolphpienaar/tmp/aTree',
+            db.DB.tree_save(startPath       = '/',
+                            pathDiskRoot    = self.chris.str_DBpath,
                             failOnDirExist  = True,
                             saveJSON        = False,
                             savePickle      = True)
-
-
-    return ret
+        return ret
 
 
 def warn(*objs):
@@ -718,7 +729,7 @@ if __name__ == "__main__":
         help    =   "The <DB> keeps track of data (not system!) state between calls.",
         dest    =   'str_DBpath',
         action  =   'store',
-        default =   "/tmp"
+        default =   "/tmp/ChRIS_DB"
     )
     parser.add_argument(
         '-s', '--stateFile',
@@ -756,7 +767,10 @@ if __name__ == "__main__":
                             ignorePersistentDB  = args.b_ignorePersistentDB,
                             DB                  = args.str_DBpath
                       )
-    chris.API.auth  = ChRIS_authenticate(chris, 'auth')
+    chris.API.auth  = ChRIS_authenticate(
+                            chris               = chris,
+                            name                = 'auth'
+                      )
 
     # Call the API and print the JSON formatted return.
     print(
