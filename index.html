@@ -221,7 +221,7 @@
             <h3>Interacting with the ChRIS REST API backend</h3>
             <h4>Start the ChRIS REST API services</h4>
             <p>Make sure that the ChRIS REST Web Service has been started:</p>
-            <p style="text-indent: 2.0em; border-color: #000;"><tt>./ChRIS_WS.py -i &lt;someIP&gt; -i &lt;somePort&gt; --API REST</tt></p>
+            <p style="text-indent: 2.0em; border-color: #000;"><tt>./ChRIS_WS.py -i &lt;someIP&gt; -p &lt;somePort&gt; --API REST</tt></p>
             <h4>Start a Web Server in the checkout directory</h4>
             <p>The best way to run this interaction page is via a server (i.e. do not directly load this page into your browser using the <tt>file:///</tt> directive). Simply start a python web server in the repository check out directory:</p>
             <p style="text-indent: 2.0em; border-color: #000;"><tt>python -m SimpleHTTPServer [&lt;port&gt;]</tt></p>
@@ -229,6 +229,13 @@
             <p style="text-indent: 2.0em; border-color: #000;"><tt>http://&lt;hostIP&gt;[:&lt;port&gt;]</tt></p>
             <h4>Login</h4>
             <p>On the top left of the control panel is the login status toggle button. On first run, this should say "login status: logged out". Simply hit the button and wait for the status to change to "logged in". Login never expires, only when you explicitly hit "logout". </p>
+            <h4>DB Permancy</h4>
+            <p>
+                If you wish to have consistency in the data space between calls to the API, you need to store the data DB to disk. Make sure that the "Use file DB" button reads "ON" and is green.
+            </p>
+            <p>
+                Toggle the "Create new DB" button to "ON" if you want to create a new DB. Note, this will overwrite/delete any previous DB tree at that file location.
+            </p>
             <h4>Call</h4>
             <p>Once logged in for the first time, or on each time this page is visited, hit the <tt>Call</tt> button to call the current URL (shown in the <i>URLs available</i> select box). With each call of a URL, the contents of this box will change. Simply keep choosing URLs as they are made available to explore the data space.</p>
             <h4>JSON syntax highlight</h4>
@@ -254,13 +261,13 @@
                     <input style="width:600px;font-family:courier;" id="DB" name="DB" value="/tmp/ChRIS_DB"><br>
                 </div>
                 <div class="pure-control-group">
-                    <label>VERB</label>
-                    <select id="VERB" class="pure-input-4-24">
-                        <option>GET</option>
-                        <option>PUT</option>
-                        <option>POST</option>
-                        <option>DELETE</option>
-                    </select>
+                    <!--<label>VERB</label>-->
+                    <!--<select id="VERB" class="pure-input-4-24">-->
+                        <!--<option>GET</option>-->
+                        <!--<option>PUT</option>-->
+                        <!--<option>POST</option>-->
+                        <!--<option>DELETE</option>-->
+                    <!--</select>-->
                     <label>API version</label>
                     <select id="version" class="pure-input-4-24">
                         <option>v1</option>
@@ -272,15 +279,23 @@
                     </select>
                 </div>
                 <div class="pure-control-group">
-                    <label for="URLsFromChRIS">URLs available</label>
+                    <label for="URLsFromChRIS">
+                        <button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">GET</button>
+                    </label>
                     <select class="pure-input-1-2" id="URLsFromChRIS">
                     </select>
+                </div>
+                <div class="pure-control-group">
+                    <label>
+                        <button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PUT</button>
+                    </label>
+                    <input style="width:600px;font-family:courier;" id="PUT" name="PUT" value=""><br>
                 </div>
                 <div class="pure-control-group">
                     <label>AUTH</label>
                     <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
                 </div>
-                <button onclick="return REST_call()" class="pure-button pure-button-primary">Call</button>
+                <!--<button onclick="return REST_call()" class="pure-button pure-button-primary">Call</button>-->
                 <button onclick="window.location.reload(true)" class="pure-button pure-button-primary button-reset">Reset</button>
                 <!--</div>-->
             </fieldset>
