@@ -187,13 +187,27 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self.__name                     = "ChRIS_client"
         self._str_authority             = ""
         self.d_error                    = {}
+        self.d_component                = {}
+        self.str_createNewDB            = ''
+        self.str_DBpath                 = ''
 
         for key,val in kwargs.iteritems():
             if key == 'sessionFile':    astr_sessionFile    = val
             if key == 'authority':      self._str_authority = val
+            if key == 'components':     self.d_component    = val
+
+
+        if 'createNewDB' in self.d_component.keys():
+            self.str_createNewDB        = '--createNewDB'
+
+        if 'DBpath' in self.d_component.keys():
+            self.str_DBpath             = '--DB %s' % self.d_component['DBpath'][0]
 
         if args.API == 'REST':
-            cmd     = './ChRIS_SM.py --APIcall \"%s\" --REST --authority %s' % (astr_URLargs, self._str_authority)
+            cmd     = './ChRIS_SM.py --APIcall \"%s\" %s %s --REST --authority %s' % (astr_URLargs,
+                                                                                      self.str_createNewDB,
+                                                                                      self.str_DBpath,
+                                                                                      self._str_authority)
 
         if args.API == 'RPC':
             cmd     = './ChRIS_SM.py --APIcall \"%s\" --RPC --stateFile %s' % (astr_URLargs, astr_sessionFile)
@@ -214,7 +228,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                     'path': "",
                     'payload':  {
                         'message':      'Some error was detected!',
-                        'explanation':  'Are you logged in?',
+                        'explanation':  'See error code and text for more information.',
                         'exitCode':     shell._exitCode,
                         'stderr':       str_html_stderr,
                         'stdout':       str_html_stdout
@@ -232,7 +246,11 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             # error.fatal(self, 'shellFailure', '\nExit code failure:\t%s\n%s\n%s\n%s' %
             #             (shell._exitCode, shell._str_cmd, shell.stdout(), shell.stderr()))
 
-        return(json.loads(shell.stdout()))
+        try:
+            return(json.loads(shell.stdout()))
+        except:
+            self.d_error['return']['payload']['explanation'] = shell.stdout()
+            return(self.d_error)
 
     def HTTPresponse_sendClient(self, str_payload, **kwargs):
         """Send a properly formed HTTP response back to the client.
@@ -309,9 +327,9 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         print("***********************************************")
         if 'sessionFile' in d_component.keys():
             str_sessionFile = d_component['sessionFile'][0]
-            str_reply       = self.URL_serverProcess(str_URL, sessionFile = str_sessionFile)
+            str_reply       = self.URL_serverProcess(str_URL, components = d_component, sessionFile = str_sessionFile)
         else:
-            str_reply       = self.URL_serverProcess(str_URL, authority = str_authority)
+            str_reply       = self.URL_serverProcess(str_URL, components = d_component, authority = str_authority)
         print("***********************************************")
         print("reply from remote service:")
         print("***********************************************")
