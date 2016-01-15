@@ -201,6 +201,8 @@ class Feed_FS(Feed):
 
         s.cd(str_root)
         s.touch("body", sample.contents.cat("body"))
+        d_REST  = {"verb": "PUT"}
+        s.touch("REST", json.dumps(d_REST))
         # s.graft(sample.contents, '/')
 
         return(dict(sample.contents))
@@ -226,6 +228,8 @@ class Feed_FS(Feed):
 
         s.cd(str_root)
         s.touch("body", sample.contents.cat("body"))
+        d_REST  = {"verb": "PUT"}
+        s.touch("REST", json.dumps(d_REST))
         # s.graft(sample.contents, '/contents')
 
         return(dict(sample.contents))
