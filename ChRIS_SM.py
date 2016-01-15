@@ -57,7 +57,15 @@ class ChRIS_SMUserDB(object):
         'no_userInTree'   : {
             'action'        : 'attempting to graft the userfeed to main tree, ',
             'error'         : 'it seems the user is in the main tree.',
-            'exitCode'      : 11}
+            'exitCode'      : 11},
+        'no_validDBPath'    : {
+            'action'        : 'attempting to read the ChRIS_DB, ',
+            'error'         : 'the DB path seems invalid.',
+            'exitCode'      : 12},
+        'no_DBPath'         : {
+            'action'        : 'attempting to read the ChRIS_DB, ',
+            'error'         : 'no DB path seems to have been specified.',
+            'exitCode'      : 13}
     }
 
     def log(self, *args):
@@ -82,23 +90,38 @@ class ChRIS_SMUserDB(object):
             return self.__name
 
     def DB_build(self):
+        '''
+
+        This is the main entry point for either constructing a new DB
+        or reading one from disk.
+
+        Checks on the DB access in the case of reading from disk are
+        performed here, and don't need to be replicated in other parts
+        of the code.
+
+        Basically, if DB_build() returns successfully, no tests on the
+        str_DBpath etc need to be performed again.
+
+        :return:
+        '''
         s               = self.DB
-        if  True                                or  \
-            self.b_ignorePersistentDB           or  \
-            self.b_createNewDB                  or  \
-            not os.path.isdir(self.str_DBpath):
+        if self.b_createNewDB:
             s.cd('/')
             s.mkcd('users')
             s.mkcd('chris')
             s.touch("userName",     "chris")
             s.touch("fullName",     "ChRIS User")
             s.touch("passwd",       "chris1234")
-            # s.mknode(['feed'])
-            # The 'feeds' node is attached when the user is authenticated.
             s.mkcd('login')
+            # The 'feeds' directory is attached when the user is authenticated.
         else:
+            if not len(self.str_DBpath):
+                error.fatal(self, 'no_DBPath')
+            if not os.path.isdir(self.str_DBpath):
+                error.fatal(self, 'no_validDBPath')
             # Load the whole tree (including feeds) from disk
-            s = C_snode.C_stree.tree_load(
+            self.debug('Reading tree from disk... %s' % self.str_DBpath)
+            self.DB = C_snode.C_stree.tree_load(
                     pathDiskRoot    = self.str_DBpath,
                     loadJSON        = False,
                     loadPickle      = True)
@@ -138,7 +161,7 @@ class ChRIS_SMUserDB(object):
         self.login_writePersistent( sessionInfo = d_currentSessionInfo,
                                     **kwargs)
         self.user_attachFeedTree(user = astr_user)
-        self.chris.homePage   = self.userFeeds
+        self.chris.homePage     = self.userFeeds
         return {'status':   b_OK,
                 'code':     0,
                 'message':  str_message}
@@ -176,35 +199,44 @@ class ChRIS_SMUserDB(object):
         json.dump(dict_sessionInfo, open("%s-login.json" % str_user, "w"))
 
     def user_attachFeedTree(self, **kwargs):
-        if      True                                or \
-                self.b_ignorePersistentDB           or \
-                self.b_createNewDB                  or \
-                not os.path.isdir(self.str_DBpath):
+        '''
+        Attaches the feed tree of the given user to a convenience member variable,
+        self.userFeeds.
 
-            """Attach the feed tree for this user"""
-            for key, val in kwargs.iteritems():
-                if key == 'user':   astr_user   = val.translate(None, '\'\"')
-            # Get the user's feed tree structure -- we only need to
-            # do this *ONCE* per session/replay.
-            if not self.userFeeds:
-                if self.b_createNewDB or True:
-                    feedTree                = feed.FeedTree_chrisUser()
-                    # and attach it to the stree of this object
-                    if self.DB.cd('/users/%s' % astr_user)['status']:
-                        # self.DB.touch('tree', feedTree)
-                        self.DB.graft(feedTree._feedTree, '/feeds')
-                        self.userFeeds          = feedTree
-                        # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
-                    else:
-                        error.fatal(self, 'no_userInTree')
+        If the DB is dynamic or newly created, then a baseline user feed is generated;
+        otherwise, the user feed from a disk DB is "grafted" to self.userFeeds.
+
+        :param kwargs:
+        :return:
+        '''
+
+        """Attach the feed tree for this user"""
+        for key, val in kwargs.iteritems():
+            if key == 'user':   astr_user   = val.translate(None, '\'\"')
+
+        # Get the user's feed tree structure -- we only need to
+        # do this *ONCE* per session/replay.
+        if not self.userFeeds:
+            if self.b_createNewDB:
+                feedTree                = feed.FeedTree_chrisUser()
+                # and attach it to the stree of this object
+                if self.DB.cd('/users/%s' % astr_user)['status']:
+                    # self.DB.touch('tree', feedTree)
+                    self.DB.graft(feedTree._feedTree, '/feeds')
+                    self.userFeeds          = feedTree
+                    # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
                 else:
-                    # The DB has already been created... we just need to add the
-                    # user feed to the base structure userFeed hook...
-Oh                    self.userFeeds              = C_snode.C_stree()
-                    self.userFeeds.cd('/')
-                    self.userFeeds.graft(self.DB, '/users/%s/feeds' % astr_user)
-
-        # self.debug('\nEntire DB tree:\n%s' % self.DB)
+                    error.fatal(self, 'no_userInTree')
+            else:
+                # Read from existing DB
+                # The DB has already been created (and initial access tested with DB_build()...
+                # we just need to add this user's feed to the base structure userFeed hook...
+                ft                          = C_snode.C_stree()
+                self.userFeeds              = feed.FeedTree()
+                self.userFeeds._feedTree.cd('/')
+                self.userFeeds._feedTree.graft(self.DB, '/users/%s/feeds' % astr_user)
+                # self.debug('\nUser Feed Tree:\n%s' % self.userFeeds._feedTree)
+                # self.debug('\nWhole DB:\n%s' % self.DB)
 
     def user_logout(self, **kwargs):
         """
@@ -301,7 +333,7 @@ Oh                    self.userFeeds              = C_snode.C_stree()
         self.debug._b_syslog            = True
         self._log                       = message.Message()
         self._log._b_syslog             = True
-        self.__name                     = "ChRIS_RESTAPI"
+        self.__name                     = "ChRIS_SMUserDB"
 
         self.str_DBpath                 = '/tmp'
 
@@ -314,10 +346,11 @@ Oh                    self.userFeeds              = C_snode.C_stree()
         self.userFeeds                  = None
 
         for key,value in kwargs.iteritems():
-            if key == "chris":              self.chris                      = value
-            if key == 'createNewDB':        self.b_createNewDB              = value
-            if key == 'ignorePersistentDB': self.b_ignorePersistentDB       = value
-            if key == 'DB':                 self.str_DBpath                 = value
+            if key == "chris":              self.chris                  = value
+            if key == 'createNewDB':        self.b_createNewDB          = value
+            if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = value
+            if key == 'DB':                 self.str_DBpath             = value
+            if key == 'createNewDB':        self.b_createNewDB          = value
         self.debug                      = message.Message(logTo = "./debug.log")
         self.debug._b_syslog            = True
         self._md5                       = hashlib
@@ -338,15 +371,18 @@ class ChRIS_SMCore(object):
         self.chris                  = None
         self.str_DBpath             = ""
         self.b_ignorePersistentDB   = False
+        self.b_createNewDB          = False
         for key,value in kwargs.iteritems():
             if key == "chris":              self.chris                  = value
             if key == "DB":                 self.str_DBpath             = value
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = value
+            if key == 'createNewDB':        self.b_createNewDB          = value
         self.s_tree     = C_snode.C_stree()
         self._userDB    = ChRIS_SMUserDB(
                                 chris               = self.chris,
                                 DB                  = self.str_DBpath,
-                                ignorePersistentDB  = self.b_ignorePersistentDB
+                                ignorePersistentDB  = self.b_ignorePersistentDB,
+                                createNewDB         = self.b_createNewDB
                             )
 
     def login(self, **kwargs):
@@ -426,15 +462,18 @@ class ChRIS_SM(object):
 
         self.str_DBpath                 = ''
         self.b_ignorePersistentDB       = False
+        self.b_createNewDB              = False
         for key,val in kwargs.iteritems():
             if key == 'DB':                 self.str_DBpath             = val
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = val
+            if key == 'createNewDB':        self.b_createNewDB          = val
 
         self._feedTree                  = C_snode.C_stree()
         self._SMCore                    = ChRIS_SMCore(
                                             chris               = self,
                                             DB                  = self.str_DBpath,
-                                            ignorePersistentDB  = self.b_ignorePersistentDB
+                                            ignorePersistentDB  = self.b_ignorePersistentDB,
+                                            createNewDB         = self.b_createNewDB
                                         )
         self._name                      = ""
         self._log                       = message.Message()
@@ -608,11 +647,12 @@ class ChRIS_authenticate(object):
         if not d_ret['status'] and d_ret['code'] == 1:
             error.fatal(self, 'no_loginFound')
         ret = f()
-        if not self.chris.b_ignorePersistentDB:
-            # Need custom save for C_snode trees...
+        if len(self.chris.str_DBpath):
+            # If a path DB has been specified (and assuming it's a valid path!)
+            # save the DB tree to that path.
             db.DB.tree_save(startPath       = '/',
                             pathDiskRoot    = self.chris.str_DBpath,
-                            failOnDirExist  = True,
+                            failOnDirExist  = False,
                             saveJSON        = False,
                             savePickle      = True)
         return ret
@@ -630,7 +670,8 @@ def synopsis(ab_shortOnly = False):
                             [--REST | --RPC --stateFile <stateFile>]       \\
                             [--authority <clientSideAuthority>]            \\
                             [--ignorePersistenDB]                          \\
-                            [--DB <DBFile>]                                \\
+                            [--createNewDB]                                \\
+                            [--DB <DBpath>]                                \\
                             --APIcall <APIcall>
 
 
@@ -665,8 +706,12 @@ def synopsis(ab_shortOnly = False):
        --ignorePersistentDB
        If set, will ignore the file DB and create a new DB in memory.
 
-       --fileDB <fileDB>
-       The name of the fileDB to use for data state.
+       --createNewDB
+       If set, will create a new DB from internals with each call.
+
+       --DB <DBpath>
+       The name of the fileDB to use for data state. If nonzero, will
+       attempt to save the internal DB to this file path.
 
     NOTE
 
@@ -725,32 +770,39 @@ if __name__ == "__main__":
         default =   False
     )
     parser.add_argument(
+        '--createNewDB',
+        action  =   'store_true',
+        dest    =   'b_createNewDB',
+        help    =   'Create a new file-based DB, erasing any existing DB.',
+        default =   False
+    )
+    parser.add_argument(
         '-d', '--DB',
         help    =   "The <DB> keeps track of data (not system!) state between calls.",
         dest    =   'str_DBpath',
         action  =   'store',
-        default =   "/tmp/ChRIS_DB"
+        default =   ''
     )
     parser.add_argument(
         '-s', '--stateFile',
         help    =   "The <stateFile> keeps track of ChRIS state for RPC-type calling regimes.",
         dest    =   'str_stateFileName',
         action  =   'store',
-        default =   "<void>"
+        default =   '<void>'
     )
     parser.add_argument(
         '-a', '--APIcall',
         help    =   "The actual API call to make.",
         dest    =   'str_apiCall',
         action  =   'store',
-        default =   "<void>"
+        default =   '<void>'
     )
     parser.add_argument(
         '--authority',
         help    =   "The URI authority from the client perspective.",
         dest    =   'str_authority',
         action  =   'store',
-        default =   ""
+        default =   ''
     )
 
     args            = parser.parse_args()
@@ -759,12 +811,14 @@ if __name__ == "__main__":
         chris       = ChRIS_SM_RPC(
                             stateFile           = args.str_stateFileName,
                             ignorePersistentDB  = args.b_ignorePersistentDB,
+                            createNewDB         = args.b_createNewDB,
                             DB                  = args.str_DBpath
                       )
     if args.b_REST:
         chris       = ChRIS_SM_REST(
                             authority           = args.str_authority,
                             ignorePersistentDB  = args.b_ignorePersistentDB,
+                            createNewDB         = args.b_createNewDB,
                             DB                  = args.str_DBpath
                       )
     chris.API.auth  = ChRIS_authenticate(
