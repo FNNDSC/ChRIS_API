@@ -183,6 +183,22 @@
                 background: rgb(223, 117, 20); /* this is an orange */
             }
 
+            .button-useFileDB-on {
+                background: rgb(28, 184, 65); /* this is a green */
+            }
+
+            .button-useFileDB-off {
+                background: rgb(223, 117, 20); /* this is an orange */
+            }
+
+            .button-createNewDB-on {
+                background: rgb(28, 184, 65); /* this is a green */
+            }
+
+            .button-createNewDB-off {
+                background: rgb(223, 117, 20); /* this is an orange */
+            }
+
             .button-help {
                 background: rgb(66, 184, 221); /* this is a light blue */
                 float: right;
@@ -194,10 +210,10 @@
             }
         </style>
         <div>
-            <!--<button class="button-xsmall button-login  pure-button"     id="login"      onclick="login()" >login</button>-->
-            <!--<button class="button-xsmall button-logout pure-button"     id="logout"     onclick="logout()">logout</button>-->
             <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus" onclick="loginStatus_toggle()">login status: logged in</button>
             <button onclick="jsonSyntaxHightlight_toggle()" class="button-xsmall pure-button pure-button-primary button-jsonHighlight-on" id="JSON_status">JSON syntax highlight: ON</button>
+            <button onclick="useFileDB_toggle()" class="button-xsmall pure-button pure-button-primary button-useFileDB-on" id="useFileDB_status">Use file DB: ON</button>
+            <button onclick="createNewDB_toggle()" class="button-xsmall pure-button pure-button-primary button-createNewDB-off" id="createNewDB_status">Create new DB: OFF</button>
             <button class="button-xsmall button-help   pure-button"     id="opener">help</button>
             <br>
         </div>
@@ -205,7 +221,7 @@
             <h3>Interacting with the ChRIS REST API backend</h3>
             <h4>Start the ChRIS REST API services</h4>
             <p>Make sure that the ChRIS REST Web Service has been started:</p>
-            <p style="text-indent: 2.0em; border-color: #000;"><tt>./ChRIS_WS -i &lt;someIP&gt; -h &lt;somePort&gt; --API REST</tt></p>
+            <p style="text-indent: 2.0em; border-color: #000;"><tt>./ChRIS_WS.py -i &lt;someIP&gt; -i &lt;somePort&gt; --API REST</tt></p>
             <h4>Start a Web Server in the checkout directory</h4>
             <p>The best way to run this interaction page is via a server (i.e. do not directly load this page into your browser using the <tt>file:///</tt> directive). Simply start a python web server in the repository check out directory:</p>
             <p style="text-indent: 2.0em; border-color: #000;"><tt>python -m SimpleHTTPServer [&lt;port&gt;]</tt></p>
@@ -227,13 +243,16 @@
 
                 <div class="pure-control-group">
                     <label>Server IP:port</label>
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="192"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="168"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="1"/>.
-                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="3"/>:
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP1" value="127"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP2" value="0"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP3" value="0"/>.
+                    <input style="width:60px;font-family:courier;" type="text" maxlength="3" class="onlythree" id="IP4" value="1"/>:
                     <input style="width:70px;font-family:courier;" type="text" id="port" value="5555"/>
                 </div>
-
+                <div class="pure-control-group">
+                    <label>DB</label>
+                    <input style="width:600px;font-family:courier;" id="DB" name="DB" value="/tmp/ChRIS_DB"><br>
+                </div>
                 <div class="pure-control-group">
                     <label>VERB</label>
                     <select id="VERB" class="pure-input-4-24">
@@ -295,6 +314,8 @@
     str_loginFile               = '';
     b_URLsBuild                 = true;
     b_jsonSyntaxHighlight       = true;
+    b_useFileDB_status          = true;
+    b_createNewDB_status        = false;
     b_loginStatus               = false;
 
     $(document).on({
@@ -320,9 +341,9 @@
 
     function jsonSyntaxHightlight_toggle() {
         JSON_syntaxButton_DOM = document.getElementById("JSON_status");
-        console.log('In JSON_syntaxHighlight... bjsonSyntaxHighlight = ' + b_jsonSyntaxHighlight);
+        console.log('\nIn JSON_syntaxHighlight... b_SyntaxHighlight before toggle = ' + b_jsonSyntaxHighlight);
         b_jsonSyntaxHighlight = !b_jsonSyntaxHighlight;
-        console.log('In JSON_syntaxHighlight... bjsonSyntaxHighlight = ' + b_jsonSyntaxHighlight);
+        console.log('In JSON_syntaxHighlight... b_SyntaxHighlight after  toggle = ' + b_jsonSyntaxHighlight);
         if(b_jsonSyntaxHighlight) {
             JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: ON';
             JSON_syntaxButton_DOM.className     = 'button-xsmall pure-button pure-button-primary button-jsonHighlight-on';
@@ -330,6 +351,36 @@
         if(!b_jsonSyntaxHighlight) {
             JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: OFF';
             JSON_syntaxButton_DOM.className     = 'button-xsmall pure-button pure-button-primary button-jsonHighlight-off';
+        }
+    }
+
+    function useFileDB_toggle() {
+        fileDB_status_DOM = document.getElementById("useFileDB_status");
+        console.log('\nIn useFileDB_toggle... b_useFileDB_status before toggle = ' + b_useFileDB_status);
+        b_useFileDB_status = !b_useFileDB_status;
+        console.log('In useFileDB_toggle... b_useFileDB_status after toggle  = ' + b_useFileDB_status);
+        if(b_useFileDB_status) {
+            fileDB_status_DOM.innerHTML     = 'Use file DB: ON';
+            fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-useFileDB-on';
+        }
+        if(!b_useFileDB_status) {
+            fileDB_status_DOM.innerHTML     = 'Use file DB: OFF';
+            fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-useFileDB-off';
+        }
+    }
+
+    function createNewDB_toggle() {
+        fileDB_status_DOM = document.getElementById("createNewDB_status");
+        console.log('\nIn createNewDB_toggle... b_createNewDB_status before toggle = ' + b_createNewDB_status);
+        b_createNewDB_status = !b_createNewDB_status;
+        console.log('In createNewDB_toggle... b_createNewDB_status after toggle  = ' + b_createNewDB_status);
+        if(b_createNewDB_status) {
+            fileDB_status_DOM.innerHTML     = 'Create new DB: ON';
+            fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-createNewDB-on';
+        }
+        if(!b_createNewDB_status) {
+            fileDB_status_DOM.innerHTML     = 'Create new DB: OFF';
+            fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-createNewDB-off';
         }
     }
 
@@ -471,6 +522,7 @@
                                                 presented to the backend
                                                 service.
          */
+        DBpath_DOM = document.getElementById("DB");
 
         loginStatus_fileTagGenerate();
 
@@ -486,6 +538,7 @@
         ChRISresp   = null;
 
         URLsFromChRIS_DOM           = $('#URLsFromChRIS');
+        DBpath                      = $('#DB');
 
         if(typeof(APIcallOverride)==='undefined') {
             str_URLsFromChRIS_selected  = URLsFromChRIS_DOM.val();
@@ -505,6 +558,14 @@
             }
         } else {
             APIcall = str_FQhost + APIcallOverride;
+        }
+        if(b_createNewDB_status) {
+            APIcall             = APIcall +
+                    "&createNewDB=1";
+        }
+        if(DBpath_DOM.value.length) {
+            APIcall             = APIcall   +
+                    "&DBpath="   + DBpath_DOM.value;
         }
         console.log(APIcall);
 
