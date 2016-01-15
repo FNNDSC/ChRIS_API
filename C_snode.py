@@ -950,7 +950,7 @@ class C_stree:
 
             if len(str_pathDiskRoot):
                 if not os.path.isdir(str_pathDiskRoot):
-                    print('Processing path: %s' % str_pathDiskRoot)
+                    # print('Processing path: %s' % str_pathDiskRoot)
                     try:
                         # print('mkdir %s' % str_pathDiskRoot)
                         os.makedirs(str_pathDiskRoot)
