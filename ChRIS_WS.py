@@ -48,6 +48,8 @@ import  os
 import  sys
 import  datetime
 
+import  shutil
+
 import  message
 import  error
 from    _colors         import Colors
@@ -199,14 +201,29 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
 
         if 'createNewDB' in self.d_component.keys():
             self.str_createNewDB        = '--createNewDB'
+            if 'DBpath' in self.d_component.keys():
+                str_DBpath                  = self.d_component['DBpath'][0]
+                try:
+                    shutil.rmtree(str_DBpath)
+                except:
+                    # return({
+                    #     'status':   False,
+                    #     'return': {
+                    #         'payload': {
+                    #             'message': 'Could not delete the existing DB. Is the path valid?'
+                    #         }
+                    #     }
+                    # })
+                    pass
 
         if 'DBpath' in self.d_component.keys():
-            self.str_DBpath             = '--DB %s' % self.d_component['DBpath'][0]
+            self.str_DBpath             = self.d_component['DBpath'][0]
+            self.str_DBarg              = '--DB %s' % self.str_DBpath
 
         if args.API == 'REST':
             cmd     = './ChRIS_SM.py --APIcall \"%s\" %s %s --REST --authority %s' % (astr_URLargs,
                                                                                       self.str_createNewDB,
-                                                                                      self.str_DBpath,
+                                                                                      self.str_DBarg,
                                                                                       self._str_authority)
 
         if args.API == 'RPC':
@@ -238,18 +255,12 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             }
         except:
             return(self.d_error)
-            # error.fatal(self, 'shellFailure',
-            #         '\nExecuting:\n\t%s\nstdout:\n-->\t%s\nstderr:\n-->%s' %
-            #         (shell._str_cmd, shell.stdout(), shell.stderr()))
         if shell._exitCode:
             return(self.d_error)
-            # error.fatal(self, 'shellFailure', '\nExit code failure:\t%s\n%s\n%s\n%s' %
-            #             (shell._exitCode, shell._str_cmd, shell.stdout(), shell.stderr()))
-
         try:
             return(json.loads(shell.stdout()))
         except:
-            self.d_error['return']['payload']['explanation'] = shell.stdout()
+            self.d_error['return']['payload']['explanation'] = 'Check if any intermediate process created output on stdout -- this typically breaks JSON parsing.'
             return(self.d_error)
 
     def HTTPresponse_sendClient(self, str_payload, **kwargs):
