@@ -153,6 +153,12 @@ class Feed_FS(Feed):
 
         """
         Feed.__init__(self, **kwargs)
+        self.d_REST = {
+            'PUT':  {
+                'body':         'string',
+                'timestamp':    'string'
+            }
+        }
         self.create(**kwargs)
 
     def dataElement_create(self, **kwargs):
@@ -201,8 +207,7 @@ class Feed_FS(Feed):
 
         s.cd(str_root)
         s.touch("body", sample.contents.cat("body"))
-        d_REST  = {"verb": "PUT"}
-        s.touch("REST", json.dumps(d_REST))
+        s.touch("REST", self.d_REST)
         # s.graft(sample.contents, '/')
 
         return(dict(sample.contents))
@@ -228,8 +233,7 @@ class Feed_FS(Feed):
 
         s.cd(str_root)
         s.touch("body", sample.contents.cat("body"))
-        d_REST  = {"verb": "PUT"}
-        s.touch("REST", json.dumps(d_REST))
+        s.touch("REST", self.d_REST)
         # s.graft(sample.contents, '/contents')
 
         return(dict(sample.contents))
