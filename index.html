@@ -285,7 +285,7 @@
                     <select class="pure-input-1-2" id="URLsFromChRIS">
                     </select>
                 </div>
-                <div class="pure-control-group">
+                <div class="pure-control-group" id="dom_PUT" style="display:none">
                     <label>
                         <button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PUT</button>
                     </label>
@@ -317,6 +317,7 @@
     $body                       = $("body");
     // Some specific parts of the document
     result_DOM                  = document.getElementById("result");
+    PUT_DOM                     = document.getElementById("dom_PUT");
     URLsFromChRIS_DOM           = $('#URLsFromChRIS');
     d_URLsFromChRIS             = null;
     key_DOM                     = $('#key');
@@ -438,13 +439,23 @@
     }
 
     function login() {
-        REST_call('/v1/login?auth=user=chris,passwd=chris1234');
+        d_APIcall = {
+            'type':             'GET',
+            'APIcallOverride':  '/v1/login?auth=user=chris,passwd=chris1234',
+            'showOutput':       1
+        };
+        REST_call(d_APIcall);
         loginStatus_show(file_exist(str_loginURLtag));
         b_URLsBuild = false;
     }
 
     function logout() {
-        REST_call('/v1/logout?auth=user=chris,auth=ABCDEF');
+        d_APIcall = {
+            'type':             'GET',
+            'APIcallOverride':  '/v1/logout?auth=user=chris,auth=ABCDEF',
+            'showOutput':       1
+        };
+        REST_call(d_APIcall);
         loginStatus_show(file_exist(str_loginURLtag));
         b_URLsBuild = false;
     }
@@ -522,7 +533,49 @@
         });
     }
 
-    function REST_call(APIcallOverride) {
+    function API_assemblePrefix() {
+        /*
+            Assembles the first part of the URL access string to the remote
+            server, typically:
+
+                http://<IP>[:<port>]
+        */
+
+        // Assemble the service address and port:
+        var IP1	= $('#IP1').val();
+        var IP2	= $('#IP2').val();
+        var IP3	= $('#IP3').val();
+        var IP4	= $('#IP4').val();
+        var str_hostIP  = "http://" + IP1 + "." + IP2 + "." + IP3 + "." + IP4;
+        var str_FQhost  = str_hostIP + ":" + $("#port").val();
+
+        return(str_FQhost)
+
+    }
+
+    function API_assembleCore() {
+        /*
+        Assembles the main URL call from various subcomponents.
+         */
+
+    }
+
+    function API_assembleSuffix() {
+        /*
+        Assembles the "suffix" call, typically things like DB access.
+        */
+    }
+
+    function API_assemble() {
+        /*
+        Builds the API from prefix, core, suffix components.
+        */
+        str_APIcall = API_assemblePrefix() + API_assembleCore() + API_assembleSuffix();
+
+        return(str_APIcall);
+    }
+
+    function REST_call(d_APIcall) {
         /*
             The main entry point to calling the service. The specific arguments
             to pass to the back end service are typically parsed from the HTML
@@ -533,9 +586,13 @@
 
             ARGS
 
-                APIcallOverride     string      if passed, this will be
-                                                presented to the backend
-                                                service.
+                d_APICall           dictionary
+
+                    'type':         'GET'|'PUT'     -- the type of call
+                    'override':     string          -- an override call
+
+                if not passed, will default to GET and void override
+
          */
         DBpath_DOM = document.getElementById("DB");
 
@@ -555,7 +612,14 @@
         URLsFromChRIS_DOM           = $('#URLsFromChRIS');
         DBpath                      = $('#DB');
 
-        if(typeof(APIcallOverride)==='undefined') {
+        console.log('typeof(d_APIcall) = ' + typeof(d_APIcall));
+        if(typeof(d_APIcall)==='undefined') {
+            d_APIcall           = {};
+            d_APIcall['type']   = 'GET';
+            d_APIcall['output'] = 1;
+        }
+
+        if(typeof(d_APIcall['APIcallOverride'])==='undefined') {
             str_URLsFromChRIS_selected  = URLsFromChRIS_DOM.val();
             if(typeof(str_URLsFromChRIS_selected)==="object") {
                 APIcall = str_FQhost                        +
@@ -572,8 +636,10 @@
                                             "?" + $('#AUTH').val();
             }
         } else {
-            APIcall = str_FQhost + APIcallOverride;
+            APIcall = str_FQhost + d_APIcall['APIcallOverride'];
         }
+
+
         if(b_createNewDB_status) {
             APIcall             = APIcall +
                     "&createNewDB=1";
@@ -584,8 +650,10 @@
         }
         console.log(APIcall);
 
+        PUT_DOM.style.display = "none";
         $.ajax({
             url:        APIcall,
+            type:       d_APIcall['type'],
             dataType:   'json',
             success:    function (ChRISresp) {
                 console.log('AJAX call success.');
@@ -595,13 +663,26 @@
                 if(!b_URLsBuild)
                     b_URLsBuild = true;
                 else
-                    if(b_loginStatus)
+                    if(b_loginStatus) {
                         URLsFromChRIS_build(json_ChRISresp);
-                if(b_jsonSyntaxHighlight)
-                    output(syntaxHighlight(ChRISresp));
-                else
-                    output((ChRISresp));
-                loginStatus_show(file_exist(str_loginURLtag));
+//                        if(typeof(json_ChRISresp.return.payload.REST)==='object') {
+//                            PUT_choicesBuild();
+//                        }
+
+
+                        d_URLsFromChRIS.filter(function(el) {
+                            if(el.indexOf('REST')>=0) {
+                                PUT_choicesBuild(el);
+                            }
+                        })
+                    }
+                if(d_APIcall['output']) {
+                    if (b_jsonSyntaxHighlight)
+                        output(syntaxHighlight(ChRISresp));
+                    else
+                        output((ChRISresp));
+                    loginStatus_show(file_exist(str_loginURLtag));
+                }
             },
             error:      function(xhdr, textStatus, thrownError) {
                 console.log('Some error was triggered.');
@@ -616,6 +697,24 @@
             }
         });
         return false; //stop the form from initially submitting
+    }
+
+    function PUT_choicesBuild(aURL) {
+        /*
+        Build the dialog box for the PUT choices, as parsed from the
+        REST token returned from the server.
+
+        ARGS
+            aURL        string      the location of the REST token in the
+                                    server data tree.
+         */
+//        d_choice = json_ChRISresp.return.payload.REST.PUT
+        PUT_DOM.style.display = "block";
+        console.log(aURL)
+        APIcall                 = str_FQhost +
+                '/' + $('#version').val()  + '/'    +
+                str_URL                             +
+                "?" + $('#AUTH').val();
     }
 
     </script>
