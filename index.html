@@ -286,10 +286,10 @@
                     </select>
                 </div>
                 <div class="pure-control-group" id="dom_PUT" style="display:none">
-                    <label>
-                        <button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PUT</button>
-                    </label>
-                    <input style="width:600px;font-family:courier;" id="PUT" name="PUT" value=""><br>
+                    <!--<label>-->
+                        <!--<button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PUT</button>-->
+                    <!--</label>-->
+                    <!--<input style="width:600px;font-family:courier;" id="PUT" name="PUT" value=""><br>-->
                 </div>
                 <div class="pure-control-group">
                     <label>AUTH</label>
@@ -315,7 +315,9 @@
 
     // The whole document
     $body                       = $("body");
-    // Some specific parts of the document
+    // Some specific parts of the document -- in a proper design these would be members
+    // of a class. To indicate the more global scope, these are all prepended with an 'm'
+    // for 'member'. ** Not implemented yet **
     result_DOM                  = document.getElementById("result");
     PUT_DOM                     = document.getElementById("dom_PUT");
     URLsFromChRIS_DOM           = $('#URLsFromChRIS');
@@ -401,13 +403,16 @@
     }
 
     function loginStatus_toggle() {
+        var debug           = new C_debug();
+        debug.functionName  = "loginStatus_toggle";
         b_loginStatus   = !b_loginStatus;
-        console.log('b_loginStatus = ' + b_loginStatus);
+        debug.vlog({message: 'b_loginStatus', var: b_loginStatus});
         if(b_loginStatus) {
             login();
         } else {
             logout();
         }
+        debug.log({message: 'leaving\n'});
     }
 
     function file_exist(str_filename) {
@@ -418,8 +423,10 @@
     }
 
     function loginStatus_show(ab_status) {
+        var debug           = new C_debug();
+        debug.functionName  = "loginStatus_show";
         loginStatus_DOM = document.getElementById("loginStatus");
-        console.log('login status = ' + ab_status);
+        debug.vlog({message: 'ab_status', var: ab_status});
         b_loginStatus = ab_status;
         if(ab_status) {
             loginStatus_DOM.innerHTML           = 'login status: logged in';
@@ -442,7 +449,7 @@
         d_APIcall = {
             'type':             'GET',
             'APIcallOverride':  '/v1/login?auth=user=chris,passwd=chris1234',
-            'showOutput':       1
+            'showOutput':       true
         };
         REST_call(d_APIcall);
         loginStatus_show(file_exist(str_loginURLtag));
@@ -453,7 +460,7 @@
         d_APIcall = {
             'type':             'GET',
             'APIcallOverride':  '/v1/logout?auth=user=chris,auth=ABCDEF',
-            'showOutput':       1
+            'showOutput':       true
         };
         REST_call(d_APIcall);
         loginStatus_show(file_exist(str_loginURLtag));
@@ -557,15 +564,13 @@
         /*
         Assembles the main URL call from various subcomponents.
          */
+        var debug           = new C_debug();
+        debug.functionName  = "API_assembleCore";
+        debug.vlog({message: 'd_APIcall', var: d_APIcall});
 
-        version_DOM             = document.getElementById('version');
+        version_DOM         = document.getElementById('version');
 
-        str_APIversion  = $('#version').val();
-        console.log('In API_assembleCore(): d_APIcall   = ');
-        console.log(d_APIcall);
-        console.log('In API_assembleCore(): API version = ' + str_APIversion);
-
-        if(typeof(d_APIcall['APIcallOverride'])==='undefined') {
+        if( typeof(d_APIcall['APIcallOverride'])==='undefined' || typeof(d_APIcall['URL']) === 'string') {
             str_URLsFromChRIS_selected  = URLsFromChRIS_DOM.val();
             if(typeof(str_URLsFromChRIS_selected)==="object") {
                 APIcall                 = '/'               +
@@ -588,7 +593,7 @@
         } else {
             APIcall = d_APIcall['APIcallOverride'];
         }
-        console.log('In API_assembleCore(): APIcall = ' + APIcall);
+        debug.vlog({message: 'APIcall', var: APIcall})
         return(APIcall);
     }
 
@@ -619,6 +624,38 @@
         return(str_APIcall);
     }
 
+    function callback_AJAX_success(ChRISresp) {
+        var debug           = new C_debug();
+        debug.functionName  = "callback_AJAX_success";
+        debug.log({functionName: 'jQuery AJAX success', message: '--------> Entering...'});
+
+        ChRISresp       = JSON.stringify(ChRISresp, null, 2);
+        json_ChRISresp  = JSON.parse(ChRISresp);
+        debug.vlog({'message': 'json_ChRISresp', var: json_ChRISresp});
+        if(!b_URLsBuild)
+            b_URLsBuild = true;
+        else
+        if(b_loginStatus) {
+            URLsFromChRIS_build(json_ChRISresp);
+            if(d_APIcall['branchOnREST']) {
+                d_URLsFromChRIS.filter(function (el) {
+                    if (el.indexOf('REST') >= 0) {
+                        PUT_choicesParse(el);
+                    }
+                });
+            }
+        }
+        debug.vlog({message: 'showOutput', var: d_APIcall.showOutput});
+        if(d_APIcall['showOutput']) {
+            if (b_jsonSyntaxHighlight)
+                output(syntaxHighlight(ChRISresp));
+            else
+                output((ChRISresp));
+            loginStatus_show(file_exist(str_loginURLtag));
+        }
+        debug.log({message: '--------> Leaving...'});
+    }
+
     function REST_call(d_APIcall) {
         /*
             The main entry point to calling the service. The specific arguments
@@ -638,6 +675,11 @@
                 if not passed, will default to GET and void override
 
          */
+        var debug           = new C_debug();
+        debug.functionName  = "REST_call";
+        debug.cl();
+        debug.log({message: '--------> Entering...'});
+
         DBpath_DOM          = document.getElementById("DB");
         hdr                 = null;
         ChRISresp           = null;
@@ -649,42 +691,38 @@
         if(typeof(d_APIcall)==='undefined') {
             d_APIcall                   = {};
             d_APIcall['type']           = 'GET';
-            d_APIcall['showOutput']     = 1;
-            d_APIcall['branchOnREST']   = 1;
+            d_APIcall['showOutput']     = true;
+            d_APIcall['branchOnREST']   = true;
         }
 
-        APIcall             = API_assemble(d_APIcall)
-
-        console.log('APIcall = -->' + APIcall + '<--');
+        APIcall             = API_assemble(d_APIcall);
+        debug.vlog( {message: 'APIcall', var: APIcall} );
 
         PUT_DOM.style.display = "none";
         $.ajax({
             url:        APIcall,
             type:       d_APIcall['type'],
             dataType:   'json',
+//            success:    callback_AJAX_success,
             success:    function (ChRISresp) {
-                console.log('AJAX call success.');
+                debug.log({functionName: 'jQuery AJAX success', message: '--------> Entering...'});
                 ChRISresp       = JSON.stringify(ChRISresp, null, 2);
                 json_ChRISresp  = JSON.parse(ChRISresp);
-                console.log(json_ChRISresp);
+                debug.vlog({'message': 'json_ChRISresp', var: json_ChRISresp});
                 if(!b_URLsBuild)
                     b_URLsBuild = true;
                 else
                     if(b_loginStatus) {
                         URLsFromChRIS_build(json_ChRISresp);
-//                        if(typeof(json_ChRISresp.return.payload.REST)==='object') {
-//                            PUT_choicesBuild();
-//                        }
-
                         if(d_APIcall['branchOnREST']) {
                             d_URLsFromChRIS.filter(function (el) {
                                 if (el.indexOf('REST') >= 0) {
-                                    PUT_choicesBuild(el);
+                                    PUT_choicesParse(el);
                                 }
-                            })
+                            });
                         }
                     }
-                console.log('output = ' + d_APIcall['showOutput']);
+                debug.vlog({message: 'showOutput', var: d_APIcall.showOutput});
                 if(d_APIcall['showOutput']) {
                     if (b_jsonSyntaxHighlight)
                         output(syntaxHighlight(ChRISresp));
@@ -692,7 +730,9 @@
                         output((ChRISresp));
                     loginStatus_show(file_exist(str_loginURLtag));
                 }
+                debug.log({message: '--------> Leaving...'});
             },
+
             error:      function(xhdr, textStatus, thrownError) {
                 console.log('Some error was triggered.');
                 console.log('textStatus         = ' +  textStatus);
@@ -705,10 +745,11 @@
                 hdr=xhdr;
             }
         });
+        debug.log({message: '--------> Leaving...'});
         return false; //stop the form from initially submitting
     }
 
-    function PUT_choicesBuild(aURL) {
+    function PUT_choicesParse(aURL) {
         /*
         Build the dialog box for the PUT choices, as parsed from the
         REST token returned from the server.
@@ -717,21 +758,121 @@
             aURL        string      the location of the REST token in the
                                     server data tree.
          */
-        console.log('In PUT_choicesBuild... ' + aURL);
+
+        var debug           = new C_debug();
+        debug.functionName  = "PUT_choicesParse";
+
+        debug.vlog( {message: 'aURL', var: aURL} );
 
         d_APIcall                   = {};
         d_APIcall['type']           = 'GET';
-        d_APIcall['showOutput']     = 1;
+        d_APIcall['showOutput']     = false;
         d_APIcall['URL']            = aURL;
-        d_APIcall['branchOnREST']   = 0;
+        d_APIcall['branchOnREST']   = false;
 
-        console.log(d_APIcall);
+        debug.vlog( {message: 'd_APIcall', var: d_APIcall} );
 
         REST_call(d_APIcall);
-        d_choice = json_ChRISresp.return.payload.note.REST.PUT;
-        console.log('In PUT_choceBuild(): d_choice = ');
-        console.log(d_choice);
+        d_choice = json_ChRISresp.return.payload;
+
+        debug.vlog( {message: 'd_choice', var: d_choice});
+        debug.vlog( {message: 'd_choice.keys()', var: Object.keys(d_choice)});
+
+        l_keysPayload   = Object.keys(d_choice);
+        l_keysPayload.filter(function (el) {
+            if (el != "meta") {
+                d_container = d_choice[el];
+                if (typeof(d_container.REST.PUT) === 'object') {
+                    d_PUT   = d_container.REST.PUT;
+                    debug.vlog({message: 'REST options', var: d_PUT});
+                    PUT_choicesBuild(d_PUT);
+                }
+            }
+        });
+
         PUT_DOM.style.display = "block";
+
+    }
+
+    function PUT_choicesBuild(d_PUT) {
+        /*
+        "Build" the actual PUT choices dialog boxes, based on the passed dictionary.
+
+        Dictionary typically has components like:
+
+            {
+                "body":     "string",
+                "weight":   "int"
+            }
+
+        which is rendered as:
+
+            [PUT]   [body] [string] [<...... text input box .........>]
+            [PUT]   [weight] [int]  [<...... text input box .........>]
+        */
+        var debug           = new C_debug();
+        debug.functionName  = "PUT_choicesBuild";
+
+        PUT_dom     = document.getElementById("dom_PUT");
+
+        debug.vlog( {message: 'd_PUT', var: d_PUT});
+        l_keys = Object.keys(d_PUT);
+        debug.vlog( {message: 'l_keys', var: l_keys});
+        l_keys.forEach(function(key) {
+            debug.vlog({message: 'key/type', var: [ key, d_PUT[key] ]});
+            str_innerHTML = ' ' +
+                    '<label>' +
+                    '<button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PUT ' + key + '</button>' +
+                    '</label>' +
+//                    '<label>' +
+//                    '<button class="pure-button pure-button-primary">' + key + '</button>' +
+//                    '</label>' +
+                    '<input style="width:600px;font-family:courier;" id="PUT_' + key + '" name="PUT_' + key + '" value=""><br>';
+            debug.vlog({message: 'str_innerHTML', var: str_innerHTML});
+            $("#dom_PUT").append(str_innerHTML);
+        });
+    }
+
+    function C_debug(d) {
+        /*
+        Print some debugging info to console.
+
+        d.functionName      string      name of function
+        d.message           string      message
+        d.var               var         variable to print
+        */
+
+        if(typeof(d)==='undefined') {
+            this.functionName   = '<void>';
+            this.message        = '<void>';
+            this.var            = null;
+
+        } else {
+            this.functionName   = d.functionName;
+            this.message        = d.message;
+            this.var            = d.var;
+        }
+
+        this.cl  = function() {
+            console.log(' ');
+        };
+
+        this.vlog = function(d) {
+            if(typeof(d.functionName)!='undefined') this.functionName   = d.functionName;
+            this.message        = d.message;
+            this.var            = d.var;
+            if(typeof(this.var)==='object') {
+                console.log('In ' + this.functionName + ': ' + d.message + ' = ');
+                console.log(d.var);
+            } else
+                console.log('In ' + this.functionName + ': ' + d.message + ' = ' + d.var);
+        };
+
+        this.log = function(d) {
+            if(typeof(d.functionName)!='undefined') this.functionName   = d.functionName;
+            this.message        = d.message;
+            console.log('In ' + this.functionName + ': ' + d.message);
+        };
 
     }
 
