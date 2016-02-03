@@ -154,7 +154,7 @@ class Feed_FS(Feed):
         """
         Feed.__init__(self, **kwargs)
         self.d_REST = {
-            'PUT':  {
+            'PUSH':  {
                 'body':         'string',
                 'timestamp':    'string'
             }
@@ -442,46 +442,184 @@ class FeedTree(object):
             'URL_POST': []
         }
 
-    def feedTree_feedsGet(self, **kwargs):
+    def feed_feedList_fromTreeGet(self, **kwargs):
         """
         Process the main feedTree (i.e. the tree that has all the Feeds.
         :param kwargs: schema='name'|'id' -- how to return the list of Feeds.
         :return: a list of "hits" in URI format
         """
-        str_schema      = ''
-        str_searchType  = 'name'
-        b_status        = False
+        str_searchType      = 'name'
+        d_ret               = {
+            'debug':        'feed_feedList_fromTreeGet(): ',
+            'status':       False,
+            'payload':      {},
+            'URL_get':      []
+        }
 
         for key,val in kwargs.iteritems():
-            if key == 'schema':         str_schema          = val
             if key == 'searchType':     str_searchType      = val
+            if key == 'd_ret':          d_ret               = val
 
+        d_ret['debug']  = 'feed_feedList_fromTreeGet(): '
         l_URI   = []
         l_keys  = []
 
         F           = self._feedTree
-        if  F.cd('/feeds')['status']:
+        if F.cd('/feeds')['status']:
             if str_searchType.lower() == "name":
                 # Generate a list of feed elements
-                l_keys      = F.lstr_lsnode()
-                l_URI       = ['Feeds/NAME_' + name for name in l_keys]
-                b_status    = True
+                l_keys          = F.lstr_lsnode()
+                l_URI           = ['Feeds/NAME_' + name for name in l_keys]
+                d_ret['status'] = True
             if str_searchType.lower() == 'id':
                 for feedNode in F.lstr_lsnode():
                     F.cd('/feeds/%s' % feedNode)
                     str_ID = F.cat('ID')
                     l_keys.append(str_ID)
                     l_URI.append('Feeds/ID_' + str_ID)
-                b_status    = True
+                d_ret['status'] = True
+        d_ret['payload']    = l_keys
+        d_ret['URL_get']    = l_URI
 
-        return {
-                'status':   b_status,
-                'payload':  l_keys,
-                'URL_GET':  l_URI
+        return d_ret
+
+    def feed_singleFeed_fromTreeGet(self, **kwargs):
+        '''
+        Graft a single target feed from the feed tree to internal storage.
+
+        This basically just "links" the feed to be processed to a convenience
+        variable.
+
+        :return:
+        d_ret:      dictionary      various values
+        '''
+
+        # Initialize the d_ret return dictionary
+        d_ret           = {
+            'feed':         None,
+            'status':       False,
+            'payload':      {},
+            'URL_get':      []
         }
 
+        for key,val in kwargs.iteritems():
+            if key == 'searchType':     str_searchType      = val
+            if key == 'searchTarget':   str_searchTarget    = val
+            if key == 'schema':         str_schema          = val
+            if key == 'd_ret':          d_ret               = val
 
-    def feed_get(self, **kwargs):
+        d_ret['debug']  = 'feed_fromFeedTree_get():'
+        F               = self._feedTree
+        F.cd('/feeds')
+
+        self.feed   = C_snode.C_stree()
+        s           = self.feed
+        if str_searchType.lower() == 'name':
+            if F.cd(str_searchTarget)['status']:
+                Froot = F.cwd()
+                # s.graft(F, '%s/'      % F.cwd())
+                s.graft(F, '%s/title'   % Froot)
+                s.graft(F, '%s/note'    % Froot)
+                s.graft(F, '%s/data'    % Froot)
+                s.graft(F, '%s/comment' % Froot)
+                d_ret['status'] = True
+                d_ret['feed']   = s
+                s.tree_metaData_print(False)
+        if str_searchType.lower() == 'id':
+            for feedNode in f.lstr_lsnode('/'):
+                if F.cd('/feeds/%s' % feedNode)['status']:
+                    if str_searchTarget == F.cat('ID'):
+                        d_ret['status'] = True
+                        # s.graft(F, '%s/'      % F.cwd())
+                        s.graft(F, '%s/title'   % Froot)
+                        s.graft(F, '%s/note'    % Froot)
+                        s.graft(F, '%s/data'    % Froot)
+                        s.graft(F, '%s/comment' % Froot)
+                        d_ret['feed']   = s
+                        break
+        return d_ret
+
+    def feed_singleFeed_process(self, **kwargs):
+        '''
+        Assuming a feed has been grafted from the tree space, process this
+        feed's components.
+
+        :return:
+        '''
+
+        d_ret               = {
+            'feed':         None,
+            'debug':        'feed_singleFeed_process(): ',
+            'path':         '',
+            'status':       False,
+            'payload':      {},
+            'URL_get':      []
+        }
+
+        for key,val in kwargs.iteritems():
+            if key == 'VERB':           str_VERB            = val
+            if key == 'pathInFeed':     str_pathInFeed      = val
+            if key == 'd_ret':          d_ret               = val
+
+        d_ret['b_returnTree']   = True
+        d_ret['debug']         += 'str_pathInFeed = %s ' % str_pathInFeed
+        s                       = d_ret['feed']
+        d_cd                    = s.cd(str_pathInFeed)
+        if d_cd['status']:
+            # We are retrieving a directory
+            d_ret['status']     = d_cd['status']
+            d_ret['pathInFeed'] = d_cd['path']
+            subTree             = C_snode.C_stree()
+            if subTree.cd('/')['status']:
+                subTree.graft(s, str_pathInFeed)
+                d_ret['feed']   = subTree
+        else:
+            d_ret['b_returnTree']   = False
+            # Check if we are in fact processing a "file"
+            l_p                     = str_pathInFeed.split('/')
+            str_dirUp               = '/'.join(l_p[0:-1])
+            d_cd                    = s.cd(str_dirUp)
+            if d_cd['status']:
+                d_ret['debug']     += '../ = %s, file = %s' % (str_dirUp, l_p[-1])
+                d_ret['status']     = d_cd['status']
+                d_ret['pathInFeed'] = d_cd['path']
+                str_fileName        = l_p[-1]
+                if str_VERB != "GET":
+                    self.feed_singleFeed_VERBprocess(**kwargs)
+                d_ret['feed']       = {str_fileName: s.cat(l_p[-1])}
+                self.debug('Returning file contents in payload: "%s"\n' % d_ret)
+        d_ret['payload'] = d_ret['feed']
+        return d_ret
+
+    # This method is the only point of contact between the simulated machine and the internal
+    # data space and the external REST call.
+    def feed_singleFeed_VERBprocess(self, **kwargs):
+        '''
+        Process specific cases of REST VERBS
+
+        :return:
+        '''
+
+        d_ret   = {
+            'debug':    'feed_singleFeed_VERBprocess(): '
+        }
+
+        for key,val in kwargs.iteritems():
+            if key == 'd_ret':          d_ret               = val
+
+        if d_ret['VERB'] == 'POST':
+            self.debug('In feed_singleFeed_VERBprocess...\n')
+            with open(d_ret['payloadFile']) as jf:
+                d_payload   = json.load(jf)
+                self.debug('Payload: %s\n' % d_payload)
+                s = d_ret['feed']
+                self.debug('location in feed tree: %s\n' % s.pwd() )
+                l_key           = d_payload['POST'].keys()
+                str_fileName    = l_key[0]
+                str_contents    = d_payload['POST'][str_fileName]
+                s.touch(str_fileName,  str_contents)
+
+    def feed_process(self, **kwargs):
         """
         Get a feed based on various criteria
         :param kwargs: searchType = 'name' | 'id', target = <target>
@@ -492,98 +630,62 @@ class FeedTree(object):
         str_searchType      = ''
         str_searchTarget    = ''
         str_pathInFeed      = ''
-        str_schema          = ''
 
-        ret_path            = []
-        debugMessage        = None
+        d_ret               = {
+            'VERB':             'GET',
+            'payloadFile':      '',
+            'feed':             None,
+            'debug':            'feed_process(): ',
+            'path':             '',
+            'pathInFeed':       '',
+            'b_status':         False,
+            'payload':          {},
+            'URL_get':          [],
+            'b_returnTree':     True
+        }
 
         for key,val in kwargs.iteritems():
-            if key == 'returnAsDict':   b_returnAsDict      = val
-            if key == 'searchType':     str_searchType      = val
-            if key == 'searchTarget':   str_searchTarget    = val
-            if key == 'pathInFeed':     str_pathInFeed      = val
-            if key == 'schema':         str_schema          = val
+            if key == 'VERB':           d_ret['VERB']           = val
+            if key == 'payloadFile':    d_ret['payloadFile']    = val
+            if key == 'returnAsDict':   b_returnAsDict          = val
+            if key == 'searchType':     str_searchType          = val
+            if key == 'searchTarget':   str_searchTarget        = val
+            if key == 'pathInFeed':     str_pathInFeed          = val
+            if key == 'schema':         str_schema              = val
+
+        kwargs['d_ret'] = d_ret
 
         # First get the feed itself from the tree of Feeds...
         F               = self._feedTree
         F.cd('/feeds')
-        ret_status      = False
-        ret_feed        = {}
         str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_searchTarget)
 
+        # Check if we want a list of all feeds for this user
         if not len(str_searchType) or not len(str_searchTarget) or str_searchTarget == '*':
-            ret_feeds       = self.feedTree_feedsGet(searchType = str_searchType, schema = str_schema)
-            debugMessage    = "Search for '%s' on type '%s'" % (str_searchTarget, str_searchType)
-            ret_status      = ret_feeds['status']
-            l_URL_get       = ret_feeds['URL_GET']
-            ret_payload     = ret_feeds['payload']
+            d_ret           = self.feed_feedList_fromTreeGet(**kwargs)
+            d_ret['debug'] += "Search for '%s' on type '%s'" % (str_searchTarget, str_searchType)
         else:
-            self.feed   = C_snode.C_stree()
-            s           = self.feed
-            if str_searchType.lower() == 'name':
-                if F.cd(str_searchTarget)['status']:
-                    Froot = F.cwd()
-                    # s.graft(F, '%s/'      % F.cwd())
-                    s.graft(F, '%s/title'   % Froot)
-                    s.graft(F, '%s/note'    % Froot)
-                    s.graft(F, '%s/data'    % Froot)
-                    s.graft(F, '%s/comment' % Froot)
-                    ret_status  = True
-                    ret_feed    = s
-                    s.tree_metaData_print(False)
-            if str_searchType.lower() == 'id':
-                for feedNode in f.lstr_lsnode('/'):
-                    if F.cd('/feeds/%s' % feedNode)['status']:
-                        if str_searchTarget == F.cat('ID'):
-                            ret_status  = True
-                            # s.graft(F, '%s/'      % F.cwd())
-                            s.graft(F, '%s/title'   % Froot)
-                            s.graft(F, '%s/note'    % Froot)
-                            s.graft(F, '%s/data'    % Froot)
-                            s.graft(F, '%s/comment' % Froot)
-                            ret_feed    = s
-                            break
+            # Or if we just want one specific feed
+            d_ret       = self.feed_singleFeed_fromTreeGet(**kwargs)
 
             # and now, check for any paths in the tree of this Feed
-            b_returnTree    = True
             if len(str_pathInFeed) and str_pathInFeed != '/':
-                debugMessage    = 'str_pathInFeed = %s' % str_pathInFeed
-                ret             = s.cd(str_pathInFeed)
-                if ret['status']:
-                    # We are retrieving a directory
-                    ret_status  = ret['status']
-                    ret_path    = ret['path']
-                    subTree     = C_snode.C_stree()
-                    if subTree.cd('/')['status']:
-                        subTree.graft(s, str_pathInFeed)
-                        ret_feed    = subTree
-                else:
-                    b_returnTree = False
-                    # Check if we are in fact retrieving a "file"
-                    l_p         = str_pathInFeed.split('/')
-                    str_dirUp   = '/'.join(l_p[0:-1])
-                    ret         = s.cd(str_dirUp)
-                    if ret['status']:
-                        debugMessage    = '../ = %s, file = %s' % (str_dirUp, l_p[-1])
-                        ret_status      = ret['status']
-                        ret_path        = ret['path']
-                        str_fileName    = l_p[-1]
-                        ret_feed        = {str_fileName: s.cat(l_p[-1])}
-                        self.debug('Returning file contents in payload: "%s"' % ret_feed)
-            if b_returnAsDict and b_returnTree:
-                ret_feed = dict(ret_feed.snode_root)
-            ret_payload     = ret_feed
-            l_URL_get       = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
+                self.debug('Path in Feed: %s\n' % str_pathInFeed)
+                d_ret           = self.feed_singleFeed_process(**kwargs)
 
-        return {
-                'debug':        debugMessage,
-                'path':         str_searchTarget + str_pathInFeed,
-                'pathInFeed':   ret_path,
-                'status':       ret_status,
-                'payload':      ret_payload,
-                'URL_get':      l_URL_get,
-                'URL_post':     []
-                }
+            # b_returnTree is always True, unless a "file" is being returned
+            if b_returnAsDict and d_ret['b_returnTree']:
+                d_ret['feed']   = dict(d_ret['feed'].snode_root)
+            d_ret['payload']    = d_ret['feed']
+            d_ret['URL_get']    = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
+
+        # Pop the "temp" key 'feed' from the return stack
+        if 'feed' in d_ret: d_ret.pop('feed')
+
+        # Set the 'path'
+        d_ret['path']   = str_searchTarget + str_pathInFeed
+        return d_ret
+
 
 class FeedTree_chrisUser(FeedTree):
     '''
