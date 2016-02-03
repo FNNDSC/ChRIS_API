@@ -69,11 +69,19 @@ class comment(object):
 
         self.contents           = C_snode.C_stree()
 
+        self.d_REST = {
+            'PUSH':  {
+                'fullname':     'string',
+                'timestamp':    'string',
+                'comment':      'string'
+            }
+        }
+
         self.debug              = message.Message(logTo = './debug.log')
         self.debug._b_syslog    = True
         self._log               = message.Message()
         self._log._b_syslog     = True
-        self.__name             = "note"
+        self.__name             = "comment"
 
         self.contents.cd('/')
         # self.contents.mkcd('contents')
@@ -99,6 +107,7 @@ class comment(object):
             c.touch('timestamp',    timeStamp)
             c.touch('fullname',     names.get_full_name())
             c.touch('comment',      rikeripsum.generate_paragraph())
+            c.touch('REST', self.d_REST)
             c.cd('../')
 
 
