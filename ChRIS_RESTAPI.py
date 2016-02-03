@@ -127,6 +127,9 @@ class ChRIS_RESTAPI(object):
         self.__name                     = "ChRIS_RESTAPI"
 
         self.str_APIaction              = "GET" # GET or PUT
+        self.str_VERB                   = ''
+        self.str_payloadFile            = ''
+        self.b_PUSH                     = False
 
         self.user                       = ""
         self.hash                       = ""
@@ -139,12 +142,14 @@ class ChRIS_RESTAPI(object):
         self.d_auth                     = {}
         self.d_API                      = {}
 
-
         for key,val in kwargs.iteritems():
-            if key == 'auth':       self.auth           = val
-            if key == 'chris':      self.chris          = val
-            if key == 'authority':  self.authority      = val
+            if key == 'auth':           self.auth               = val
+            if key == 'chris':          self.chris              = val
+            if key == 'authority':      self.authority          = val
+            if key == 'VERB':           self.str_VERB           = val
+            if key == 'payloadFile':    self.str_payloadFile    = val
 
+        self.debug('VERB: %s\n' % self.str_VERB)
         self.serverInfo                 = serverInfo.serverInfo(authority = self.authority)
 
         if not self.chris:
@@ -160,12 +165,12 @@ class ChRIS_RESTAPI(object):
         currentFrame    = inspect.currentframe()
         callerFrame     = inspect.getouterframes(currentFrame, 2)
 
-        self.debug("In REST __call__\n%s" % (callerFrame))
+        # self.debug("In REST __call__\n%s\n" % (callerFrame))
         for key,val in kwargs.iteritems():
             if key == 'APIcall':    self._str_apiCall   = val
         if self._str_apiCall    == "<void>": error.fatal(self, 'no_apiCall')
         # print(self._str_apiCall)
-        self.debug('Calling REST on "%s"...\n' % self._str_apiCall)
+        self.debug('Calling REST %s on "%s"...\n' % (self.str_VERB, self._str_apiCall))
         self.d_return = self.parseCurrentCall(authmodule = self.auth)
         return(self.d_return)
 
@@ -240,8 +245,8 @@ class ChRIS_RESTAPI(object):
             self.parseLogout()
             return True
 
-        # GET a Feed or internals of a Feed...
-        if len(al_path) and self.str_APIaction == "GET":
+        # Process a Feed or internals of a Feed...
+        if len(al_path):
             str_path            = ''
             str_searchType      = 'NAME'
             str_searchTarget    = ''
@@ -257,7 +262,9 @@ class ChRIS_RESTAPI(object):
                     str_searchTarget = l_targetType[1]
 
             self.d_call     = self.auth(
-                lambda: self.chris.homePage.feed_get(
+                lambda: self.chris.homePage.feed_process(
+                    VERB            = self.str_VERB,
+                    payloadFile     = self.str_payloadFile,
                     searchType      = str_searchType,
                     searchTarget    = str_searchTarget,
                     returnAsDict    = True,
