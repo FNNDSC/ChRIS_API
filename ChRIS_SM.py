@@ -549,10 +549,6 @@ class ChRIS_SM_REST(ChRIS_SM):
         """
         ChRIS_SM.__init__(self, **kwargs)
 
-        # str_authority   = ""
-        # for key,val in kwargs.iteritems():
-        #     if key == 'authority':      str_authority   = val
-
         self.API        = ChRIS_RESTAPI.ChRIS_RESTAPI(chris = self, **kwargs)
 
 class ChRIS_authenticate(object):
@@ -666,12 +662,13 @@ def synopsis(ab_shortOnly = False):
     shortSynopsis =  '''
     SYNOPSIS
 
-            %s                                     \\
-                            [--REST | --RPC --stateFile <stateFile>]       \\
-                            [--authority <clientSideAuthority>]            \\
-                            [--ignorePersistenDB]                          \\
-                            [--createNewDB]                                \\
-                            [--DB <DBpath>]                                \\
+            %s                                          \\
+                            [--REST --VERB <verb> [--payloadFile <payloadFile]] |   \\
+                             --RPC --stateFile <stateFile>]                         \\
+                            [--authority <clientSideAuthority>]                     \\
+                            [--ignorePersistenDB]                                   \\
+                            [--createNewDB]                                         \\
+                            [--DB <DBpath>]                                         \\
                             --APIcall <APIcall>
 
 
@@ -685,11 +682,17 @@ def synopsis(ab_shortOnly = False):
 
     ARGS
 
-       --authority <clientSideAuthority>
-       The RFC 3986 URI authority. A string like "10.15.23.17:5555".
-
        --REST
-       Use a REST API paradigm.
+       Use a REST API paradigm. If using REST, the following arguments
+       have context:
+
+            --VERB <verb>
+            The REST verb to use. Defaults to 'GET'.
+
+            --payload <payloadFile>
+            The file containing the payload contents applicable to the
+            <verb>. Only really meaningful in the case of PUT/POST and
+            DELETE verbs.
 
        --RPC --stateFile <stateFile>
        Use an RPC API paradigm. In this case, a <stateFile> is also
@@ -700,8 +703,8 @@ def synopsis(ab_shortOnly = False):
        can be rebuilt. The current <APIcall> is appended to the
        <stateFile>.
 
-       --APIcall <ACPIcall> (required)
-       The actual API call to make, either REST or RPC type.
+       --authority <clientSideAuthority>
+       The RFC 3986 URI authority. A string like "10.15.23.17:5555".
 
        --ignorePersistentDB
        If set, will ignore the file DB and create a new DB in memory.
@@ -712,6 +715,9 @@ def synopsis(ab_shortOnly = False):
        --DB <DBpath>
        The name of the fileDB to use for data state. If nonzero, will
        attempt to save the internal DB to this file path.
+
+       --APIcall <ACPIcall> (required)
+       The actual API call to make, either REST or RPC type.
 
     NOTE
 
@@ -754,6 +760,20 @@ if __name__ == "__main__":
         dest    =   'b_REST',
         help    =   'Specify REST API paradigm.',
         default =   False
+    )
+    parser.add_argument(
+        '-v', '--VERB',
+        help    =   "The REST VERB to execute.",
+        dest    =   'VERB',
+        action  =   'store',
+        default =   'GET'
+    )
+    parser.add_argument(
+        '-p', '--payloadFile',
+        help    =   "The REST VERB payload file to read.",
+        dest    =   'payloadFile',
+        action  =   'store',
+        default =   ''
     )
     parser.add_argument(
         '--RPC',
@@ -816,6 +836,8 @@ if __name__ == "__main__":
                       )
     if args.b_REST:
         chris       = ChRIS_SM_REST(
+                            VERB                = args.VERB,
+                            payloadFile         = args.payloadFile,
                             authority           = args.str_authority,
                             ignorePersistentDB  = args.b_ignorePersistentDB,
                             createNewDB         = args.b_createNewDB,
