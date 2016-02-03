@@ -210,7 +210,7 @@
             }
         </style>
         <div>
-            <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus" onclick="loginStatus_toggle()">login status: logged in</button>
+            <button class="button-xsmall button-loginStatus-loggedOut pure-button"     id="loginStatus" onclick="loginStatus_toggle()">login status: unknown</button>
             <button onclick="jsonSyntaxHightlight_toggle()" class="button-xsmall pure-button pure-button-primary button-jsonHighlight-on" id="JSON_status">JSON syntax highlight: ON</button>
             <button onclick="useFileDB_toggle()" class="button-xsmall pure-button pure-button-primary button-useFileDB-on" id="useFileDB_status">Use file DB: ON</button>
             <button onclick="createNewDB_toggle()" class="button-xsmall pure-button pure-button-primary button-createNewDB-off" id="createNewDB_status">Create new DB: OFF</button>
@@ -261,13 +261,13 @@
                     <input style="width:600px;font-family:courier;" id="DB" name="DB" value="/tmp/ChRIS_DB"><br>
                 </div>
                 <div class="pure-control-group">
-                    <!--<label>VERB</label>-->
-                    <!--<select id="VERB" class="pure-input-4-24">-->
+                    <label>PUSH VERB</label>
+                    <select id="VERB" class="pure-input-4-24">
                         <!--<option>GET</option>-->
-                        <!--<option>PUT</option>-->
-                        <!--<option>POST</option>-->
+                        <option>POST</option>
+                        <option>PUT</option>
                         <!--<option>DELETE</option>-->
-                    <!--</select>-->
+                    </select>
                     <label>API version</label>
                     <select id="version" class="pure-input-4-24">
                         <option>v1</option>
@@ -285,19 +285,15 @@
                     <select class="pure-input-1-2" id="URLsFromChRIS">
                     </select>
                 </div>
-                <div class="pure-control-group" id="dom_PUT" style="display:none">
-                    <!--<label>-->
-                        <!--<button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PUT</button>-->
-                    <!--</label>-->
-                    <!--<input style="width:600px;font-family:courier;" id="PUT" name="PUT" value=""><br>-->
+                <div class="pure-control-group" id="dom_PUSH" style="display:none">
                 </div>
                 <div class="pure-control-group">
                     <label>AUTH</label>
                     <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
                 </div>
-                <!--<button onclick="return REST_call()" class="pure-button pure-button-primary">Call</button>-->
+
                 <button onclick="window.location.reload(true)" class="pure-button pure-button-primary button-reset">Reset</button>
-                <!--</div>-->
+
             </fieldset>
         </form>
     </div>
@@ -319,7 +315,7 @@
     // of a class. To indicate the more global scope, these are all prepended with an 'm'
     // for 'member'. ** Not implemented yet **
     result_DOM                  = document.getElementById("result");
-    PUT_DOM                     = document.getElementById("dom_PUT");
+    PUSH_DOM                    = document.getElementById("dom_PUSH");
     URLsFromChRIS_DOM           = $('#URLsFromChRIS');
     d_URLsFromChRIS             = null;
     key_DOM                     = $('#key');
@@ -335,6 +331,9 @@
     b_useFileDB_status          = true;
     b_createNewDB_status        = false;
     b_loginStatus               = false;
+    b_canPUSH                   = false;            // Toggles PUSH display
+    b_PUSHchoicesRendered       = false;
+    functionCallDepth           = 0;
 
     $(document).on({
         ajaxStart:  function() { $body.addClass("loading");  output(APIcall);  },
@@ -405,6 +404,7 @@
     function loginStatus_toggle() {
         var debug           = new C_debug();
         debug.functionName  = "loginStatus_toggle";
+        debug.entering();
         b_loginStatus   = !b_loginStatus;
         debug.vlog({message: 'b_loginStatus', var: b_loginStatus});
         if(b_loginStatus) {
@@ -412,7 +412,7 @@
         } else {
             logout();
         }
-        debug.log({message: 'leaving\n'});
+        debug.leaving();
     }
 
     function file_exist(str_filename) {
@@ -425,6 +425,7 @@
     function loginStatus_show(ab_status) {
         var debug           = new C_debug();
         debug.functionName  = "loginStatus_show";
+        debug.entering();
         loginStatus_DOM = document.getElementById("loginStatus");
         debug.vlog({message: 'ab_status', var: ab_status});
         b_loginStatus = ab_status;
@@ -435,6 +436,7 @@
             loginStatus_DOM.innerHTML           = 'login status: logged out';
             loginStatus_DOM.className           = 'button-xsmall button-loginStatus-loggedOut pure-button';
         }
+        debug.leaving();
     }
 
     function loginStatus_fileTagGenerate() {
@@ -449,7 +451,8 @@
         d_APIcall = {
             'type':             'GET',
             'APIcallOverride':  '/v1/login?auth=user=chris,passwd=chris1234',
-            'showOutput':       true
+            'showOutput':       true,
+            'data':             ''
         };
         REST_call(d_APIcall);
         loginStatus_show(file_exist(str_loginURLtag));
@@ -460,7 +463,8 @@
         d_APIcall = {
             'type':             'GET',
             'APIcallOverride':  '/v1/logout?auth=user=chris,auth=ABCDEF',
-            'showOutput':       true
+            'showOutput':       true,
+            'data':             ''
         };
         REST_call(d_APIcall);
         loginStatus_show(file_exist(str_loginURLtag));
@@ -482,11 +486,16 @@
             json_ChRISresp  json-object     the response from ChRIS
 
         */
+        var debug           = new C_debug();
+        debug.functionName  = "URLsFromChRIS_build";
+        debug.entering();
+
         URLsFromChRIS_DOM.empty();
         d_URLsFromChRIS = json_ChRISresp.return.URL_get.slice();
         // First, build a breadcrumb path back through the dataspace
         if (str_pathUp.length) {
             str_path    = json_ChRISresp.return.path;
+            debug.vlog({message: 'str_path', var: str_path});
             l_path      = str_path.split('/');
             // Get rid of the trailing '/' if it exists.
             if(!l_path[l_path.length-1].length) l_path.pop();
@@ -515,6 +524,7 @@
                     $('<option></option>').val(key).html(val)
             );
         });
+        debug.leaving()
     }
 
     function output(inp) {
@@ -566,9 +576,8 @@
          */
         var debug           = new C_debug();
         debug.functionName  = "API_assembleCore";
+        debug.entering();
         debug.vlog({message: 'd_APIcall', var: d_APIcall});
-
-        version_DOM         = document.getElementById('version');
 
         if( typeof(d_APIcall['APIcallOverride'])==='undefined' || typeof(d_APIcall['URL']) === 'string') {
             str_URLsFromChRIS_selected  = URLsFromChRIS_DOM.val();
@@ -594,6 +603,7 @@
             APIcall = d_APIcall['APIcallOverride'];
         }
         debug.vlog({message: 'APIcall', var: APIcall})
+        debug.leaving();
         return(APIcall);
     }
 
@@ -603,6 +613,8 @@
         */
 
         var APIsuffix   = "";
+        DBpath_DOM          = document.getElementById("DB");
+        DBpath              = $('#DB');
 
         if(b_createNewDB_status) {
             APIsuffix   = "&createNewDB=1";
@@ -624,25 +636,62 @@
         return(str_APIcall);
     }
 
-    function callback_AJAX_success(ChRISresp) {
+    /**
+     * @return {boolean}
+     */
+    function RESTobject_detected() {
+        /*
+        Determines if a REST object is in a delta region about
+        the current focus in the server data space.
+
+        The data location is defined by the pattern of URLs returned
+        by the server, given a position in the data space.
+        */
+
+        var debug           = new C_debug();
+        debug.functionName  = "RESTobject_detected";
+        debug.entering();
+
+        b_canPUSH   = false;
+//        URLsFromChRIS_build(json_ChRISresp);
+        debug.vlog({message: 'd_URLsFromChRIS', var: d_URLsFromChRIS});
+        if(d_URLsFromChRIS != null) {
+            debug.log({message: 'Processing d_URLsFromChRIS...'});
+            d_URLsFromChRIS.filter(function (el) {
+                debug.vlog({message: 'el', var: el});
+                if (el.indexOf('REST') >= 0) {
+                    b_canPUSH   = true;
+                }
+            });
+        }
+        debug.vlog({message: 'b_canPUSH', var: b_canPUSH});
+        debug.leaving();
+        return b_canPUSH;
+    }
+
+    function callback_AJAX_success(ChRISresp, d_APIcall) {
+        /*
+        This is an asynchronous function, so when you hit a button in REST_call, state of
+        available URLs etc are NOT updated until this function is called.
+        */
+
+
         var debug           = new C_debug();
         debug.functionName  = "callback_AJAX_success";
-        debug.log({functionName: 'jQuery AJAX success', message: '--------> Entering...'});
+        debug.entering();
 
-        ChRISresp       = JSON.stringify(ChRISresp, null, 2);
-        json_ChRISresp  = JSON.parse(ChRISresp);
+        ChRISresp           = JSON.stringify(ChRISresp, null, 2);
+        json_ChRISresp      = JSON.parse(ChRISresp);
+
         debug.vlog({'message': 'json_ChRISresp', var: json_ChRISresp});
+        debug.vlog({'message': 'd_APIcall', var: d_APIcall});
         if(!b_URLsBuild)
             b_URLsBuild = true;
         else
-        if(b_loginStatus) {
-            URLsFromChRIS_build(json_ChRISresp);
-            if(d_APIcall['branchOnREST']) {
-                d_URLsFromChRIS.filter(function (el) {
-                    if (el.indexOf('REST') >= 0) {
-                        PUT_choicesParse(el);
-                    }
-                });
+            if(b_loginStatus) {
+                URLsFromChRIS_build(json_ChRISresp);
+                if(d_APIcall['branchOnREST']) {
+                    if(RESTobject_detected()) PUSH_choicesParse();
             }
         }
         debug.vlog({message: 'showOutput', var: d_APIcall.showOutput});
@@ -653,7 +702,28 @@
                 output((ChRISresp));
             loginStatus_show(file_exist(str_loginURLtag));
         }
-        debug.log({message: '--------> Leaving...'});
+        if(RESTobject_detected()) {
+            PUSH_DOM.style.display  = "block";
+        } else {
+            PUSH_DOM.style.display  = "none";
+            PUSH_DOM.innerHTML      = "";
+            b_PUSHchoicesRendered   = false;
+        }
+        debug.vlog({message: 'b_canPUSH', var: b_canPUSH});
+        debug.leaving();
+    }
+
+    function callback_AJAX_error(xhdr, textStatus, thrownError) {
+        hdr                 = null;
+        console.log('Some error was triggered.');
+        console.log('textStatus         = ' +  textStatus);
+        console.log('xhdr.statusText    = ' +  xhdr.statusText);
+        console.log('xhdr.responseText  = ' +  xhdr.responseText);
+        console.log('xhdr.status        = ' +  xhdr.status);
+        console.log('thrownError        = ' +  thrownError);
+        var str = JSON.stringify(xhdr.responseText, null, 2);
+        output(syntaxHighlight(xhdr.status));
+        hdr=xhdr;
     }
 
     function REST_call(d_APIcall) {
@@ -678,13 +748,9 @@
         var debug           = new C_debug();
         debug.functionName  = "REST_call";
         debug.cl();
-        debug.log({message: '--------> Entering...'});
+        debug.entering();
 
-        DBpath_DOM          = document.getElementById("DB");
-        hdr                 = null;
         ChRISresp           = null;
-        URLsFromChRIS_DOM   = $('#URLsFromChRIS');
-        DBpath              = $('#DB');
 
         loginStatus_fileTagGenerate();
 
@@ -693,66 +759,32 @@
             d_APIcall['type']           = 'GET';
             d_APIcall['showOutput']     = true;
             d_APIcall['branchOnREST']   = true;
+            d_APIcall['data']           = '';
         }
 
         APIcall             = API_assemble(d_APIcall);
         debug.vlog( {message: 'APIcall', var: APIcall} );
 
-        PUT_DOM.style.display = "none";
         $.ajax({
             url:        APIcall,
             type:       d_APIcall['type'],
             dataType:   'json',
-//            success:    callback_AJAX_success,
-            success:    function (ChRISresp) {
-                debug.log({functionName: 'jQuery AJAX success', message: '--------> Entering...'});
-                ChRISresp       = JSON.stringify(ChRISresp, null, 2);
-                json_ChRISresp  = JSON.parse(ChRISresp);
-                debug.vlog({'message': 'json_ChRISresp', var: json_ChRISresp});
-                if(!b_URLsBuild)
-                    b_URLsBuild = true;
-                else
-                    if(b_loginStatus) {
-                        URLsFromChRIS_build(json_ChRISresp);
-                        if(d_APIcall['branchOnREST']) {
-                            d_URLsFromChRIS.filter(function (el) {
-                                if (el.indexOf('REST') >= 0) {
-                                    PUT_choicesParse(el);
-                                }
-                            });
-                        }
-                    }
-                debug.vlog({message: 'showOutput', var: d_APIcall.showOutput});
-                if(d_APIcall['showOutput']) {
-                    if (b_jsonSyntaxHighlight)
-                        output(syntaxHighlight(ChRISresp));
-                    else
-                        output((ChRISresp));
-                    loginStatus_show(file_exist(str_loginURLtag));
-                }
-                debug.log({message: '--------> Leaving...'});
+            data:       d_APIcall['data'],
+            success:    function(ChRISresp) {
+                callback_AJAX_success(ChRISresp, d_APIcall);
             },
-
-            error:      function(xhdr, textStatus, thrownError) {
-                console.log('Some error was triggered.');
-                console.log('textStatus         = ' +  textStatus);
-                console.log('xhdr.statusText    = ' +  xhdr.statusText);
-                console.log('xhdr.responseText  = ' +  xhdr.responseText);
-                console.log('xhdr.status        = ' +  xhdr.status);
-                console.log('thrownError        = ' +  thrownError);
-                var str = JSON.stringify(xhdr.responseText, null, 2);
-                output(syntaxHighlight(xhdr.status));
-                hdr=xhdr;
-            }
+            error: callback_AJAX_error
         });
-        debug.log({message: '--------> Leaving...'});
+        debug.leaving();
+        debug.cl();
         return false; //stop the form from initially submitting
     }
 
-    function PUT_choicesParse(aURL) {
+    function PUSH_choicesParse(aURL) {
         /*
-        Build the dialog box for the PUT choices, as parsed from the
-        REST token returned from the server.
+        Build the dialog box for the PUSH choices, as parsed from the
+        REST token returned from the server. This actually performs a
+        hidden GET to parse the REST PUSH object.
 
         ARGS
             aURL        string      the location of the REST token in the
@@ -760,8 +792,8 @@
          */
 
         var debug           = new C_debug();
-        debug.functionName  = "PUT_choicesParse";
-
+        debug.functionName  = "PUSH_choicesParse";
+        debug.entering();
         debug.vlog( {message: 'aURL', var: aURL} );
 
         d_APIcall                   = {};
@@ -769,6 +801,7 @@
         d_APIcall['showOutput']     = false;
         d_APIcall['URL']            = aURL;
         d_APIcall['branchOnREST']   = false;
+        d_APIcall['data']           = '';
 
         debug.vlog( {message: 'd_APIcall', var: d_APIcall} );
 
@@ -782,21 +815,24 @@
         l_keysPayload.filter(function (el) {
             if (el != "meta") {
                 d_container = d_choice[el];
-                if (typeof(d_container.REST.PUT) === 'object') {
-                    d_PUT   = d_container.REST.PUT;
-                    debug.vlog({message: 'REST options', var: d_PUT});
-                    PUT_choicesBuild(d_PUT);
+                debug.vlog({message: 'd_container', var: d_container});
+                if (!(typeof(d_container) === 'string')) {
+                    if(!(typeof(d_container.REST) === 'undefined')) {
+                        if (typeof(d_container.REST.PUSH) === 'object') {
+                            d_PUSH = d_container.REST.PUSH;
+                            debug.vlog({message: 'REST options', var: d_PUSH});
+                            PUSH_choicesBuild(d_PUSH, d_APIcall);
+                        }
+                    }
                 }
             }
         });
-
-        PUT_DOM.style.display = "block";
-
+        debug.leaving();
     }
 
-    function PUT_choicesBuild(d_PUT) {
+    function PUSH_choicesBuild(d_PUSH, d_APIcall) {
         /*
-        "Build" the actual PUT choices dialog boxes, based on the passed dictionary.
+        "Build" the actual PUSH choices dialog boxes, based on the passed dictionary.
 
         Dictionary typically has components like:
 
@@ -807,31 +843,122 @@
 
         which is rendered as:
 
-            [PUT]   [body] [string] [<...... text input box .........>]
-            [PUT]   [weight] [int]  [<...... text input box .........>]
+            [PUSH]   [body] [string] [<...... text input box .........>]
+            [PUSH]   [weight] [int]  [<...... text input box .........>]
         */
         var debug           = new C_debug();
-        debug.functionName  = "PUT_choicesBuild";
-
-        PUT_dom     = document.getElementById("dom_PUT");
-
-        debug.vlog( {message: 'd_PUT', var: d_PUT});
-        l_keys = Object.keys(d_PUT);
+        debug.functionName  = "PUSH_choicesBuild";
+        debug.entering();
+        debug.vlog( {message: 'd_PUSH', var: d_PUSH});
+        l_keys = Object.keys(d_PUSH);
         debug.vlog( {message: 'l_keys', var: l_keys});
-        l_keys.forEach(function(key) {
-            debug.vlog({message: 'key/type', var: [ key, d_PUT[key] ]});
-            str_innerHTML = ' ' +
-                    '<label>' +
-                    '<button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PUT ' + key + '</button>' +
-                    '</label>' +
-//                    '<label>' +
-//                    '<button class="pure-button pure-button-primary">' + key + '</button>' +
-//                    '</label>' +
-                    '<input style="width:600px;font-family:courier;" id="PUT_' + key + '" name="PUT_' + key + '" value=""><br>';
-            debug.vlog({message: 'str_innerHTML', var: str_innerHTML});
-            $("#dom_PUT").append(str_innerHTML);
-        });
+        if(!b_PUSHchoicesRendered) {
+            l_keys.forEach(function (key) {
+                debug.vlog({message: 'key/type', var: [key, d_PUSH[key]]});
+                str_element     = 'PUSH_' + key;
+
+                // Get the contents for each push element
+                l_URL           = json_ChRISresp.return.URL_get;
+                b_textarea_mk   = false;
+                rows            = 5;
+                l_URL.forEach(function (url) {
+                    if(url.indexOf(key) >= 0) {
+                        str_pathToObject    = json_ChRISresp.return.path;
+                        str_endNode         = str_pathToObject.split('/').slice(-1)[0];
+                        str_endNodeParent   = str_pathToObject.split('/').slice(-2, -1)[0];
+                        debug.vlog({message: 'str_endNodeParent',   var: str_endNodeParent});
+                        debug.vlog({message: 'str_endNode',         var: str_endNode});
+                        str_contents        = '';
+                        if(str_endNode == key) {
+                            debug.vlog({message: 'typeof(json_ChRISresp.return.payload[key])', var: typeof(json_ChRISresp.return.payload[key])})
+                            if(typeof(json_ChRISresp.return.payload[key])==='string') {
+                                debug.vlog({message: 'pathInObject -- return.payload + ', var: key});
+                                str_contents = json_ChRISresp.return.payload[key];
+                            }
+                        } else {
+                            debug.vlog({message: 'typeof(json_ChRISresp.return.payload[str_endNode][key])', var: typeof(json_ChRISresp.return.payload[str_endNode][key])})
+                            if(typeof(json_ChRISresp.return.payload[str_endNode][key])==='string') {
+                                debug.vlog({message: 'pathInObject -- return.payload.' + str_endNode + ' + ', var: key});
+                                str_contents = json_ChRISresp.return.payload[str_endNode][key];
+                            }
+                        }
+                        debug.vlog({message: 'str_contents for ' + key, var: str_contents});
+                        if(str_contents.length > 60) {
+                            b_textarea_mk   = true;
+                            rows            = str_contents.length / 60 + 1;
+                        }
+                        debug.vlog({message: 'str_contents.length: ' + str_contents.length + ',b_textarea_mk', var: b_textarea_mk});
+                        debug.vlog({message: 'rows', var: rows});
+                    }
+                });
+
+                // Build the push element components
+                str_innerHTML   = ' ' +
+                        '<label>' +
+                        '<button onclick="return PUSH_choicesRead(\'' + key + '\')" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
+                        '</label>';
+                if(b_textarea_mk) {
+                    str_innerHTML = str_innerHTML +
+                            ' <textarea rows="' + rows + '" style="width:600px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""></textarea><br>';
+                } else {
+                    str_innerHTML = str_innerHTML +
+                            ' <input style="width:600px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""><br>';
+                }
+                debug.vlog({message: 'str_innerHTML', var: str_innerHTML});
+                $("#dom_PUSH").append(str_innerHTML);
+
+                PUSH_choice_DOM         = document.getElementById(str_element);
+                debug.vlog({message: 'json_ChRISresp', var: json_ChRISresp});
+
+                // And not place the contents into the locations in the HTML elements.
+                l_URL.forEach(function (url) {
+                    if(url.indexOf(key) >= 0) {
+                        PUSH_choice_DOM.value = str_contents;
+                    }
+                });
+            });
+        }
+        b_PUSHchoicesRendered   = true;
+        debug.vlog({message: 'd_APIcall', var: d_APIcall});
+        debug.leaving();
     }
+
+    function PUSH_choicesRead(key) {
+        /*
+         Read the input field and execute the REST call.
+
+         ARGS
+         key         string          key to access DOM element
+         */
+        var debug           = new C_debug();
+        debug.functionName  = "PUSH_choicesRead";
+        debug.entering();
+
+        debug.vlog({message: 'key', var: key});
+        str_element         = 'PUSH_' + key;
+        PUSH_choice_DOM     = document.getElementById(str_element);
+        console.log(PUSH_choice_DOM)
+
+        str_value           = PUSH_choice_DOM.value;
+        debug.vlog({message: 'PUSH choice', var: str_value});
+
+        str_RESTcallType    = VERB.value;
+        VERB                = document.getElementById('VERB')
+        debug.vlog({message: 'VERB.value', var: str_RESTcallType});
+
+        d_data      = {};
+        d_data[str_RESTcallType]        = {};
+        d_data[str_RESTcallType][key]   = str_value;
+        d_APIcall   = {
+            'type':             str_RESTcallType,
+            'showOutput':       true,
+            'data':             JSON.stringify(d_data)
+        };
+        debug.leaving();
+
+        return REST_call(d_APIcall);
+    }
+
 
     function C_debug(d) {
         /*
@@ -842,12 +969,12 @@
         d.var               var         variable to print
         */
 
-        if(typeof(d)==='undefined') {
-            this.functionName   = '<void>';
-            this.message        = '<void>';
-            this.var            = null;
+        this.functionName   = '<void>';
+        this.message        = '<void>';
+        this.var            = null;
+        this.tab            = 0;
 
-        } else {
+        if(!(typeof(d)==='undefined')) {
             this.functionName   = d.functionName;
             this.message        = d.message;
             this.var            = d.var;
@@ -857,21 +984,39 @@
             console.log(' ');
         };
 
-        this.vlog = function(d) {
+        this.indent     = function() {
+            str_indent  = '';
+            for(i=0; i<this.tab; i++)
+                str_indent = str_indent + '\t';
+            return str_indent;
+        };
+
+        this.entering   = function() {
+            functionCallDepth += 1;
+            this.tab = functionCallDepth;
+            console.log(this.indent() +  '--------> Entering ' + this.functionName + '...');
+        };
+
+        this.leaving    = function() {
+            console.log(this.indent() +  'Leaving ' + this.functionName + ' --------> ');
+            functionCallDepth -= 1;
+        };
+
+        this.vlog       = function(d) {
             if(typeof(d.functionName)!='undefined') this.functionName   = d.functionName;
             this.message        = d.message;
             this.var            = d.var;
             if(typeof(this.var)==='object') {
-                console.log('In ' + this.functionName + ': ' + d.message + ' = ');
+                console.log(this.indent() + 'In ' + this.functionName + ': ' + d.message + ' = ');
                 console.log(d.var);
             } else
-                console.log('In ' + this.functionName + ': ' + d.message + ' = ' + d.var);
+                console.log(this.indent() + 'In ' + this.functionName + ': ' + d.message + ' = ' + d.var);
         };
 
         this.log = function(d) {
             if(typeof(d.functionName)!='undefined') this.functionName   = d.functionName;
             this.message        = d.message;
-            console.log('In ' + this.functionName + ': ' + d.message);
+            console.log(this.indent() + 'In ' + this.functionName + ': ' + d.message);
         };
 
     }
