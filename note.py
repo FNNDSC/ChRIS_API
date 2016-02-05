@@ -67,6 +67,13 @@ class note(object):
 
         self.contents           = C_snode.C_stree()
 
+        self.d_REST = {
+            'PUSH':  {
+                'body':         'file',
+                'timestamp':    'file'
+            }
+        }
+
         self.debug              = message.Message(logTo = './debug.log')
         self.debug._b_syslog    = True
         self._log               = message.Message()
@@ -91,9 +98,10 @@ class note(object):
             str_p                   += rikeripsum.generate_paragraph()
             str_p                   += "\n"
 
-        self.contents.cd('/')
-        self.contents.touch('body', str_p)
-
+        c = self.contents
+        c.cd('/')
+        c.touch('body', str_p)
+        c.touch('REST', self.d_REST)
 
     def __iter__(self):
         yield(self.contents)
