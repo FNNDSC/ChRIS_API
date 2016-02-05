@@ -152,14 +152,12 @@ class Feed_FS(Feed):
                 all the feeds.
 
         """
+        b_internalsCreate   = True
         Feed.__init__(self, **kwargs)
-        self.d_REST = {
-            'PUSH':  {
-                'body':         'string',
-                'timestamp':    'string'
-            }
-        }
-        self.create(**kwargs)
+        for key, val in kwargs.iteritems():
+            if key == 'internalsCreate':    b_internalsCreate   = val
+
+        if b_internalsCreate: self.create(**kwargs)
 
     def dataElement_create(self, **kwargs):
         """
@@ -207,11 +205,11 @@ class Feed_FS(Feed):
 
         s.cd(str_root)
         s.touch("body", sample.contents.cat("body"))
-        s.touch("REST", self.d_REST)
+        s.touch("REST", sample.contents.cat("REST"))
         # s.graft(sample.contents, '/')
 
-        return(dict(sample.contents))
-        # return(dict(sample.contents.snode_root))
+        # return(dict(sample.contents))
+        return(dict(sample.contents.snode_root))
 
 
     def noteElement_create(self, **kwargs):
@@ -233,10 +231,11 @@ class Feed_FS(Feed):
 
         s.cd(str_root)
         s.touch("body", sample.contents.cat("body"))
-        s.touch("REST", self.d_REST)
+        s.touch("REST", sample.contents.cat("REST"))
         # s.graft(sample.contents, '/contents')
 
-        return(dict(sample.contents))
+        # return(dict(sample.contents))
+        return(dict(sample.contents.snode_root))
 
     def commentElement_create(self, **kwargs):
         """
@@ -615,9 +614,29 @@ class FeedTree(object):
                 s = d_ret['feed']
                 self.debug('location in feed tree: %s\n' % s.pwd() )
                 l_key           = d_payload['POST'].keys()
-                str_fileName    = l_key[0]
-                str_contents    = d_payload['POST'][str_fileName]
-                s.touch(str_fileName,  str_contents)
+                for key in l_key:
+                    if key != 'action':
+                        str_fileName    = key
+                        str_contents    = d_payload['POST'][str_fileName]
+                        s.touch(str_fileName,  str_contents)
+                    else:
+                        action  = d_payload['POST']['action']
+                        if action == 'run':
+                            s_regen = Feed_FS()
+                            if s.pwd() == '/title'  or s.pwd == '/title/body':
+                                # s_regen.titleElement_create()
+                                s.cd('/')
+                                # s.rm('/title')
+                                s.graft(s_regen._stree, '/title')
+                            if s.pwd() == '/note'   or s.pwd == '/note/body':
+                                s_regen.noteElement_create()
+                                self.debug('s_regen._stree: %s ' % s_regen._stree)
+                                s.cd('/')
+                                # s.rm('/note')
+                                s.graft(s_regen._stree, '/note')
+                        if action == 'del':
+                            self.debug('del action on %s\n' % str_fileName)
+                            s.rm(str_fileName)
 
     def feed_process(self, **kwargs):
         """
