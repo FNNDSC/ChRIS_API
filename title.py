@@ -66,6 +66,13 @@ class title(object):
 
         self.contents   = C_snode.C_stree()
 
+        self.d_REST = {
+            'PUSH':  {
+                'body':         'file',
+                'timestamp':    'file'
+            }
+        }
+
         self.debug              = message.Message(logTo = './debug.log')
         self.debug._b_syslog    = True
         self._log               = message.Message()
@@ -85,9 +92,11 @@ class title(object):
         for key,val in kwargs.iteritems():
             if key == 'wordCount':  wordCount = int(val)
 
-        self.contents.cd('/')
+        c = self.contents
+        c.cd('/')
         # self.debug('pwd = %s\n' % self.contents.pwd())
-        self.contents.touch('body', rikeripsum.generate_sentence(word_count=wordCount))
+        c.touch('body', rikeripsum.generate_sentence(word_count=wordCount))
+        c.touch('REST', self.d_REST)
 
     def __iter__(self):
         yield(self.contents)
