@@ -539,7 +539,7 @@ class C_stree:
             """
 
             Given an <astr_dirSpec> in form '/a/b/c/d/.../f',
-            create that path in the intenal stree, creating all
+            create that path in the internal stree, creating all
             intermediate nodes as necessary
 
             :param astr_dirSpec:
@@ -673,6 +673,37 @@ class C_stree:
             name = l_path[-1]
             self.snode_current.d_data[name] = data
             # print(self.snode_current)
+            self.cd(str_here)
+            return b_OK
+
+        def rm(self, name):
+            '''
+            Remove a data analog called 'name'.
+
+            The 'name' can contain a path specifier.
+
+            Warning: see
+
+                http://stackoverflow.com/questions/5844672/delete-an-element-from-a-dictionary
+
+            deleting from the snode_current changes dictionary contents for any other
+            agents that have references to the same instance.
+
+            This deletes either directories or files.
+
+            '''
+            b_OK        = False
+            str_here    = self.cwd()
+            l_path = name.split('/')
+            if len(l_path) > 1:
+                self.cd('/'.join(l_path[0:-1]))
+            name = l_path[-1]
+            if name in self.snode_current.d_data:
+                del self.snode_current.d_data[name]
+                b_OK    = True
+            if name in self.snode_current.d_nodes:
+                del self.snode_current.d_nodes[name]
+                b_OK    = True
             self.cd(str_here)
             return b_OK
 
@@ -1341,51 +1372,57 @@ if __name__ == "__main__":
     ATree.tree_metaData_print(False)
     bTree.tree_metaData_print(False)
 
-    print(aTree)
-    print(aTree.pathFromHere_walk('/'))
-    print(ATree)
-    print(ATree.pathFromHere_walk('/'))
-    print(bTree)
-    print(bTree.pathFromHere_walk('/'))
+    print('aTree = %s' % aTree)
+    # print(aTree.pathFromHere_walk('/'))
+    print('ATree = %s' % ATree)
+    # print(ATree.pathFromHere_walk('/'))
+    print('bTree = %s' % bTree)
+    # print(bTree.pathFromHere_walk('/'))
 
     aTree.cd('/')
     aTree.graft(bTree, '/1/2/')
     aTree.tree_metaData_print(False)
-    print(aTree)
-    print(aTree.pathFromHere_walk('/'))
-    print(aTree.l_allPaths)
+    print('aTree = %s' % aTree)
+    # print(aTree.pathFromHere_walk('/'))
+    # print(aTree.l_allPaths)
 
     bTree.cd('/1/2/4/9')
     bTree.graft(ATree, '/A/B')
     bTree.tree_metaData_print(False)
-    print(bTree)
-    print(bTree.pathFromHere_walk('/'))
-    print(bTree.l_allPaths)
+    print('bTree = %s' % bTree)
+    # print(bTree.pathFromHere_walk('/'))
+    # print(bTree.l_allPaths)
 
-    print(aTree)
-    print(aTree.pathFromHere_explore('/'))
-    print(aTree.l_allPaths)
-    print(aTree.filesFromHere_explore('/'))
-    print(aTree.l_allFiles)
+    print('aTree = %s' % aTree)
+    # print(aTree.pathFromHere_explore('/'))
+    # print(aTree.l_allPaths)
+    # print(aTree.filesFromHere_explore('/'))
+    # print(aTree.l_allFiles)
 
     print('Saving bTree...')
     bTree.tree_save(startPath       = '/',
-                    pathDiskRoot    = '/home/rudolphpienaar/tmp/bTree',
+                    pathDiskRoot    = '/tmp/bTree',
                     failOnDirExist  = True,
                     saveJSON        = False,
                     savePickle      = True)
 
     print('Saving aTree...')
     aTree.tree_save(startPath       = '/',
-                    pathDiskRoot    = '/home/rudolphpienaar/tmp/aTree',
+                    pathDiskRoot    = '/tmp/aTree',
                     failOnDirExist  = True,
                     saveJSON        = False,
                     savePickle      = True)
 
     print('Reading aTree into cTree...')
     cTree = C_stree.tree_load(
-                    pathDiskRoot    = '/home/rudolphpienaar/tmp/aTree',
+                    pathDiskRoot    = '/tmp/aTree',
                     loadJSON        = False,
                     loadPickle      = True)
     cTree.tree_metaData_print(False)
-    print(cTree)
+    print('cTree = %s' % cTree)
+    cTree.rm('/4/9/B/E/K/file1')
+    print('cTree = %s' % cTree)
+    cTree.rm('/4/9/B/E/K/file2')
+    print('cTree = %s' % cTree)
+    cTree.rm('/4/9/B/E/K')
+    print('cTree = %s' % cTree)
