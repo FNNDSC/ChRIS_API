@@ -7,6 +7,7 @@
 
     <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
     <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
 
     <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
@@ -199,6 +200,14 @@
                 background: rgb(223, 117, 20); /* this is an orange */
             }
 
+            .button-REST-delete {
+                background: rgb(223, 27, 15); /* this is an orange */
+            }
+
+            .button-REST-run {
+                background: rgb(223, 117, 20); /* this is an orange */
+            }
+
             .button-help {
                 background: rgb(66, 184, 221); /* this is a light blue */
                 float: right;
@@ -206,7 +215,10 @@
 
             .button-reset {
                 background: rgb(223, 117, 20); /* this is an orange */
-                float: right;
+                display: inline-block;
+                position: relative;
+                left: 45%;
+                /*float: right;*/
             }
         </style>
         <div>
@@ -258,7 +270,7 @@
                 </div>
                 <div class="pure-control-group">
                     <label>DB</label>
-                    <input style="width:600px;font-family:courier;" id="DB" name="DB" value="/tmp/ChRIS_DB"><br>
+                    <input style="width:595px;font-family:courier;" id="DB" name="DB" value="/tmp/ChRIS_DB"><br>
                 </div>
                 <div class="pure-control-group">
                     <label>PUSH VERB</label>
@@ -282,14 +294,14 @@
                     <label for="URLsFromChRIS">
                         <button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">GET</button>
                     </label>
-                    <select class="pure-input-1-2" id="URLsFromChRIS">
+                    <select class="pure-input-1-2" id="URLsFromChRIS" style="width:595px;">
                     </select>
                 </div>
                 <div class="pure-control-group" id="dom_PUSH" style="display:none">
                 </div>
                 <div class="pure-control-group">
                     <label>AUTH</label>
-                    <input style="width:600px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
+                    <input style="width:595px;font-family:courier;" id="AUTH" name="AUTH" value="auth=user=chris,hash=ABCDEF123456789"><br>
                 </div>
 
                 <button onclick="window.location.reload(true)" class="pure-button pure-button-primary button-reset">Reset</button>
@@ -763,7 +775,8 @@
         }
 
         APIcall             = API_assemble(d_APIcall);
-        debug.vlog( {message: 'APIcall', var: APIcall} );
+        debug.vlog({message: 'APIcall',     var: APIcall} );
+        debug.vlog({message: 'd_APIcall',   var: d_APIcall});
 
         $.ajax({
             url:        APIcall,
@@ -883,9 +896,9 @@
                             }
                         }
                         debug.vlog({message: 'str_contents for ' + key, var: str_contents});
-                        if(str_contents.length > 60) {
+                        if(str_contents.length > 52) {
                             b_textarea_mk   = true;
-                            rows            = str_contents.length / 60 + 1;
+                            rows            = str_contents.length / 52 + 1;
                         }
                         debug.vlog({message: 'str_contents.length: ' + str_contents.length + ',b_textarea_mk', var: b_textarea_mk});
                         debug.vlog({message: 'rows', var: rows});
@@ -893,17 +906,22 @@
                 });
 
                 // Build the push element components
-                str_innerHTML   = ' ' +
-                        '<label>' +
-                        '<button onclick="return PUSH_choicesRead(\'' + key + '\')" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
-                        '</label>';
+                str_innerHTML   = ' '   +
+                        '<label>'       +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'post\')" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
+                        '</label>'      +
+                        '<span>'        +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\')" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\')" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
                 if(b_textarea_mk) {
-                    str_innerHTML = str_innerHTML +
-                            ' <textarea rows="' + rows + '" style="width:600px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""></textarea><br>';
+                    str_innerHTML = str_innerHTML   +
+                            ' <textarea rows="' + rows + '" style="width:590px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""></textarea><br>';
                 } else {
-                    str_innerHTML = str_innerHTML +
-                            ' <input style="width:600px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""><br>';
+                    str_innerHTML = str_innerHTML   +
+                            ' <input style="width:590px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""><br>';
                 }
+                str_innerHTML   = str_innerHTML     +
+                        '</span>';
                 debug.vlog({message: 'str_innerHTML', var: str_innerHTML});
                 $("#dom_PUSH").append(str_innerHTML);
 
@@ -923,37 +941,47 @@
         debug.leaving();
     }
 
-    function PUSH_choicesRead(key) {
+    function PUSH_choicesRead(key, action) {
         /*
          Read the input field and execute the REST call.
 
          ARGS
-         key         string          key to access DOM element
+            key        string          key to access DOM element
+            type       string          type of PUSH
          */
         var debug           = new C_debug();
         debug.functionName  = "PUSH_choicesRead";
         debug.entering();
 
-        debug.vlog({message: 'key', var: key});
+        debug.vlog({message: 'key',     var: key});
+        debug.vlog({message: 'action',  var: action});
         str_element         = 'PUSH_' + key;
         PUSH_choice_DOM     = document.getElementById(str_element);
-        console.log(PUSH_choice_DOM)
+        console.log(PUSH_choice_DOM);
 
         str_value           = PUSH_choice_DOM.value;
-        debug.vlog({message: 'PUSH choice', var: str_value});
+        debug.vlog({message: 'PUSH payload', var: str_value});
 
         str_RESTcallType    = VERB.value;
         VERB                = document.getElementById('VERB')
         debug.vlog({message: 'VERB.value', var: str_RESTcallType});
 
-        d_data      = {};
-        d_data[str_RESTcallType]        = {};
-        d_data[str_RESTcallType][key]   = str_value;
+        d_data                              = {};
+        d_data[str_RESTcallType]            = {};
+        d_data[str_RESTcallType][key]       = str_value;
+        d_data[str_RESTcallType]['action']  = action;
+        debug.vlog({message: 'd_data',      var: d_data});
+        debug.vlog({message: 'd_APIcall',   var: d_APIcall});
+
         d_APIcall   = {
             'type':             str_RESTcallType,
             'showOutput':       true,
-            'data':             JSON.stringify(d_data)
+            'data':             JSON.stringify(d_data),
+            'action':           action
         };
+
+        debug.vlog({message: 'd_APIcall',   var: d_APIcall});
+
         debug.leaving();
 
         return REST_call(d_APIcall);
