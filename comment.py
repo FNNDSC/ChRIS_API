@@ -71,9 +71,9 @@ class comment(object):
 
         self.d_REST = {
             'PUSH':  {
-                'fullname':     'string',
-                'timestamp':    'string',
-                'comment':      'string'
+                'fullname':     'file',
+                'timestamp':    'file',
+                'comment':      'file'
             }
         }
 
