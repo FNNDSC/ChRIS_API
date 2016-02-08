@@ -598,7 +598,10 @@ class C_stree:
 
             TODO: parse possible path spec in name...
             '''
-            return self.snode_current.d_data[name]
+            if name in self.snode_current.d_data:
+                return self.snode_current.d_data[name]
+            else:
+                return False
 
         def graft(self, atree, apath = '/'):
             """
