@@ -38,7 +38,7 @@ import  os
 import  sys
 import  datetime
 import  json
-import  pickle
+import  shutil
 
 import  error
 
@@ -646,6 +646,8 @@ class ChRIS_authenticate(object):
         if len(self.chris.str_DBpath):
             # If a path DB has been specified (and assuming it's a valid path!)
             # save the DB tree to that path.
+            if os.path.isdir(self.chris.str_DBpath):
+                shutil.rmtree(self.chris.str_DBpath)
             db.DB.tree_save(startPath       = '/',
                             pathDiskRoot    = self.chris.str_DBpath,
                             failOnDirExist  = False,
