@@ -186,14 +186,38 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self.str_VERB   = self.str_MSG.split()[0]
         self.str_URL    = ''
 
+        d_ret   = {
+            'status':   True,
+            'VERB':     self.str_VERB,
+            'URL':      '',
+            'msg':      ''
+        }
+
         print('str_VERB: %s' % self.str_VERB)
         try:
             self.str_URL    = self.str_MSG.split()[1]
+            d_ret['URL']    = self.str_URL
         except:
-            print('Some error occurred in processing the text stream!')
+            d_ret['status'] = False
+            d_ret['msg']    = 'Some error occurred in processing the text stream!'
+            print(d_ret['msg'])
+            return d_ret
 
+        print('al_inputRaw')
+        print(al_inputRaw)
         str_payload     = al_inputRaw[-1]
-        d_payload       = json.loads(str_payload)
+
+        try:
+            d_payload   = json.loads(str_payload)
+        except:
+            d_ret['status'] = False
+            d_ret['msg']    = 'Invalid payload received! Non-JSON formatted content'
+            print(Colors.RED + '\n%s\n' % d_ret['msg'])
+            print('str_payload: %s' % str_payload)
+            print(Colors.NO_COLOUR)
+            return d_ret
+
+        print(Colors.LIGHT_BLUE + 'str_payload: %s' % str_payload + Colors.NO_COLOUR)
 
         for key in d_payload.keys():
             d_payload['URL']        = self.str_URL
@@ -204,7 +228,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                 json.dump(d_payload, f, indent=4)
         print(d_payload)
 
-        return self.str_URL
+        return d_ret
 
     def URL_clientParams_RESTGET(self, al_inputRaw):
         """ Returns the string of client parameters embedded in the URL.
@@ -218,10 +242,21 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             Returns:
                 a string of client parameters.
         """
-        str_GET         = al_inputRaw[0]
-        str_REST        = str_GET.split()[1]
+        self.str_MSG    = al_inputRaw[0]
+        self.str_VERB   = self.str_MSG.split()[0]
+        self.str_URL    = self.str_MSG.split()[1]
 
-        return str_REST
+        # str_GET         = al_inputRaw[0]
+        # str_REST        = str_GET.split()[1]
+
+        d_ret   = {
+            'status':   True,
+            'VERB':     self.str_VERB,
+            'URL':      self.str_URL,
+            'msg':      'GET processed successfully'
+        }
+
+        return d_ret
 
     def URL_serverProcess(self, astr_URLargs, **kwargs):
         """Call the server side entry point with the URLargs and sessionFile.
@@ -249,6 +284,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self.d_component                = {}
         self.str_createNewDB            = ''
         self.str_DBpath                 = ''
+        self.path                       = ''
 
         for key,val in kwargs.iteritems():
             if key == 'sessionFile':    astr_sessionFile    = val
@@ -289,6 +325,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             str_html_stdout = shell.stdout().replace('\n', '<br />')
             self.d_error     = {
                 'status':    False,
+                'message':   'Shell error',
                 'API': {
                     'APIcall':  astr_URLargs
                         },
@@ -309,9 +346,15 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         if shell._exitCode:
             return(self.d_error)
         try:
-            return(json.loads(shell.stdout()))
+            d_fromChRIS = json.loads(shell.stdout())
+            d_fromChRIS['message']  = 'JSON success'
+            self.path   = d_fromChRIS['return']['path']
+            return(d_fromChRIS)
+            # return(json.loads(shell.stdout()))
         except:
             self.d_error['return']['payload']['explanation'] = 'Check if any intermediate process created output on stdout -- this typically breaks JSON parsing.'
+            self.d_error['message'] = 'JSON error in server'
+            self.d_error['return']['path']  = self.path
             return(self.d_error)
 
     def HTTPresponse_sendClient(self, str_payload, **kwargs):
@@ -362,7 +405,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self.str_URL            = ''
         self.d_PUSH             = {}
         self.str_payloadFile    = ''
-
+        self.path               = ''
 
         str_authority   = ""
         str_raw         = self.request.recv(1024).strip()
@@ -394,35 +437,57 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                 pass
             print(Colors.NO_COLOUR)
             print("***********************************************")
-            str_URL     = eval('self.URL_clientParams_%s%s(l_raw)' % (args.API, FORMtype))
-            d_component     = parse_qs(urlparse(str_URL).query)
-            print("parsed query component:")
-            print("***********************************************")
-            print(Colors.YELLOW)
-            print(d_component)
-            print(Colors.NO_COLOUR)
-            print("***********************************************")
-            print("CLI to remote service:")
-            print("***********************************************")
-            if 'sessionFile' in d_component.keys():
-                str_sessionFile = d_component['sessionFile'][0]
-                str_reply       = self.URL_serverProcess(str_URL, components = d_component, sessionFile = str_sessionFile)
+            d_ret           = eval('self.URL_clientParams_%s%s(l_raw)' % (args.API, FORMtype))
+            if d_ret['status']:
+                str_URL     = d_ret['URL']
+                d_component     = parse_qs(urlparse(str_URL).query)
+                print("parsed query component:")
+                print("***********************************************")
+                print(Colors.YELLOW)
+                print(d_component)
+                print(Colors.NO_COLOUR)
+                print("***********************************************")
+                print("CLI to remote service:")
+                print("***********************************************")
+                if 'sessionFile' in d_component.keys():
+                    str_sessionFile = d_component['sessionFile'][0]
+                    str_reply       = self.URL_serverProcess(str_URL, components = d_component, sessionFile = str_sessionFile)
+                else:
+                    str_reply       = self.URL_serverProcess(str_URL, components = d_component, authority = str_authority)
+                print("***********************************************")
+                print("reply from remote service:")
+                print("***********************************************")
+                print(Colors.LIGHT_GREEN + json.dumps(str_reply) + Colors.NO_COLOUR)
+                bytesReceived = sys.getsizeof(json.dumps(str_reply))
+                print("***********************************************")
+                print("Received %d bytes (%s)." % \
+                      (bytesReceived, self.byteSizeReturned(bytesReceived)))
+                print("***********************************************")
             else:
-                str_reply       = self.URL_serverProcess(str_URL, components = d_component, authority = str_authority)
-            print("***********************************************")
-            print("reply from remote service:")
-            print("***********************************************")
-            print(Colors.LIGHT_GREEN + json.dumps(str_reply) + Colors.NO_COLOUR)
-            bytesReceived = sys.getsizeof(json.dumps(str_reply))
-            print("***********************************************")
-            print("Received %d bytes (%s)." % \
-                  (bytesReceived, self.byteSizeReturned(bytesReceived)))
-            print("***********************************************")
+                path            =  l_raw[0].split()[1].split('?')[0].split('NAME_')[1]
+                str_reply     = {
+                    'status':       False,
+                    'message':      'JSON error in clientParams',
+                    'return':   {
+                        'path':     path,
+                        'payload':  {
+                            'message':      'Some error was detected!',
+                            'explanation':  'Invalid JSON decoding.',
+                            'exitCode':      1,
+                            'stderr':        'I could not parse a valid JSON component',
+                            'stdout':        'Check the headers carefully'
+                        },
+                        'URL_get':  []
+                    }
+                }
+
             try:
                 self.request.sendall(self.HTTPresponse_sendClient(json.dumps(str_reply),
                                                                   ContentType = 'application/json'))
             except Exception, e:
                 print "Exception while attempting to transmit receive message: ", e
+
+
             print(Colors.YELLOW + '\nChRIS Web Service listening on %s:%s.' % (args.host, args.port))
             print(Colors.YELLOW + 'API paradigm: ' + Colors.RED_BCKGRND + Colors.WHITE + args.API + Colors.NO_COLOUR)
             print(Colors.RED + '\nTo exit/kill this server, hit <ctrl>-c.\n')
