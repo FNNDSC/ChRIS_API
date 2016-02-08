@@ -613,30 +613,37 @@ class FeedTree(object):
                 self.debug('Payload: %s\n' % d_payload)
                 s = d_ret['feed']
                 self.debug('location in feed tree: %s\n' % s.pwd() )
-                l_key           = d_payload['POST'].keys()
-                for key in l_key:
+                action      = d_payload['POST']['action']
+
+                # find the 'object' key (i.e. the key other than 'action')
+                for key in d_payload['POST'].keys():
                     if key != 'action':
-                        str_fileName    = key
-                        str_contents    = d_payload['POST'][str_fileName]
-                        s.touch(str_fileName,  str_contents)
-                    else:
-                        action  = d_payload['POST']['action']
-                        if action == 'run':
-                            s_regen = Feed_FS()
-                            if s.pwd() == '/title'  or s.pwd == '/title/body':
-                                # s_regen.titleElement_create()
-                                s.cd('/')
-                                # s.rm('/title')
-                                s.graft(s_regen._stree, '/title')
-                            if s.pwd() == '/note'   or s.pwd == '/note/body':
-                                s_regen.noteElement_create()
-                                self.debug('s_regen._stree: %s ' % s_regen._stree)
-                                s.cd('/')
-                                # s.rm('/note')
-                                s.graft(s_regen._stree, '/note')
-                        if action == 'del':
-                            self.debug('del action on %s\n' % str_fileName)
-                            s.rm(str_fileName)
+                        str_nodeType = key
+                str_nodeName    = d_payload['POST'][str_nodeType].keys()[0]
+                str_contents    = d_payload['POST'][str_nodeType][str_nodeName]
+
+                if action == 'post' and str_nodeType == 'file':
+                    self.debug('Pushing text contents into file %s\n' % str_nodeName)
+                    s.touch(str_nodeName,  str_contents)
+
+                if action == 'del':
+                    self.debug('Deleting object %s\n' % str_nodeName)
+                    s.rm(str_nodeName)
+
+                if action == 'run':
+                    self.debug('Regenerating %s\n' % str_nodeName)
+                    s_regen = Feed_FS()
+                    if s.pwd() == '/title'  or s.pwd == '/title/body':
+                        # s_regen.titleElement_create()
+                        s.cd('/')
+                        # s.rm('/title')
+                        s.graft(s_regen._stree, '/title')
+                    if s.pwd() == '/note'   or s.pwd == '/note/body':
+                        s_regen.noteElement_create()
+                        self.debug('s_regen._stree: %s ' % s_regen._stree)
+                        s.cd('/')
+                        # s.rm('/note')
+                        s.graft(s_regen._stree, '/note')
 
     def feed_process(self, **kwargs):
         """
