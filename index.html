@@ -369,10 +369,13 @@
     });
 
     function jsonSyntaxHightlight_toggle() {
+        var debug           = new C_debug();
+        debug.functionName  = "jsonSyntaxHighlight_toggle";
+        debug.entering();
         JSON_syntaxButton_DOM = document.getElementById("JSON_status");
-        console.log('\nIn JSON_syntaxHighlight... b_SyntaxHighlight before toggle = ' + b_jsonSyntaxHighlight);
+        debug.vlog({message: 'before toggle: b_jsonSyntaxHighlight', var: b_jsonSyntaxHighlight});
         b_jsonSyntaxHighlight = !b_jsonSyntaxHighlight;
-        console.log('In JSON_syntaxHighlight... b_SyntaxHighlight after  toggle = ' + b_jsonSyntaxHighlight);
+        debug.vlog({message: 'after  toggle: b_jsonSyntaxHighlight', var: b_jsonSyntaxHighlight});
         if(b_jsonSyntaxHighlight) {
             JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: ON';
             JSON_syntaxButton_DOM.className     = 'button-xsmall pure-button pure-button-primary button-jsonHighlight-on';
@@ -381,13 +384,17 @@
             JSON_syntaxButton_DOM.innerHTML     = 'JSON syntax highlight: OFF';
             JSON_syntaxButton_DOM.className     = 'button-xsmall pure-button pure-button-primary button-jsonHighlight-off';
         }
+        debug.leaving();
     }
 
     function useFileDB_toggle() {
+        var debug           = new C_debug();
+        debug.functionName  = "useFileDB_toggle";
+        debug.entering();
         fileDB_status_DOM = document.getElementById("useFileDB_status");
-        console.log('\nIn useFileDB_toggle... b_useFileDB_status before toggle = ' + b_useFileDB_status);
+        debug.vlog({message: 'before toggle: b_useFileDB_status', var: b_useFileDB_status});
         b_useFileDB_status = !b_useFileDB_status;
-        console.log('In useFileDB_toggle... b_useFileDB_status after toggle  = ' + b_useFileDB_status);
+        debug.vlog({message: 'after  toggle: b_useFileDB_status', var: b_useFileDB_status});
         if(b_useFileDB_status) {
             fileDB_status_DOM.innerHTML     = 'Use file DB: ON';
             fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-useFileDB-on';
@@ -396,13 +403,17 @@
             fileDB_status_DOM.innerHTML     = 'Use file DB: OFF';
             fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-useFileDB-off';
         }
+        debug.leaving();
     }
 
     function createNewDB_toggle() {
+        var debug           = new C_debug();
+        debug.functionName  = "createNewDB_toggle";
+        debug.entering();
         fileDB_status_DOM = document.getElementById("createNewDB_status");
-        console.log('\nIn createNewDB_toggle... b_createNewDB_status before toggle = ' + b_createNewDB_status);
+        debug.vlog({message: 'before toggle: b_createNewDB_status', var: b_createNewDB_status});
         b_createNewDB_status = !b_createNewDB_status;
-        console.log('In createNewDB_toggle... b_createNewDB_status after toggle  = ' + b_createNewDB_status);
+        debug.vlog({message: 'after  toggle: b_createNewDB_status', var: b_createNewDB_status});
         if(b_createNewDB_status) {
             fileDB_status_DOM.innerHTML     = 'Create new DB: ON';
             fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-createNewDB-on';
@@ -681,6 +692,27 @@
         return b_canPUSH;
     }
 
+    function callback_AJAX_beforeSend() {
+        var debug = new C_debug();
+        debug.functionName = "callback_AJAX_beforeSend";
+        debug.entering();
+        debug.leaving();
+    }
+
+    function callback_AJAX_complete(json_ChRISresp, d_APIcall) {
+        var debug = new C_debug();
+        debug.functionName = "callback_AJAX_complete";
+        debug.entering();
+
+        debug.vlog({message: 'json_ChRISresp', var: json_ChRISresp});
+        if(!json_ChRISresp.status &&
+            json_ChRISresp.message == 'JSON error in clientParams') {
+            debug.log({message: 'Retrying client call...'});
+            REST_call(d_APIcall);
+        }
+        debug.leaving();
+    }
+
     function callback_AJAX_success(ChRISresp, d_APIcall) {
         /*
         This is an asynchronous function, so when you hit a button in REST_call, state of
@@ -721,7 +753,8 @@
             PUSH_DOM.innerHTML      = "";
             b_PUSHchoicesRendered   = false;
         }
-        debug.vlog({message: 'b_canPUSH', var: b_canPUSH});
+        debug.vlog({message: 'b_canPUSH',               var: b_canPUSH});
+        debug.vlog({message: 'b_PUSHchoicesRendered',   var: b_PUSHchoicesRendered});
         debug.leaving();
     }
 
@@ -779,14 +812,20 @@
         debug.vlog({message: 'd_APIcall',   var: d_APIcall});
 
         $.ajax({
-            url:        APIcall,
-            type:       d_APIcall['type'],
-            dataType:   'json',
-            data:       d_APIcall['data'],
-            success:    function(ChRISresp) {
-                callback_AJAX_success(ChRISresp, d_APIcall);
+            type:           d_APIcall['type'],
+            url:            APIcall,
+//            contentType:    'application/json', /* If selected, sends OPTIONS! */
+            crossDomain:    true,
+            dataType:       'json',
+            data:           d_APIcall['data'],
+            beforeSend:     callback_AJAX_beforeSend,
+            complete:       function() {
+                callback_AJAX_complete(json_ChRISresp, d_APIcall);
             },
-            error: callback_AJAX_error
+            success:        function(ChRISresp) {
+                            callback_AJAX_success(ChRISresp, d_APIcall);
+            },
+            error:          callback_AJAX_error
         });
         debug.leaving();
         debug.cl();
@@ -850,14 +889,21 @@
         Dictionary typically has components like:
 
             {
-                "body":     "string",
-                "weight":   "int"
+                <nodeName1>: <nodeType>,
+                <nodeName1>: <nodeType>
+            }
+
+        eg:
+
+            {
+                "body":         "file",
+                "timestamp":    "file"
             }
 
         which is rendered as:
 
-            [PUSH]   [body] [string] [<...... text input box .........>]
-            [PUSH]   [weight] [int]  [<...... text input box .........>]
+            [PUSH <nodeName>] [<...... text input box .........>] [run] [del]
+
         */
         var debug           = new C_debug();
         debug.functionName  = "PUSH_choicesBuild";
@@ -896,9 +942,9 @@
                             }
                         }
                         debug.vlog({message: 'str_contents for ' + key, var: str_contents});
-                        if(str_contents.length > 52) {
+                        if(str_contents.length > 50) {
                             b_textarea_mk   = true;
-                            rows            = str_contents.length / 52 + 1;
+                            rows            = str_contents.length / 50 + 1;
                         }
                         debug.vlog({message: 'str_contents.length: ' + str_contents.length + ',b_textarea_mk', var: b_textarea_mk});
                         debug.vlog({message: 'rows', var: rows});
@@ -908,11 +954,11 @@
                 // Build the push element components
                 str_innerHTML   = ' '   +
                         '<label>'       +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'post\')" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'post\', d_PUSH)" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
                         '</label>'      +
                         '<span>'        +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\')" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\')" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\', d_PUSH)" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\', d_PUSH)" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
                 if(b_textarea_mk) {
                     str_innerHTML = str_innerHTML   +
                             ' <textarea rows="' + rows + '" style="width:590px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""></textarea><br>';
@@ -941,13 +987,15 @@
         debug.leaving();
     }
 
-    function PUSH_choicesRead(key, action) {
+    function PUSH_choicesRead(key, action, d_PUSH) {
         /*
          Read the input field and execute the REST call.
 
          ARGS
-            key        string          key to access DOM element
-            type       string          type of PUSH
+            key        string           key to access DOM element
+            type       string           type of PUSH
+            d_PUSH     dictionary       the PUSH object that the server
+                                        transmitted
          */
         var debug           = new C_debug();
         debug.functionName  = "PUSH_choicesRead";
@@ -966,10 +1014,18 @@
         VERB                = document.getElementById('VERB')
         debug.vlog({message: 'VERB.value', var: str_RESTcallType});
 
-        d_data                              = {};
-        d_data[str_RESTcallType]            = {};
-        d_data[str_RESTcallType][key]       = str_value;
-        d_data[str_RESTcallType]['action']  = action;
+        if(action == 'del') {
+            str_value               = ' ';
+            PUSH_choice_DOM.value   = str_value;
+        }
+
+        d_data                                          = {};
+        d_data[str_RESTcallType]                        = {};
+        d_data[str_RESTcallType]['action']              = action;
+        remoteNodeType                                  = d_PUSH[key];
+        d_data[str_RESTcallType][remoteNodeType]        = {};
+        d_data[str_RESTcallType][remoteNodeType][key]   = str_value;
+
         debug.vlog({message: 'd_data',      var: d_data});
         debug.vlog({message: 'd_APIcall',   var: d_APIcall});
 
