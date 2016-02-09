@@ -465,7 +465,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                 print("***********************************************")
             else:
                 path            =  l_raw[0].split()[1].split('?')[0].split('NAME_')[1]
-                str_reply     = {
+                str_reply       = {
                     'status':       False,
                     'message':      'JSON error in clientParams',
                     'return':   {
@@ -480,6 +480,9 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
                         'URL_get':  []
                     }
                 }
+                print(Colors.RED_BCKGRND + Colors.WHITE + json.dumps(str_reply))
+                print(Colors.NO_COLOUR)
+                print("***********************************************")
 
             try:
                 self.request.sendall(self.HTTPresponse_sendClient(json.dumps(str_reply),
