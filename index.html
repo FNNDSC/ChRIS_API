@@ -708,6 +708,8 @@
         if(!json_ChRISresp.status &&
             json_ChRISresp.message == 'JSON error in clientParams') {
             debug.log({message: 'Retrying client call...'});
+            debug.vlog({message: 'd_APIcall', var: d_APIcall});
+            d_APIcall['branchOnREST']   = true;
             REST_call(d_APIcall);
         }
         debug.leaving();
@@ -784,9 +786,6 @@
 
                 d_APICall           dictionary
 
-                    'type':         'GET'|'PUT'     -- the type of call
-                    'override':     string          -- an override call
-
                 if not passed, will default to GET and void override
 
          */
@@ -832,26 +831,21 @@
         return false; //stop the form from initially submitting
     }
 
-    function PUSH_choicesParse(aURL) {
+    function PUSH_choicesParse() {
         /*
         Build the dialog box for the PUSH choices, as parsed from the
         REST token returned from the server. This actually performs a
         hidden GET to parse the REST PUSH object.
 
-        ARGS
-            aURL        string      the location of the REST token in the
-                                    server data tree.
          */
 
         var debug           = new C_debug();
         debug.functionName  = "PUSH_choicesParse";
         debug.entering();
-        debug.vlog( {message: 'aURL', var: aURL} );
 
         d_APIcall                   = {};
         d_APIcall['type']           = 'GET';
         d_APIcall['showOutput']     = false;
-        d_APIcall['URL']            = aURL;
         d_APIcall['branchOnREST']   = false;
         d_APIcall['data']           = '';
 
@@ -876,6 +870,8 @@
                             PUSH_choicesBuild(d_PUSH, d_APIcall);
                         }
                     }
+                } else {
+                    PUSH_choicesBuild(d_PUSH, d_APIcall);
                 }
             }
         });
@@ -981,8 +977,8 @@
                     }
                 });
             });
+            b_PUSHchoicesRendered   = true;
         }
-        b_PUSHchoicesRendered   = true;
         debug.vlog({message: 'd_APIcall', var: d_APIcall});
         debug.leaving();
     }
