@@ -954,12 +954,12 @@
                 // Build the push element components
                 str_innerHTML   = ' '   +
                         '<label>'       +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'post\', d_PUSH)" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'post\',    d_PUSH)" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
                         '</label>'      +
                         '<span>'        +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\')" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'clear\')" style="float: right;" class="button-REST-clear pure-button pure-button-primary"><i class="fa fa-close fa-1x"></i></button>' +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\')" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\',     d_PUSH)" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'clear\',   d_PUSH)" style="float: right;" class="button-REST-clear pure-button pure-button-primary"><i class="fa fa-close fa-1x"></i></button>' +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\',     d_PUSH)" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
                 if(b_textarea_mk) {
                     str_innerHTML = str_innerHTML   +
                             ' <textarea rows="' + rows + '" style="width:590px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""></textarea><br>';
