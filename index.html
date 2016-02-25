@@ -31,7 +31,7 @@
             background-color: #f3f3f3;
             border: solid 1px #a1a1a1;
             padding: 10px;
-            width: 880px;
+            width: 940px;
             margin-left: auto;
             margin-right:auto;
         }
@@ -206,6 +206,10 @@
 
             .button-REST-run {
                 background: rgb(223, 117, 20); /* this is an orange */
+            }
+
+            .button-REST-clear {
+                background: rgb(28, 184, 65); /* this is a green */
             }
 
             .button-help {
@@ -912,6 +916,7 @@
                         '</label>'      +
                         '<span>'        +
                             '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\')" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
+                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'clear\')" style="float: right;" class="button-REST-clear pure-button pure-button-primary"><i class="fa fa-close fa-1x"></i></button>' +
                             '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\')" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
                 if(b_textarea_mk) {
                     str_innerHTML = str_innerHTML   +
