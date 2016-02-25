@@ -596,9 +596,14 @@ class C_stree:
             '''
             Returns the contents of the 'name'd element at this level.
 
+            If file does not exist, returns a False
+
             TODO: parse possible path spec in name...
             '''
-            return self.snode_current.d_data[name]
+            if name in self.snode_current.d_data:
+                return self.snode_current.d_data[name]
+            else:
+                return False
 
         def graft(self, atree, apath = '/'):
             """
