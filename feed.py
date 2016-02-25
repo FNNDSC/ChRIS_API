@@ -585,7 +585,12 @@ class FeedTree(object):
                 str_fileName        = l_p[-1]
                 if str_VERB != "GET":
                     self.feed_singleFeed_VERBprocess(**kwargs)
-                d_ret['feed']       = {str_fileName: s.cat(l_p[-1])}
+                    self.debug('%s\n' % l_p)
+                contents            = s.cat(l_p[-1])
+                if not contents:
+                    d_ret['feed']   = {str_fileName: ''}
+                else:
+                    d_ret['feed']   = {str_fileName: contents}
                 self.debug('Returning file contents in payload: "%s"\n' % d_ret)
         d_ret['payload'] = d_ret['feed']
         return d_ret
@@ -635,7 +640,7 @@ class FeedTree(object):
                                 # s.rm('/note')
                                 s.graft(s_regen._stree, '/note')
                         if action == 'del':
-                            self.debug('del action on %s\n' % str_fileName)
+                            self.debug('del action on file: "%s"\n' % str_fileName)
                             s.rm(str_fileName)
 
     def feed_process(self, **kwargs):
