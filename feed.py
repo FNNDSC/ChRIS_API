@@ -633,7 +633,13 @@ class FeedTree(object):
 
                 if action == 'del':
                     self.debug('Deleting object %s\n' % str_nodeName)
+                    self.debug('path in stree: %s\n' % s.pwd())
                     s.rm(str_nodeName)
+
+                if action == 'clear':
+                    self.debug('clearing object %s\n' % str_nodeName)
+                    self.debug('path in stree: %s\n' % s.pwd())
+                    s.touch(str_nodename, '')
 
                 if action == 'run':
                     self.debug('Regenerating %s\n' % str_nodeName)
