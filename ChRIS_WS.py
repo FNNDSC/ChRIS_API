@@ -365,7 +365,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
 
 
         str_authority   = ""
-        str_raw         = self.request.recv(1024).strip()
+        str_raw         = self.request.recv(args.buffer).strip()
         now             = datetime.datetime.today()
         str_timeStamp   = now.strftime('%Y-%m-%d %H:%M:%S.%f')
         if len(str_raw):
@@ -427,7 +427,8 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             print(Colors.YELLOW + 'API paradigm: ' + Colors.RED_BCKGRND + Colors.WHITE + args.API + Colors.NO_COLOUR)
             print(Colors.RED + '\nTo exit/kill this server, hit <ctrl>-c.\n')
             print(Colors.CYAN + "Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
-            print(Colors.BLUE_BCKGRND + Colors.BLINK_BROWN + "\n\n\t\t\t\t\t. . . w a i t i n g . . .")
+            print(Colors.CYAN + "Input buffer is %d bytes" % (args.buffer))
+            print(Colors.BLUE_BCKGRND + Colors.BLINK_BROWN + "\n\t\t\t. . . w a i t i n g . . .\t\t\t")
             print(Colors.NO_COLOUR)
         else:
             print(Colors.RED_BCKGRND + Colors.WHITE + 'Zero length stream received!')
@@ -506,6 +507,13 @@ if __name__ == "__main__":
         action  =   'store',
         default =   "127.0.0.1"
     )
+    parser.add_argument(
+        '-b', '--buffer',
+        help    =   "Size of the receive buffer.",
+        dest    =   'buffer',
+        action  =   'store',
+        default =   65536
+    )
 
 
     args = parser.parse_args()
@@ -515,7 +523,8 @@ if __name__ == "__main__":
     print(Colors.YELLOW + 'API paradigm: ' + Colors.RED_BCKGRND + Colors.WHITE + args.API + Colors.NO_COLOUR)
     print(Colors.RED + '\nTo exit/kill this server, hit <ctrl>-c.\n')
     print(Colors.CYAN + "Use any client to send GET/POST requests to %s:%s." % (args.host, args.port))
-    print(Colors.BLUE_BCKGRND + Colors.BLINK_BROWN + "\n\t\t\t. . . w a i t i n g . . .")
+    print(Colors.CYAN + "Input buffer is %d bytes" % (args.buffer))
+    print(Colors.BLUE_BCKGRND + Colors.BLINK_BROWN + "\n\t\t\t. . . w a i t i n g . . .\t\t\t")
     print(Colors.NO_COLOUR)
     server = TCPServer((args.host, int(args.port)), TCPServerHandler)
     server.serve_forever()
