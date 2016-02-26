@@ -44,6 +44,25 @@
             margin-right:auto;
         }
 
+        .push_wrapper
+        {
+            margin:0 auto;
+            overflow:hidden;
+        }
+
+        .push_wrapper>div{
+            display:inline-block;
+            vertical-align:middle;
+            width:49%;
+        }
+
+        .left{
+            float:left;
+        }
+
+        .right{
+            float:right;
+        }
 
         pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
         .string     { font-family:courier; color: green; }
@@ -942,9 +961,9 @@
                             }
                         }
                         debug.vlog({message: 'str_contents for ' + key, var: str_contents});
-                        if(str_contents.length > 50) {
+                        if(str_contents.length > 60) {
                             b_textarea_mk   = true;
-                            rows            = str_contents.length / 50 + 1;
+                            rows            = str_contents.length / 60;
                         }
                         debug.vlog({message: 'str_contents.length: ' + str_contents.length + ',b_textarea_mk', var: b_textarea_mk});
                         debug.vlog({message: 'rows', var: rows});
@@ -953,22 +972,28 @@
 
                 // Build the push element components
                 str_innerHTML   = ' '   +
-                        '<label>'       +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'post\',    d_PUSH)" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
-                        '</label>'      +
-                        '<span>'        +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\',     d_PUSH)" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'clear\',   d_PUSH)" style="float: right;" class="button-REST-clear pure-button pure-button-primary"><i class="fa fa-close fa-1x"></i></button>' +
-                            '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\',     d_PUSH)" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
+                    '<div class="push_wrapper">' +
+                        '<div style="width:20%;">' +
+                            '<label>'       +
+                                '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'post\',    d_PUSH)" style="float: right;" class="pure-button pure-button-primary">PUSH ' + key + '</button>' +
+                            '</label>' +'' +
+                        '</div>' +
+                        '<div style="width:80%;">'      +
+                            '<span>'        +
+                                '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'del\',     d_PUSH)" style="float: right;" class="button-REST-delete pure-button pure-button-primary"><i class="fa fa-trash fa-1x"></i></button>' +
+                                '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'clear\',   d_PUSH)" style="float: right;" class="button-REST-clear pure-button pure-button-primary"><i class="fa fa-close fa-1x"></i></button>' +
+                                '<button onclick="return PUSH_choicesRead(\'' + key + '\', \'run\',     d_PUSH)" style="float: right;" class="button-REST-run pure-button pure-button-primary"><i class="fa fa-gear fa-1x"></i></button>';
                 if(b_textarea_mk) {
                     str_innerHTML = str_innerHTML   +
-                            ' <textarea rows="' + rows + '" style="width:590px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""></textarea><br>';
+                                ' <textarea rows="' + rows + '" style="width:760px;font-family:courier;float:left;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""></textarea><br>';
                 } else {
                     str_innerHTML = str_innerHTML   +
-                            ' <input style="width:590px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""><br>';
+                                ' <input style="width:760px;font-family:courier;" id="PUSH_' + key + '" name="PUSH_' + key + '" value=""><br>';
                 }
                 str_innerHTML   = str_innerHTML     +
-                        '</span>';
+                            '</span><br/><br/>' +
+                        '</div>' +
+                    '</div>';
                 debug.vlog({message: 'str_innerHTML', var: str_innerHTML});
                 $("#dom_PUSH").append(str_innerHTML);
 
