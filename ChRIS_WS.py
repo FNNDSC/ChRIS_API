@@ -28,9 +28,16 @@ str_desc = """
                           |______|
 
 'ChRIS_WS' -- ChRIS Web Service -- is a simple server that parses
-raw socket input for /GET /xxx HTTP/ strings, dispatches input to
-a ChRIS_SM instance, parses the resultant stdout, and transmits this
-back to the caller.
+raw socket incoming data for communication/control signals destined
+for a ChRIS Simulated Machine (ChRIS_SM).
+
+The most common paradigm for the received information is REST control.
+Incoming data is parsed for REST verbs and URLs, and then passed via
+command line strings to an instance of 'ChRIS_SM'. This simulated
+ChRIS interprets the REST data, acts upon it, and communicates any
+data back on standard out in JSON compatible strings. This stdout
+is captured by 'ChRIS_WS' and transmitted in turn back to the
+remote client.
 
 Parts of the server infrastructure were adapted from:
 http://thomasfischer.biz/python-simple-json-tcp-server-and-client/
