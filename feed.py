@@ -22,6 +22,7 @@ This module implements a server side feed controller/model.
 import  abc
 import  json
 import  sys
+import  datetime
 
 import  C_snode
 import  message
@@ -611,6 +612,10 @@ class FeedTree(object):
         for key,val in kwargs.iteritems():
             if key == 'd_ret':          d_ret               = val
 
+        # This signals the client to 'refresh' the display since POST operations
+        # change GUI elements
+        d_ret['refreshREST']    = True
+
         if d_ret['VERB'] == 'POST':
             self.debug('In feed_singleFeed_VERBprocess...\n')
             with open(d_ret['payloadFile']) as jf:
@@ -639,22 +644,31 @@ class FeedTree(object):
                 if action == 'clear':
                     self.debug('clearing object %s\n' % str_nodeName)
                     self.debug('path in stree: %s\n' % s.pwd())
-                    s.touch(str_nodename, '')
+                    s.touch(str_nodeName, '')
 
                 if action == 'run':
-                    self.debug('Regenerating %s\n' % str_nodeName)
-                    s_regen = Feed_FS()
-                    if s.pwd() == '/title'  or s.pwd == '/title/body':
-                        # s_regen.titleElement_create()
-                        s.cd('/')
-                        # s.rm('/title')
-                        s.graft(s_regen._stree, '/title')
-                    if s.pwd() == '/note'   or s.pwd == '/note/body':
-                        s_regen.noteElement_create()
-                        self.debug('s_regen._stree: %s ' % s_regen._stree)
-                        s.cd('/')
-                        # s.rm('/note')
-                        s.graft(s_regen._stree, '/note')
+                    self.debug('Regenerating node %s\n' % str_nodeName)
+                    # Generate a new feed tree -- this following call generates
+                    # everything for a new feed! notes, title, comments, etc.
+                    # It's probably overkill.
+                    str_timeStamp   = str(datetime.datetime.now())
+                    if str_nodeName != 'timestamp':
+                        s_regen         = Feed_FS()
+                        sr              = s_regen._stree
+                        if s.pwd() == '/title'  or s.pwd == '/title/body':
+                            self.debug('Regenerating title...\n')
+                            sr.cd('/title')
+                            s.cd('/title')
+                            s.rm('body')
+                            s.touch('body', sr.cat('body'))
+                        if s.pwd() == '/note'   or s.pwd == '/note/body':
+                            self.debug('Regenerating note...\n')
+                            sr.cd('/note')
+                            s.cd('/note')
+                            s.rm('body')
+                            s.touch('body', sr.cat('body'))
+                    self.debug('setting timeStamp to %s\n' % str_timeStamp)
+                    s.touch('timestamp', str_timeStamp)
 
     def feed_process(self, **kwargs):
         """
