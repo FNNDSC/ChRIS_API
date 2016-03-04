@@ -315,7 +315,7 @@
                 </div>
                 <div class="pure-control-group">
                     <label for="URLsFromChRIS">
-                        <button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">GET</button>
+                        <button onclick="return REST_call()" style="float: right;" class="pure-button pure-button-primary">PULL</button>
                     </label>
                     <select class="pure-input-1-2" id="URLsFromChRIS" style="width:595px;">
                     </select>
@@ -522,22 +522,36 @@
         loginStatus_show(file_exist(str_loginURLtag));
     };
 
-    function URLsFromChRIS_build(json_ChRISresp) {
+    function URLsFromChRIS_build(json_ChRISresp, a_URLsFromChRIS) {
         /*
         This function parses the URL component of the response to
         build a list of possible navigable links from this
         point in the dataspace.
 
         ARGS
-            json_ChRISresp  json-object     the response from ChRIS
+
+            json_ChRISresp      json object the reponse from ChRIS
+
+        OPTIONAL
+
+            a_URLsFromChRIS     array       an override for the URLs
+                                            returned from the remote
+                                            server
+
+        If the <a_URLsFromChRIS> is sent, then
 
         */
+        var selectedIndex   = -1;
         var debug           = new C_debug();
         debug.functionName  = "URLsFromChRIS_build";
         debug.entering();
 
         URLsFromChRIS_DOM.empty();
-        d_URLsFromChRIS = json_ChRISresp.return.URL_get.slice();
+        if(typeof(a_URLsFromChRIS)==='object') {
+            d_URLsFromChRIS = a_URLsFromChRIS.slice();
+        } else {
+            d_URLsFromChRIS = json_ChRISresp.return.URL_get.slice();
+        }
         // First, build a breadcrumb path back through the dataspace
         if (str_pathUp.length) {
             str_path    = json_ChRISresp.return.path;
@@ -545,7 +559,7 @@
             l_path      = str_path.split('/');
             // Get rid of the trailing '/' if it exists.
             if(!l_path[l_path.length-1].length) l_path.pop();
-            for(d=l_path.length-1; d>=0; d--) {
+            for(var d=l_path.length-1; d>=0; d--) {
                 l_breadCrumb    = l_path.slice(0, d+1);
                 str_breadCrumb  = l_breadCrumb.join('/');
                 str_pathUp      = str_allFeedsBase + '_' + str_breadCrumb;
@@ -553,14 +567,15 @@
                     console.log('cleaning!!');
                     str_pathUp = 'Feeds/' + key_DOM.val();
                 }
-
+                if(d==l_path.length-1) {
+                    selectedIndex = d_URLsFromChRIS.length;
+                }
                 d_URLsFromChRIS.push(str_pathUp);
             }
             // Push the root URL
             d_URLsFromChRIS.push('Feeds/' + key_DOM.val());
         }
-        // Now build the URLs from this point *forward* in the datatree space
-        // as returned by ChRIS
+        // Now build actual html about the d_URLsFromChRIS
         $.each(d_URLsFromChRIS, function (key, val) {
             if (!str_pathUp.length) {
                 str_allFeedsBase    = 'Feeds/' + key_DOM.val();
@@ -570,7 +585,106 @@
                     $('<option></option>').val(key).html(val)
             );
         });
+        URLsFromChRIS_DOM.val(selectedIndex);
         debug.leaving()
+    }
+
+    function URLsFromChRIS_maxDepth() {
+        /*
+         This function returns the length of the maximum URL
+         'depth' in the URL array.
+
+         PRECONDITIONS
+
+             The d_URLsFromChRIS array must exist and contain elements.
+
+         POSTCONDITIONS
+
+             The length of the max 'dirpath' is returned.
+         */
+
+        var debug           = new C_debug();
+        debug.functionName  = "URLsFromChRIS_maxDepth";
+        debug.entering();
+
+        maxDepth            = 0;
+        d_URLsFromChRIS.forEach(function(el) {
+            depth           = el.split('/').length;
+            if(depth>maxDepth)
+                    maxDepth    = depth;
+        });
+        debug.leaving();
+        return maxDepth;
+    }
+
+    function URLsFromChRIS_findAtDepth(depth) {
+        /*
+         This function returns an array of all "hits" in the
+         ChRIS URL space at tree depth <depth>.
+
+         ARGS
+         depth       int     the depth to find and return.
+
+         PRECONDITIONS
+
+         The d_URLsFromChRIS array must exist and contain elements.
+
+         POSTCONDITIONS
+
+         An array of hits at <depth> are returned.
+
+         */
+
+        var debug           = new C_debug();
+        debug.functionName  = "URLsFromChRIS_findAtDepth";
+        debug.entering();
+
+        d_URLsFromChRISpruned   = [];
+        pruneCount              = 0;
+        d_URLsFromChRIS.forEach(function(el) {
+            if((el.split('/').length) == depth) {
+                d_URLsFromChRISpruned.push(el);
+                pruneCount++;
+            }
+        });
+
+        debug.leaving();
+        return d_URLsFromChRISpruned;
+    }
+
+    function URLsFromChRIS_treePrune(depth) {
+        /*
+        This function removes from the dictionary of ChRIS URL
+        responses any URLs that exceed the passed <depth>
+
+        ARGS
+            depth       int     entries deeper than <depth> are pruned.
+
+        PRECONDITIONS
+
+            The d_URLsFromChRIS array must exist and contain elements.
+
+        POSTCONDITIONS
+
+            The d_URLsFromChRIS array is modified by this function.
+
+        */
+
+        var debug           = new C_debug();
+        debug.functionName  = "URLsFromChRIS_treePrune";
+        debug.entering();
+
+        d_URLsFromChRISpruned   = [];
+        pruneCount              = 0;
+        d_URLsFromChRIS.forEach(function(el) {
+            if((el.split('/').length) <= depth) {
+                d_URLsFromChRISpruned.push(el);
+                pruneCount++;
+            }
+        });
+        d_URLsFromChRIS         = d_URLsFromChRISpruned.slice();
+        debug.leaving();
+        return d_URLsFromChRIS;
     }
 
     function output(inp) {
@@ -699,7 +813,6 @@
         debug.entering();
 
         b_canPUSH   = false;
-//        URLsFromChRIS_build(json_ChRISresp);
         debug.vlog({message: 'd_URLsFromChRIS', var: d_URLsFromChRIS});
         if(d_URLsFromChRIS != null) {
             debug.log({message: 'Processing d_URLsFromChRIS...'});
@@ -758,10 +871,20 @@
             b_URLsBuild = true;
         else
             if(b_loginStatus) {
+                if(typeof(  json_ChRISresp.return['refreshREST'])==='boolean' &&
+                            json_ChRISresp.return['refreshREST']) {
+                    PUSH_DOM.style.display = "none";
+                    PUSH_DOM.innerHTML = "";
+                    b_PUSHchoicesRendered = false;
+                }
                 URLsFromChRIS_build(json_ChRISresp);
                 if(d_APIcall['branchOnREST']) {
-                    if(RESTobject_detected()) PUSH_choicesParse();
-            }
+                    debug.log({message: 'About to call PUSH_choicesGET()...'});
+                    if(RESTobject_detected()) PUSH_choicesGET();
+                }
+                if(d_APIcall['choicesParse']) {
+                   PUSH_choicesParse();
+                }
         }
         debug.vlog({message: 'showOutput', var: d_APIcall.showOutput});
         if(d_APIcall['showOutput']) {
@@ -779,6 +902,7 @@
             b_PUSHchoicesRendered   = false;
         }
         debug.vlog({message: 'b_canPUSH',               var: b_canPUSH});
+        debug.vlog({message: 'PUSH_DOM.style.display',  var: PUSH_DOM.style.display});
         debug.vlog({message: 'b_PUSHchoicesRendered',   var: b_PUSHchoicesRendered});
         debug.leaving();
     }
@@ -854,11 +978,56 @@
         return false; //stop the form from initially submitting
     }
 
+    function PUSH_choicesGET(ab_branchOnREST) {
+        /*
+
+        SYNOPSIS
+
+            Build the dialog box for the PUSH choices, as parsed from the
+            REST token returned from the server. This actually performs a
+            hidden GET to parse the REST PUSH object and "read" the contents
+            of the REST tagged "files".
+
+            NB!!
+            Since this REST call is asynchronous, the logic to handle the actual
+            reading needs to be part of the REST success callback.
+
+        */
+
+        var debug           = new C_debug();
+        debug.functionName  = "PUSH_choicesGET";
+        debug.entering();
+
+        // At this point, a prior call to d_APIcall has possibly selected
+        // a "key" (like 'body'/'timestamp'). We need to set this hidden GET
+        // to a URL one above the REST token in the dataspace.
+
+        d_URLsAboveREST             = URLsFromChRIS_findAtDepth(URLsFromChRIS_maxDepth()-1);
+
+        d_APIcall                   = {};
+        d_APIcall['type']           = 'GET';
+        d_APIcall['URL']            = d_URLsAboveREST[0],
+        d_APIcall['showOutput']     = false;
+        d_APIcall['branchOnREST']   = false;
+        d_APIcall['data']           = '';
+        d_APIcall['choicesParse']   = true;
+
+        debug.vlog( {message: 'd_APIcall', var: d_APIcall} );
+
+        REST_call(d_APIcall);
+        debug.leaving();
+    }
+
     function PUSH_choicesParse() {
         /*
-        Build the dialog box for the PUSH choices, as parsed from the
-        REST token returned from the server. This actually performs a
-        hidden GET to parse the REST PUSH object.
+
+        SYNOPSIS
+             Build the dialog box for the PUSH choices, and populates data with
+             information as returned by the appropriate GET call.
+
+        PRECONDITIONS
+
+            o A GET call on the "parent" dataspace dir to the REST token.
 
          */
 
@@ -866,15 +1035,6 @@
         debug.functionName  = "PUSH_choicesParse";
         debug.entering();
 
-        d_APIcall                   = {};
-        d_APIcall['type']           = 'GET';
-        d_APIcall['showOutput']     = false;
-        d_APIcall['branchOnREST']   = false;
-        d_APIcall['data']           = '';
-
-        debug.vlog( {message: 'd_APIcall', var: d_APIcall} );
-
-        REST_call(d_APIcall);
         d_choice = json_ChRISresp.return.payload;
 
         debug.vlog( {message: 'd_choice', var: d_choice});
@@ -921,7 +1081,8 @@
 
         which is rendered as:
 
-            [PUSH <nodeName>] [<...... text input box .........>] [run] [del]
+                                                         [run] [clear] [del]
+            [PUSH <nodeName>] [<............. text input box .............>]
 
         */
         var debug           = new C_debug();
@@ -931,6 +1092,7 @@
         l_keys = Object.keys(d_PUSH);
         debug.vlog( {message: 'l_keys', var: l_keys});
         if(!b_PUSHchoicesRendered) {
+            $("#dom_PUSH").empty();
             l_keys.forEach(function (key) {
                 debug.vlog({message: 'key/type', var: [key, d_PUSH[key]]});
                 str_element     = 'PUSH_' + key;
@@ -963,7 +1125,7 @@
                         debug.vlog({message: 'str_contents for ' + key, var: str_contents});
                         if(str_contents.length > 60) {
                             b_textarea_mk   = true;
-                            rows            = str_contents.length / 60;
+                            rows            = str_contents.length / 60 + 1;
                         }
                         debug.vlog({message: 'str_contents.length: ' + str_contents.length + ',b_textarea_mk', var: b_textarea_mk});
                         debug.vlog({message: 'rows', var: rows});
@@ -1057,9 +1219,11 @@
 
         d_APIcall   = {
             'type':             str_RESTcallType,
+            'URL':              d_URLsFromChRIS[URLsFromChRIS_selected] + '/' + key,
             'showOutput':       true,
             'data':             JSON.stringify(d_data),
-            'action':           action
+            'action':           action,
+            'branchOnREST':     true
         };
 
         debug.vlog({message: 'd_APIcall',   var: d_APIcall});
