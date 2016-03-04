@@ -983,14 +983,17 @@
 
         SYNOPSIS
 
-            Build the dialog box for the PUSH choices, as parsed from the
-            REST token returned from the server. This actually performs a
-            hidden GET to parse the REST PUSH object and "read" the contents
-            of the REST tagged "files".
+            This is a pre-cursor call. When the dataspace on the server has changed
+            due to some REST event, this function does a hidden GET on the node of
+            the dataspace tree that has changed so that the client (i.e. this
+            code) has the updated state as returned from the server.
 
-            NB!!
-            Since this REST call is asynchronous, the logic to handle the actual
-            reading needs to be part of the REST success callback.
+            Since this hidden call is itself another REST event, it merely sets
+            a pattern of appropriate flags and calls the main REST handler. These
+            flags in turn are processed by the success callback which will in turn
+            dispatch the programming thread to PUSH_choicesParse() with the
+            preconditional that the return payload from the client contains the
+            updated information.
 
         */
 
