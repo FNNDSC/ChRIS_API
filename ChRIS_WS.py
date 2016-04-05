@@ -359,6 +359,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
             return(d_fromChRIS)
             # return(json.loads(shell.stdout()))
         except:
+            print(d_fromChRIS)
             self.d_error['return']['payload']['explanation'] = 'Check if any intermediate process created output on stdout -- this typically breaks JSON parsing.'
             self.d_error['message'] = 'JSON error in server'
             self.d_error['return']['path']  = self.path
