@@ -47,6 +47,7 @@ import  message
 import  feed
 import  ChRIS_RPCAPI
 import  ChRIS_RESTAPI
+import  plugin
 import  serverInfo
 
 class ChRIS_SMUserDB(object):
@@ -69,28 +70,29 @@ class ChRIS_SMUserDB(object):
     }
 
     def log(self, *args):
-        '''
+        """
         get/set the internal pipeline log message object.
 
         Caller can further manipulate the log object with object-specific
         calls.
-        '''
+        """
         if len(args):
-            self._log = args[0]
+            self._log =\
+                args[0]
         else:
             return self._log
 
     def name(self, *args):
-        '''
+        """
         get/set the descriptive name text of this object.
-        '''
+        """
         if len(args):
             self.__name = args[0]
         else:
             return self.__name
 
     def DB_build(self):
-        '''
+        """
 
         This is the main entry point for either constructing a new DB
         or reading one from disk.
@@ -103,17 +105,19 @@ class ChRIS_SMUserDB(object):
         str_DBpath etc need to be performed again.
 
         :return:
-        '''
+        """
         s               = self.DB
         if self.b_createNewDB:
             s.cd('/')
             s.mkcd('users')
             s.mkcd('chris')
+            s.mkcd('login')
             s.touch("userName",     "chris")
             s.touch("fullName",     "ChRIS User")
             s.touch("passwd",       "chris1234")
-            s.mkcd('login')
-            # The 'feeds' directory is attached when the user is authenticated.
+            s.cd('../')
+            s.mkdir('plugins')
+            # The 'feeds' and 'plugins' directories are attached when the user is authenticated.
         else:
             if not len(self.str_DBpath):
                 error.fatal(self, 'no_DBPath')
@@ -199,7 +203,7 @@ class ChRIS_SMUserDB(object):
         json.dump(dict_sessionInfo, open("%s-login.json" % str_user, "w"))
 
     def user_attachFeedTree(self, **kwargs):
-        '''
+        """
         Attaches the feed tree of the given user to a convenience member variable,
         self.userFeeds.
 
@@ -208,7 +212,7 @@ class ChRIS_SMUserDB(object):
 
         :param kwargs:
         :return:
-        '''
+        """
 
         """Attach the feed tree for this user"""
         for key, val in kwargs.iteritems():
@@ -255,8 +259,9 @@ class ChRIS_SMUserDB(object):
                     'message':  'logout failed for %s at %s -- no prior login detected.' %
                                 (astr_user, logoutStamp)}
         return {
-                'status': True,
-                'payload': {
+                'status'    : True,
+                'path'      : '/',
+                'payload'   : {
                     'message':  "Successfully logged '%s' out at %s." % (astr_user, logoutStamp)
                     }
                 }
@@ -303,7 +308,7 @@ class ChRIS_SMUserDB(object):
         if not s.cdnode(astr_user):
             ret['loginMessage']     = 'User %s not found in database.' % astr_user
         else:
-            if s.cat('passwd') != astr_passwd:
+            if s.cat('login/passwd') != astr_passwd:
                 ret['loginMessage']     = 'Incorrect password.'
             else:
                 ret['loginStatus']      = True
@@ -318,8 +323,9 @@ class ChRIS_SMUserDB(object):
                 self.login_writePersistent( sessionInfo = ret,
                                             user        = astr_user)
         return {
-                'status':   True,
-                'payload':  {
+                'status'    :   True,
+                'path'      : '/',
+                'payload'   :  {
                                 'message':      'login credentials parsed',
                                 'loginDetail':   ret
                             }
@@ -432,21 +438,21 @@ class ChRIS_SM(object):
     __metaclass__   = abc.ABCMeta
 
     def log(self, *args):
-        '''
+        """
         get/set the internal pipeline log message object.
 
         Caller can further manipulate the log object with object-specific
         calls.
-        '''
+        """
         if len(args):
             self._log = args[0]
         else:
             return self._log
 
     def name(self, *args):
-        '''
+        """
         get/set the descriptive name text of this object.
-        '''
+        """
         if len(args):
             self.__name = args[0]
         else:
@@ -580,21 +586,21 @@ class ChRIS_authenticate(object):
     }
 
     def log(self, *args):
-        '''
+        """
         get/set the internal pipeline log message object.
 
         Caller can further manipulate the log object with object-specific
         calls.
-        '''
+        """
         if len(args):
             self._log = args[0]
         else:
             return self._log
 
     def name(self, *args):
-        '''
+        """
         get/set the descriptive name text of this object.
-        '''
+        """
         if len(args):
             self.__name = args[0]
         else:
@@ -661,7 +667,7 @@ def warn(*objs):
 
 def synopsis(ab_shortOnly = False):
     scriptName = os.path.basename(sys.argv[0])
-    shortSynopsis =  '''
+    shortSynopsis =  """
     SYNOPSIS
 
             %s                                          \\
@@ -674,9 +680,9 @@ def synopsis(ab_shortOnly = False):
                             --APIcall <APIcall>
 
 
-    ''' % scriptName
+    """ % scriptName
 
-    description =  '''
+    description =  """
     DESCRIPTION
 
         `%s' simulates a ChRIS machine, and specifically the
@@ -729,7 +735,7 @@ def synopsis(ab_shortOnly = False):
     EXAMPLES
 
 
-    ''' % (scriptName)
+    """ % (scriptName)
     if ab_shortOnly:
         return shortSynopsis
     else:
