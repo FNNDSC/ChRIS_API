@@ -33,6 +33,7 @@ from    string                  import  *
 import  shutil
 import  pickle
 import  json
+import  collections
 
 from    C_stringCore            import  *
 
@@ -41,9 +42,9 @@ import  itertools
 # from    IPython.core.debugger   import Tracer; 
 
 class C_meta:
-        '''
+        """
         A "base" class containing 'meta' data pertinent to a node.
-        '''
+        """
 
         def __init__(self, al_mustInclude          = [],
                            al_mustNotInclude       = []):
@@ -64,45 +65,45 @@ class C_meta:
         ## Getters/setters
 
         def pre(self, *args):
-            '''
+            """
             Get / set the str_pre
-            '''
+            """
             if len(args):
                 self.str_pre = args[0]
             else:
                 return self.str_pre
 
         def mustInclude(self, *args):
-            '''
+            """
             Get / set the [mustInclude].
-            '''
+            """
             if len(args):
                 self.l_mustInclude = args[0]
             else:
                 return l_mustInclude
 
         def mustNotInclude(self, *args):
-            '''
+            """
             Get / set the [mustInclude].
-            '''
+            """
             if len(args):
                 self.l_mustNotInclude = args[0]
             else:
                 return l_mustNotInclude
 
         def canInclude(self, *args):
-            '''
+            """
             Get / set the [mustInclude].
-            '''
+            """
             if len(args):
                 self.l_canInclude = args[0]
             else:
                 return l_canInclude
 
         def depth(self, *args):
-            '''
+            """
             Get/set the depth
-            '''
+            """
             if len(args):
                 self._depth = args[0]
             else:
@@ -206,18 +207,18 @@ class C_snode:
                 return self.b_printMetaData
 
         def depth(self, *args):
-            '''
+            """
             Get/set the depth of this node.
-            '''
+            """
             if len(args):
                 self.meta.depth(args[0])
             else:
                 return self.meta.depth()
 
         def printPre(self, *args):
-            '''
+            """
             get/set the str_pre string.
-            '''
+            """
             if len(args):
                 self.b_printPre = args[0]
             else:
@@ -337,12 +338,12 @@ class C_snodeBranch:
             return self.sCore.strget()
 
         def __init__(self, al_branchNodes):
-            '''
+            """
             Constructor.
 
             If instantiated with a list of nodes, will create/populate
             internal dictionary with appropriate C_snodes.
-            '''
+            """
 
             self.str_obj                = 'C_snodeBranch';  # name of object class
             self.str_name               = 'void';           # name of object variable
@@ -405,7 +406,7 @@ class C_stree:
             else:
                 return self.b_printMetaData
 
-        def __init__(self, al_rootBranch=[]):
+        def __init__(self, **kwargs):
             """
             Creates a tree structure and populates the "root"
             branch.
@@ -414,15 +415,15 @@ class C_stree:
             # Member variables
             #
             #       - Core variables
-            self.str_obj                = 'C_stree';    # name of object class
-            self.str_name               = 'void';       # name of object variable
-            self._id                    = -1;           # id of agent
-            self._iter                  = 0;            # current iteration in an
+            self.str_obj                = 'C_stree'     # name of object class
+            self.str_name               = 'void'        # name of object variable
+            self._id                    = -1            # id of agent
+            self._iter                  = 0             # current iteration in an
                                                         #       arbitrary processing
                                                         #       scheme
-            self._verbosity             = 0;            # debug related value for
+            self._verbosity             = 0             # debug related value for
                                                         #       object
-            self._warnings              = 0;            # show warnings
+            self._warnings              = 0             # show warnings
             self.b_printMetaData        = False
 
             self.l_allPaths             = []            # Each time a new C_snode is
@@ -435,6 +436,15 @@ class C_stree:
                                                         #+ for the lwd() method.
             self.l_fwd                  = []            # A scratch path list variable
                                                         #+ for the fwd() method.
+
+            self.b_initFromDict         = False
+            adict                       = {}
+            al_rootBranch               = []
+            for key,value in kwargs.iteritems():
+                if key == 'rootBranch': al_rootBranch   = value
+                if key == 'dict':
+                    self.b_initFromDict = True
+                    adict               = value
 
             if not len(al_rootBranch):
                 al_rootBranch           = ['/']
@@ -453,6 +463,48 @@ class C_stree:
             self.l_allPaths             = self.l_cwd[:]
             if len(al_rootBranch) and al_rootBranch != ['/']:
                 self.mknode(al_rootBranch)
+            self.cd('/')
+            if self.b_initFromDict:
+                self.initFromDict(adict)
+
+        @staticmethod
+        def flatten(d, parent_key='', sep='/'):
+            items = []
+            for k, v in d.items():
+                new_key = parent_key + sep + k if parent_key else k
+                if isinstance(v, collections.MutableMapping):
+                    items.extend(C_stree.flatten(v, new_key, sep=sep).items())
+                else:
+                    items.append((sep + new_key, v))
+            return dict(items)
+
+        def initFromDict(self, adict, **kwargs):
+            """
+            Initialize self from dictionary.
+            :param adict:
+            :return:
+            """
+            # First, flatten the dictionary into a dictionary of paths/files
+            a_flat  = C_stree.flatten(adict)
+
+            l_dir   = []
+            # Now, build a tree from this structure by generating a list of paths
+            for k, v in a_flat.items():
+                l_dir.append(k.split('/')[1:-1])
+
+            # remove duplicates...
+            l_dir = [list(x) for x in set(tuple(x) for x in l_dir)]
+
+            # build sorted list of paths...
+            l_path  = ['/' + '/'.join(p) for p in l_dir]
+            l_path.sort()
+
+            # build the tree
+            for dir in l_path: self.mkdir(dir)
+
+            # and now add the leaves
+            for file,contents in a_flat.items(): self.touch(file, contents)
+
 
         def __str__(self):
             self.sCore.reset()
@@ -473,24 +525,42 @@ class C_stree:
 
 
         def cwd(self):
-            '''
+            """
             Return a UNIX FS type string of the current working 'directory'.
-            '''
+            """
             l_cwd                       = self.l_cwd[:]
             str_cwd                     = '/'.join(l_cwd)
             if len(str_cwd)>1: str_cwd  = str_cwd[1:]
             return str_cwd
 
-        def pwd(self):
-            '''
+        def pwd(self, **kwargs):
+            """
             Prints the cwd
-            '''
-            return self.cwd()
+
+            Optional kwargs:
+
+                node = <node>
+
+                If specified, return only the directory name at depth <node>.
+
+            """
+            
+            b_node  = False
+            node    = 0
+            for key,val in kwargs.iteritems():
+                if key == 'node':   
+                    b_node  = True
+                    node    = int(val)
+            
+            str_path = self.cwd()
+            if b_node:
+                str_path    = str_path.split('/')[node]
+            return str_path
 
         def ptree(self):
-            '''
+            """
             Return all the paths in the tree.
-            '''
+            """
             return self.l_allPaths
 
         def node_mustNotInclude(self, al_mustNotInclude, ab_reset=False):
@@ -593,13 +663,19 @@ class C_stree:
             self.cdnode(astr_node)
 
         def cat(self, name):
-            '''
+            """
             Returns the contents of the 'name'd element at this level.
 
             If file does not exist, returns a False
 
             TODO: parse possible path spec in name...
-            '''
+            """
+            # First, parse any path specs...
+            path    = '/'.join(name.split('/')[0:-1])
+            if len(path):
+                name    = name.split('/')[-1]
+                ret     = self.cd(path)
+
             if name in self.snode_current.d_data:
                 return self.snode_current.d_data[name]
             else:
@@ -661,12 +737,12 @@ class C_stree:
             return ret
 
         def touch(self, name, data):
-            '''
+            """
             Create a 'file' analog called 'name' and put 'data' to the d_data dictionary
             under key 'name'.
 
             The 'name' can contain a path specifier.
-            '''
+            """
             b_OK        = True
             str_here    = self.cwd()
             # print("here!")
@@ -682,7 +758,7 @@ class C_stree:
             return b_OK
 
         def rm(self, name):
-            '''
+            """
             Remove a data analog called 'name'.
 
             The 'name' can contain a path specifier.
@@ -696,7 +772,7 @@ class C_stree:
 
             This deletes either directories or files.
 
-            '''
+            """
             b_OK        = False
             str_here    = self.cwd()
             l_path = name.split('/')
@@ -713,14 +789,14 @@ class C_stree:
             return b_OK
 
         def append(self, name, data):
-            '''Append 'data' to the current node d_data
+            """Append 'data' to the current node d_data
 
             This method appends 'data' to the current contents in the
             key named 'name'. The append assumes that the operation
             makes sense and that the data types can be appended to
             each other.
 
-            '''
+            """
             b_OK = True
             self.snode_current.d_data[name] = self.snode_current.d_data[name] + data
             return b_OK
@@ -926,9 +1002,9 @@ class C_stree:
             self.treeRecurse(self.treeNode_metaSet)
 
         def treeNode_metaSet(self, astr_path, **kwargs):
-            '''
+            """
             Sets the metaData_print bit on node at <astr_path>.
-            '''
+            """
             self.cdnode(astr_path)
             self.snode_current.metaData_print(self.b_printMetaData)
             return {'status': True}
