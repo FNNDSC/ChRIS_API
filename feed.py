@@ -50,21 +50,21 @@ class Feed(object):
 
 
     def log(self, *args):
-        '''
+        """
         get/set the internal pipeline log message object.
 
         Caller can further manipulate the log object with object-specific
         calls.
-        '''
+        """
         if len(args):
             self._log = args[0]
         else:
             return self._log
 
     def name(self, *args):
-        '''
+        """
         get/set the descriptive name text of this object.
-        '''
+        """
         if len(args):
             self.__name = args[0]
         else:
@@ -299,36 +299,36 @@ class Feed_FS(Feed):
         self.dataElement_create(    root='/data')
 
 class FeedTree(object):
-    '''
+    """
     Implements various operations on a collection (tree) of feed objects -- mostly access and
     search.
-    '''
+    """
 
     def log(self, *args):
-        '''
+        """
         get/set the internal pipeline log message object.
 
         Caller can further manipulate the log object with object-specific
         calls.
-        '''
+        """
         if len(args):
             self._log = args[0]
         else:
             return self._log
 
     def name(self, *args):
-        '''
+        """
         get/set the descriptive name text of this object.
-        '''
+        """
         if len(args):
             self.__name = args[0]
         else:
             return self.__name
 
     def __init__(self, **kwargs):
-        '''Construct a tree -- typically there is one tree per user
+        """Construct a tree -- typically there is one tree per user
 
-        '''
+        """
         self._feedTree          = C_snode.C_stree()
         self.feed               = C_snode.C_stree()
         self.plugin             = plugin.Plugin_homePage()
@@ -484,7 +484,7 @@ class FeedTree(object):
         return d_ret
 
     def feed_singleFeed_fromTreeGet(self, **kwargs):
-        '''
+        """
         Graft a single target feed from the feed tree to internal storage.
 
         This basically just "links" the feed to be processed to a convenience
@@ -492,7 +492,7 @@ class FeedTree(object):
 
         :return:
         d_ret:      dictionary      various values
-        '''
+        """
 
         # Initialize the d_ret return dictionary
         d_ret           = {
@@ -540,12 +540,12 @@ class FeedTree(object):
         return d_ret
 
     def feed_singleFeed_process(self, **kwargs):
-        '''
+        """
         Assuming a feed has been grafted from the tree space, process this
         feed's components.
 
         :return:
-        '''
+        """
 
         d_ret               = {
             'feed':         None,
@@ -598,12 +598,14 @@ class FeedTree(object):
 
     # This method is the only point of contact between the simulated machine and the internal
     # data space and the external REST call.
+    #
+    # Processing of specific REST-like verbs are processed by appropriately named "sub" functions.
     def feed_singleFeed_VERBprocess(self, **kwargs):
-        '''
+        """
         Process specific cases of REST VERBS
 
         :return:
-        '''
+        """
 
         d_ret   = {
             'debug':    'feed_singleFeed_VERBprocess(): '
@@ -631,44 +633,114 @@ class FeedTree(object):
                         str_nodeType = key
                 str_nodeName    = d_payload['POST'][str_nodeType].keys()[0]
                 str_contents    = d_payload['POST'][str_nodeType][str_nodeName]
+                d_ret['nodeName']   = str_nodeName
+                d_ret['contents']   = str_contents
 
                 if action == 'post' and str_nodeType == 'file':
-                    self.debug('Pushing text contents into file %s\n' % str_nodeName)
-                    s.touch(str_nodeName,  str_contents)
+                    self.feed_singleFeed_POSTprocess(   d_ret = d_ret)
 
                 if action == 'del':
-                    self.debug('Deleting object %s\n' % str_nodeName)
-                    self.debug('path in stree: %s\n' % s.pwd())
-                    s.rm(str_nodeName)
+                    self.feed_singleFeed_DELprocess(    d_ret = d_ret)
 
                 if action == 'clear':
-                    self.debug('clearing object %s\n' % str_nodeName)
-                    self.debug('path in stree: %s\n' % s.pwd())
-                    s.touch(str_nodeName, '')
+                    self.feed_singleFeed_CLEARprocess(  d_ret = d_ret)
 
                 if action == 'run':
-                    self.debug('Regenerating node %s\n' % str_nodeName)
-                    # Generate a new feed tree -- this following call generates
-                    # everything for a new feed! notes, title, comments, etc.
-                    # It's probably overkill.
-                    str_timeStamp   = str(datetime.datetime.now())
-                    if str_nodeName != 'timestamp':
-                        s_regen         = Feed_FS()
-                        sr              = s_regen._stree
-                        if s.pwd() == '/title'  or s.pwd == '/title/body':
-                            self.debug('Regenerating title...\n')
-                            sr.cd('/title')
-                            s.cd('/title')
-                            s.rm('body')
-                            s.touch('body', sr.cat('body'))
-                        if s.pwd() == '/note'   or s.pwd == '/note/body':
-                            self.debug('Regenerating note...\n')
-                            sr.cd('/note')
-                            s.cd('/note')
-                            s.rm('body')
-                            s.touch('body', sr.cat('body'))
-                    self.debug('setting timeStamp to %s\n' % str_timeStamp)
-                    s.touch('timestamp', str_timeStamp)
+                    self.feed_singleFeed_RUNprocess(    d_ret = d_ret)
+
+    def feed_singleFeed_POSTprocess(self, **kwargs):
+        """
+        Process the "run" command from client
+
+        :return:
+        """
+        d_ret   = {
+            'debug':    'feed_singleFeed_POSTprocess(): '
+        }
+
+        for key,val in kwargs.iteritems():
+            if key == 'd_ret':          d_ret               = val
+        s               = d_ret['feed']
+        self.debug('Pushing text contents into file %s\n' % d_ret['nodeName'])
+        s.touch(d_ret['nodeName'],  d_ret['contents'])
+
+    def feed_singleFeed_DELprocess(self, **kwargs):
+        """
+        Process the "run" command from client
+
+        :return:
+        """
+        d_ret   = {
+            'debug':    'feed_singleFeed_DELprocess(): '
+        }
+        for key,val in kwargs.iteritems():
+            if key == 'd_ret':          d_ret               = val
+        s               = d_ret['feed']
+        self.debug('Deleting object %s\n' % d_ret['nodeName'])
+        self.debug('path in stree: %s\n' % s.pwd())
+        s.rm(d_ret['nodeName'])
+
+
+    def feed_singleFeed_CLEARprocess(self, **kwargs):
+        """
+        Process the "run" command from client
+
+        :return:
+        """
+        d_ret   = {
+            'debug':    'feed_singleFeed_CLEARprocess(): '
+        }
+        for key,val in kwargs.iteritems():
+            if key == 'd_ret':          d_ret               = val
+        s               = d_ret['feed']
+        self.debug('clearing object %s\n' % d_ret['nodeName'])
+        self.debug('path in stree: %s\n' % s.pwd())
+        s.touch(d_ret['nodeName'], '')
+
+
+    def feed_singleFeed_RUNprocess(self, **kwargs):
+        """
+        Process the "run" command from client
+
+        :return:
+        """
+        d_ret   = {
+            'debug':    'feed_singleFeed_RUNprocess(): '
+        }
+        for key,val in kwargs.iteritems():
+            if key == 'd_ret':          d_ret               = val
+        s               = d_ret['feed']
+        self.debug('Regenerating node %s\n' % d_ret['nodeName'])
+        # Generate a new feed tree -- this following call generates
+        # everything for a new feed! notes, title, comments, etc.
+        # It's probably overkill.
+        str_timeStamp   = str(datetime.datetime.now())
+        if d_ret['nodeName'] != 'timestamp':
+            s_regen         = Feed_FS()
+            sr              = s_regen._stree
+            str_path        = s.pwd()
+            self.debug('Path in stree = %s\n' % str_path)
+            if s.pwd(node=1) == 'title':
+                self.debug('Regenerating title...\n')
+                sr.cd('/title')
+                s.cd('/title')
+                s.rm('body')
+                s.touch('body', sr.cat('body'))
+            if s.pwd(node=1) == 'note':
+                self.debug('Regenerating note...\n')
+                sr.cd('/note')
+                s.cd('/note')
+                s.rm('body')
+                s.touch('body', sr.cat('body'))
+            if s.pwd(node=1) == 'comment':
+                self.debug('Regenerating comment %s at location %s...\n' % (d_ret['nodeName'], str_path))
+                sr.cd(str_path)
+                s.cd(str_path)
+                s.rm(d_ret['nodeName'])
+                s.touch(d_ret['nodeName'], sr.cat(d_ret['nodeName']))
+        self.debug('setting timeStamp to %s\n' % str_timeStamp)
+        s.touch('timestamp', str_timeStamp)
+
 
     def feed_process(self, **kwargs):
         """
@@ -739,17 +811,17 @@ class FeedTree(object):
 
 
 class FeedTree_chrisUser(FeedTree):
-    '''
+    """
     A Feed Tree for a hypothetical user on the ChRIS system. Each user will
     have identical trees under this scenario.
-    '''
+    """
 
     def __init__(self, **kwargs):
-        '''
+        """
         Build the tree.
 
         :return:
-        '''
+        """
         FeedTree.__init__(self, **kwargs)
         F       = self._feedTree
         l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
