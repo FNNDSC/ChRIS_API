@@ -24,24 +24,74 @@ various functionalities to the system.
 
 from __future__ import print_function
 
-import crun
-import sys
-import os
-import argparse
-import json
+import  crun
+import  sys
+import  os
+import  argparse
+import  json
+import  sys
+import  C_snode
 
-import message
+import  message
 
 class Plugin(object):
     """The base Plugin class
     """
 
+
+    def decode(self, x):
+        dic = {
+            '\\' : b'\xe2\x95\x9a',
+            '-'  : b'\xe2\x95\x90',
+            '/'  : b'\xe2\x95\x9d',
+            '|'  : b'\xe2\x95\x91',
+            '+'  : b'\xe2\x95\x94',
+            '%'  : b'\xe2\x95\x97',
+        }
+        return (''.join(dic.get(i, i.encode('utf-8')).decode('utf-8') for i in x))
+
+    def box_print(self):
+        print(self.decode('+------------------------------------%'))
+        print(self.decode('|           Plugin control           |'))
+        print(self.decode('\\------------------------------------/'))
+
+    def log(self, *args):
+        '''
+        get/set the internal pipeline log message object.
+
+        Caller can further manipulate the log object with object-specific
+        calls.
+        '''
+        if len(args):
+            self._log = args[0]
+        else:
+            return self._log
+
+    def name(self, *args):
+        '''
+        get/set the descriptive name text of this object.
+        '''
+        if len(args):
+            self.__name = args[0]
+        else:
+            return self.__name
+
+    def blank_string(self, length):
+        str_t   = u''
+        for i in range(0, length):
+            str_t += ' '
+        return str_t
+
     def debug_obj(self, astr_methodName):
         """Print some debugging info..."""
-        self.debug('... %s ...\n' % astr_methodName);
+        self.debug('%s -------+\n'  % astr_methodName);
+        self.debug('%s        |\n'  % self.blank_string(len(astr_methodName)))
+        self.debug('%s        V\n'  % self.blank_string(len(astr_methodName)))
         self.debug('this:               %s\n' % str(self))
         self.debug('plugin:             %s\n' % str(self.plugin))
-        self.debug('......\n');
+        self.debug('%s        |\n'  % self.blank_string(len(astr_methodName)))
+        self.debug('%s        |\n'  % self.blank_string(len(astr_methodName)))
+        self.debug('%s        +-----------------> %s ---> \n' % (self.blank_string(len(astr_methodName)),astr_methodName));
 
     def getList(self, *args, **kwargs):
         self.debug_obj('plugin.getList()');
@@ -50,23 +100,201 @@ class Plugin(object):
     def set(self, astr_pluginName):
         self.pluginName = astr_pluginName
         self.plugin     = eval('%s()' % self.pluginName)
-        self.debug_obj('plugin.set()\n');
+        self.debug_obj('plugin.set()');
         return {'success': True, 'pluginName': astr_pluginName, 'plugin': str(self.plugin), 'container': str(self)}
 
     def __init__(self):
+
+        self._stree             = C_snode.C_stree()
+
         self._l_plugin          = []
         self.pluginName         = ""
         self.plugin             = None
         self.debug              = message.Message(logTo = "./debug.log")
         self.debug._b_syslog    = True
+        self._log               = message.Message()
+        self._log._b_syslog     = True
+        self.__name             = "Plugin"
 
     def run(self, *args, **kwargs):
         d_info = {'container': str(self), 'plugin': str(self.plugin)}
-        self.debug_obj('plugin.run()\n');
+        self.debug_obj('plugin.run()');
         return {'info': d_info, 'run': self.plugin()}
 
     def status(self, *args, **kwargs):
         return self.plugin.status()
+
+class Plugin_FS(Plugin):
+    '''
+    Build a "FileSystem" analog container for the Plugin data structure.
+
+    Based on some structured (JSON?) representation of plugins, this
+    class builds a "FS" or "stree" container for the plugins.
+
+    These plugins all create a new Feed at the root level.
+
+    '''
+    _dict_plugin = {
+        'pacs_pull' : {
+            'name':         {
+                'body': 'pacs_pull',
+                'REST': {
+                    'PUSH': {
+                        'body':         'file',
+                        'timestamp':    'file'
+                    }
+                }
+            },
+            'args': {
+                'query':    {
+                    'MRN':          '<someMRN>',
+                    'Patient Name': '<someName>',
+                    'state':        'expanded',
+                    'REST': {
+                        'PUSH': {
+                            'MRN':              'file',
+                            'PatientName':      'file',
+                            'state':            'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                },
+                'host': {
+                    'PACShostIP':   '<someIP>',
+                    'PACShostPort': '<somePort>',
+                    'PACS_FQN':     ('0.0.0.0', '104'),
+                    'state':        'collapsed',
+                    'REST': {
+                        'PUSH': {
+                            'PACShostIP':       'file',
+                            'PACShostPort':     'file',
+                            'PACS_FQN':         'file',
+                            'state':            'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                }
+            },
+            'icons': {
+                'thumbnail':        'thn.png',
+                'full':             'full.png'
+            },
+            'executable':           'pacs_pull.bash',
+            'note': {
+                'body':             'This plugin queries a PACS for image data.',
+                'REST': {
+                    'PUSH': {
+                        'body':         'file',
+                        'timestamp':    'file'
+                    }
+                }
+            }
+        },
+        'file_upload' : {
+            'name':         'file_upload',
+            'args':         {
+                'directory':    '<someDirectory>',
+                'ls_args':      '<argsForls>',
+                'REST': {
+                    'PUSH': {
+                        'directory':        'file',
+                        'ls_args':          'file',
+                        'timestamp':        'file'
+                    }
+                }
+            },
+            'executable':   '<someAJAX>',
+            'icons': {
+                'thumbnail':    'thn.png',
+                'full':         'full.png'
+            },
+            'note': {
+                'body':             'This plugin uploads from client to server.',
+                'REST': {
+                    'PUSH': {
+                        'body':         'file',
+                        'timestamp':    'file'
+                    }
+                }
+            }
+        },
+        'file_browser' : {
+            'name':         'file_browser',
+            'args':         {
+                'directory':    '<someDirectory>',
+                'ls_args':      ['-a', '-l', '-1d'],
+                'arg3':         'val3',
+                'REST': {
+                    'PUSH': {
+                        'directory':        'file',
+                        'ls_args':          'file',
+                        'arg3':             'file',
+                        'timestamp':        'file'
+                    }
+                }
+            },
+            'executable':   'ls',
+            'icons': {
+                'thumbnail':    'thn.png',
+                'full':         'full.png'
+            },
+            'note': {
+                'body':             'Generate a Feed anchored on a passed server directory.',
+                'REST': {
+                    'PUSH': {
+                        'body':         'file',
+                        'timestamp':    'file'
+                    }
+                }
+            }
+        }
+    }
+
+    def __init__(self, **kwargs):
+        """Constructor.
+
+        This essentially calls up the chain to the base constructor
+
+        Args:
+            astr_FeedRepo (string): A location on the file system that houses
+                all the feeds.
+
+        """
+        b_internalsCreate   = True
+        Plugin.__init__(self, **kwargs)
+        for key, val in kwargs.iteritems():
+            if key == 'internalsCreate':    b_internalsCreate   = val
+
+        if b_internalsCreate: self.create(**kwargs)
+
+    def create(self, **kwargs):
+        """Create a new plugin container.
+
+        A plugin "create" call.
+
+        Creating a Plugin entails building the directories and one-to-one
+        objects:
+            - name
+            - args
+            - executable
+            - note (aka help, freeform text, etc)
+
+
+        Args:
+          **kwargs (user=): The user creating the plugin.
+          **kwargs (str_ObjectID=): The string object reference used to access
+            the Feed
+
+        Returns:
+          True if successful, False otherwise.
+
+        """
+
+        s = self._stree
+        s.cd('/')
+        s.initFromDict(Plugin_FS._dict_plugin)
+        s.tree_metaData_print(False)
+        print(s)
 
 class Plugin_homePage(Plugin):
     """Plugins specific to the homePage view
@@ -95,9 +323,27 @@ class file_browser(object):
     def status(self, *args, **kwargs):
         return {'status': "running"}
 
+class pacs_pull(object):
+    def __init__(self):
+        self._str_name              = 'pacs_pull'
+        self.str_MRN                = '3432545'
+        self.str_localDir           = '/home/chris/data/%s' % self.str_MRN
+
+    def __call__(self, *args, **kwargs):
+        return {'directory': self.str_localDir}
+
+    def status(self, *args, **kwargs):
+        return {'status': "running"}
+
 
 if __name__ == "__main__":
+
+    pt  = Plugin_FS()
+
     p   = Plugin_homePage()
+    p.debug._b_syslog   = False
     print(p.getList())
     p.set('file_browser')
+    print(p.run())
+    p.set('pacs_pull')
     print(p.run())
