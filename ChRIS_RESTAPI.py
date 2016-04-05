@@ -46,7 +46,7 @@ ChRIS_client).
 
 """
 
-from    webob           import Response
+#from    webob           import Response
 from    urlparse        import urlparse, parse_qs
 
 import  message
@@ -57,12 +57,12 @@ import  json
 
 import  inspect
 
-import  crun
-import  SocketServer
-import  argparse
-import  os
-import  sys
-import  datetime
+#import  crun
+#import  SocketServer
+#import  argparse
+#import  os
+#import  sys
+#import  datetime
 
 class ChRIS_RESTAPI(object):
     """This class processes GET verbs. Effectively it maps from the REST API
@@ -313,8 +313,9 @@ def JSONdump_all(al_history):
 
 if __name__ == "__main__":
 
-    chris               = ChRIS_SM.ChRIS_SM_REST()   # This also instantiates a chris.API object
-    chris.API.auth      = ChRIS_SM.ChRIS_authenticate(chris, 'auth')
+    chris               = ChRIS_SM.ChRIS_SM_REST(DB='/tmp/ChRIS_DB')   # This also instantiates a chris.API object
+    chris.API.auth      = ChRIS_SM.ChRIS_authenticate(chris = chris,
+                                                      name  = 'auth')
 
     l_callHistory       = []
 
@@ -322,12 +323,12 @@ if __name__ == "__main__":
         chris.API(APIcall   = "/v1/login?auth=user=chris,passwd=chris1234")
     )
 
-    l_callHistory.append(
-        chris.API(APIcall   = "/v1/Feeds?auth=user=chris,hash=123456")
-    )
+    # l_callHistory.append(
+    #     chris.API(APIcall   = "/v1/Feeds?auth=user=chris,hash=123456&DBpath=/tmp/ChRIS_DB")
+    # )
 
     l_callHistory.append(
-        chris.API(APIcall   = "/v1/Feeds/NAME_Feed-1?auth=user=chris,hash=123456")
+        chris.API(APIcall   = "/v1/Feeds/NAME_Feed-1/note?auth=user=chris,hash=123456&DBpath=/tmp/ChRIS_DB")
     )
 
     l_callHistory.append(
