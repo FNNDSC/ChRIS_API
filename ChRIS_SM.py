@@ -45,6 +45,7 @@ import  error
 import  C_snode
 import  message
 import  feed
+import  user
 import  ChRIS_RPCAPI
 import  ChRIS_RESTAPI
 import  plugin
@@ -55,15 +56,35 @@ class ChRIS_SMUserDB(object):
     """
 
     _dictErr = {
-        'no_userInTree'   : {
+        'no_userInTree' : {
             'action'        : 'attempting to graft the userfeed to main tree, ',
             'error'         : 'it seems the user is in the main tree.',
             'exitCode'      : 11},
-        'no_validDBPath'    : {
+        'no_feedTree2Main ' : {
+            'action'        : 'attempting to graft the feedTree to main tree, ',
+            'error'         : 'the feedTree was not found.',
+            'exitCode'      : 11},
+        'no_pluginTree2Main': {
+            'action'        : 'attempting to graft the pluginTree to main tree, ',
+            'error'         '': 'the pluginTree was not found.',
+            'exitCode'      : 11},
+        'no_main2feedTree'  : {
+            'action'        : 'attempting to graft the main feed to the feedTree, ',
+            'error'         : 'the feedTree was not found.',
+            'exitCode'      : 11},
+        'no_main2pluginTree': {
+            'action'        : 'attempting to graft the main plugin to the pluginTree, ',
+            'error'         : 'the pluginTree was not found.',
+            'exitCode'      : 11},
+        'no_treeRead'   : {
+            'action'        : 'attempting to graft the persistent userTree to user, ',
+            'error'         : 'a graft error was encountered.',
+            'exitCode'      : 11},
+        'no_validDBPath': {
             'action'        : 'attempting to read the ChRIS_DB, ',
             'error'         : 'the DB path seems invalid.',
             'exitCode'      : 12},
-        'no_DBPath'         : {
+        'no_DBPath'     : {
             'action'        : 'attempting to read the ChRIS_DB, ',
             'error'         : 'no DB path seems to have been specified.',
             'exitCode'      : 13}
@@ -109,14 +130,13 @@ class ChRIS_SMUserDB(object):
         s               = self.DB
         if self.b_createNewDB:
             s.cd('/')
+            s.cd('../')
             s.mkcd('users')
             s.mkcd('chris')
             s.mkcd('login')
             s.touch("userName",     "chris")
             s.touch("fullName",     "ChRIS User")
             s.touch("passwd",       "chris1234")
-            s.cd('../')
-            s.mkdir('plugins')
             # The 'feeds' and 'plugins' directories are attached when the user is authenticated.
         else:
             if not len(self.str_DBpath):
@@ -164,8 +184,8 @@ class ChRIS_SMUserDB(object):
         d_currentSessionInfo['APIcanCall']      = b_OK
         self.login_writePersistent( sessionInfo = d_currentSessionInfo,
                                     **kwargs)
-        self.user_attachFeedTree(user = astr_user)
-        self.chris.homePage     = self.userFeeds
+        self.user_attachUserTree(user = astr_user)
+        self.chris.homePage     = self.userTree
         return {'status':   b_OK,
                 'code':     0,
                 'message':  str_message}
@@ -202,45 +222,90 @@ class ChRIS_SMUserDB(object):
 
         json.dump(dict_sessionInfo, open("%s-login.json" % str_user, "w"))
 
-    def user_attachFeedTree(self, **kwargs):
+    def user_attachUserTree(self, **kwargs):
         """
         Attaches the feed tree of the given user to a convenience member variable,
-        self.userFeeds.
+        self.userTree.
 
         If the DB is dynamic or newly created, then a baseline user feed is generated;
-        otherwise, the user feed from a disk DB is "grafted" to self.userFeeds.
+        otherwise, the user feed from a disk DB is "grafted" to self.userTree.
 
         :param kwargs:
         :return:
         """
 
+        astr_user   = '<user>'
         """Attach the feed tree for this user"""
         for key, val in kwargs.iteritems():
             if key == 'user':   astr_user   = val.translate(None, '\'\"')
 
         # Get the user's feed tree structure -- we only need to
         # do this *ONCE* per session/replay.
-        if not self.userFeeds:
+        if not self.userTree:
             if self.b_createNewDB:
-                feedTree                = feed.FeedTree_chrisUser()
+                userTree                = user.UserTree_chrisUser(user = astr_user)
+                u                       = userTree._userTree
                 # and attach it to the stree of this object
                 if self.DB.cd('/users/%s' % astr_user)['status']:
-                    # self.DB.touch('tree', feedTree)
-                    self.DB.graft(feedTree._feedTree, '/feeds')
-                    self.userFeeds          = feedTree
-                    # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._feedTree))
+                    if not self.DB.graft(u, '/chris/feeds'):    error.fatal(self, 'no_feedTree2Main')
+                    if not self.DB.graft(u, '/chris/plugins'):  error.fatal(self, 'no_pluginTree2Main')
+                    self.userTree       = userTree
                 else:
                     error.fatal(self, 'no_userInTree')
             else:
                 # Read from existing DB
                 # The DB has already been created (and initial access tested with DB_build()...
-                # we just need to add this user's feed to the base structure userFeed hook...
-                ft                          = C_snode.C_stree()
-                self.userFeeds              = feed.FeedTree()
-                self.userFeeds._feedTree.cd('/')
-                self.userFeeds._feedTree.graft(self.DB, '/users/%s/feeds' % astr_user)
-                # self.debug('\nUser Feed Tree:\n%s' % self.userFeeds._feedTree)
-                # self.debug('\nWhole DB:\n%s' % self.DB)
+                # we just need to add this user's feed and plugin tree to the base structure userFeed hook...
+                self.userTree           = user.UserTree(dummyInternalsBuild = False)
+                u                       = self.userTree._userTree
+                if u.cd('/')['status']:
+                    if not u.graft(self.DB, '/users/%s' % astr_user): error_fatal(self, 'no_treeRead')
+                if self.userTree.FT._feedTree.cd('/')['status']:
+                    if not self.userTree.FT._feedTree.graft(self.DB, '/users/%s/feeds' % astr_user):
+                        error.fatal(self, 'no_main2feedTree')
+                if self.userTree.PT._pluginTree.cd('/')['status']:
+                    if not self.userTree.PT._pluginTree.graft(self.DB, '/users/%s/plugins' % astr_user):
+                        error.fatal(self, 'no_main2pluginTree')
+
+    # def user_attachUserTree(self, **kwargs):
+    #     """
+    #     Attaches the feed tree of the given user to a convenience member variable,
+    #     self.userTree.
+    #
+    #     If the DB is dynamic or newly created, then a baseline user feed is generated;
+    #     otherwise, the user feed from a disk DB is "grafted" to self.userTree.
+    #
+    #     :param kwargs:
+    #     :return:
+    #     """
+    #
+    #     """Attach the feed tree for this user"""
+    #     for key, val in kwargs.iteritems():
+    #         if key == 'user':   astr_user   = val.translate(None, '\'\"')
+    #
+    #     # Get the user's feed tree structure -- we only need to
+    #     # do this *ONCE* per session/replay.
+    #     if not self.userTree:
+    #         if self.b_createNewDB:
+    #             feedTree                = feed.FeedTree_chrisUser()
+    #             # and attach it to the stree of this object
+    #             if self.DB.cd('/users/%s' % astr_user)['status']:
+    #                 # self.DB.touch('tree', feedTree)
+    #                 self.DB.graft(feedTree._feedTree, '/feeds')
+    #                 self.userTree          = feedTree
+    #                 # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._userTree))
+    #             else:
+    #                 error.fatal(self, 'no_userInTree')
+    #         else:
+    #             # Read from existing DB
+    #             # The DB has already been created (and initial access tested with DB_build()...
+    #             # we just need to add this user's feed to the base structure userFeed hook...
+    #             ft                         = C_snode.C_stree()
+    #             self.userTree              = feed.FeedTree()
+    #             self.userTree._feedTree.cd('/')
+    #             self.userTree._feedTree.graft(self.DB, '/users/%s/feeds' % astr_user)
+    #             # self.debug('\nUser Feed Tree:\n%s' % self.userTree._userTree)
+    #             # self.debug('\nWhole DB:\n%s' % self.DB)
 
     def user_logout(self, **kwargs):
         """
@@ -349,7 +414,7 @@ class ChRIS_SMUserDB(object):
         self.b_ignorePersistentDB       = False
         self.b_readDB                   = False
         self.DB                         = C_snode.C_stree()
-        self.userFeeds                  = None
+        self.userTree                   = None
 
         for key,value in kwargs.iteritems():
             if key == "chris":              self.chris                  = value
@@ -474,7 +539,7 @@ class ChRIS_SM(object):
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = val
             if key == 'createNewDB':        self.b_createNewDB          = val
 
-        self._feedTree                  = C_snode.C_stree()
+        self._userTree                  = C_snode.C_stree()
         self._SMCore                    = ChRIS_SMCore(
                                             chris               = self,
                                             DB                  = self.str_DBpath,
@@ -490,19 +555,20 @@ class ChRIS_SM(object):
         # Convenience members
         self.DB                         = self._SMCore._userDB
 
-        # The "homePage" is essentially the user's feedTree object, created
+        # The "homePage" is essentially the user's userTree object, created
         # in the underlying DB module.
         self.homePage                   = None
 
-    @property
-    def feedTree(self):
-        """STree Getter"""
-        return self._feedTree
-
-    @feedTree.setter
-    def feedTree(self, value):
-        """STree Getter"""
-        self._feedTree = value
+    # Never used?
+    # @property
+    # def feedTree(self):
+    #     """STree Getter"""
+    #     return self._userTree
+    #
+    # @feedTree.setter
+    # def feedTree(self, value):
+    #     """STree Getter"""
+    #     self._userTree = value
 
     def login(self, **kwargs):
         loginStatus     = self._SMCore.login(**kwargs)
@@ -512,12 +578,13 @@ class ChRIS_SM(object):
         logoutStatus     = self._SMCore.logout(**kwargs)
         return(logoutStatus)
 
-    def feed_nextID(self):
-        """Find the next ID in the Feed database
-
-        Returns:
-            nextID (string): The next ID to use for a Feed.
-        """
+    # Remove in feedTree <--> userTree changeover
+    # def feed_nextID(self):
+    #     """Find the next ID in the Feed database
+    #
+    #     Returns:
+    #         nextID (string): The next ID to use for a Feed.
+    #     """
 
 class ChRIS_SM_RPC(ChRIS_SM):
     """ The ChRIS_SM_RPC subclass implements a ChRIS_SM using an RPC type
