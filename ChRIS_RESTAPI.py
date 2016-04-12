@@ -245,7 +245,7 @@ class ChRIS_RESTAPI(object):
             self.parseLogout()
             return True
 
-        # Process a Feed or internals of a Feed...
+        # Process a Feed/Plugin or internals of a Feed/Plugin...
         if len(al_path):
             str_path            = ''
             str_searchType      = 'NAME'
@@ -255,20 +255,21 @@ class ChRIS_RESTAPI(object):
                 self.debug('al_path = %s\n' % al_path)
                 str_path        = '/' + '/'.join(al_path[2:])
                 self.debug('str_path = %s\n' % str_path)
-                str_feedTarget  = al_path[1]        # NAME_Feed-1 or ID_0001
+                str_feedTarget  = al_path[1]        # e.g. NAME_Feed-1 or ID_0001
                 l_targetType    = str_feedTarget.split('_')
                 str_searchType  = l_targetType[0].lower()
                 if len(l_targetType) >=2:
                     str_searchTarget = l_targetType[1]
 
             self.d_call     = self.auth(
-                lambda: self.chris.homePage.feed_process(
+                lambda: self.chris.homePage.REST_process(
                     VERB            = self.str_VERB,
+                    ROOT            = al_path[0],
                     payloadFile     = self.str_payloadFile,
                     searchType      = str_searchType,
                     searchTarget    = str_searchTarget,
                     returnAsDict    = True,
-                    pathInFeed      = str_path,
+                    pathInBranch    = str_path,
                     schema          = str_schema
                 ),
                 user            = self.user,
@@ -276,7 +277,6 @@ class ChRIS_RESTAPI(object):
             )
 
         return True
-
 
     def formatReturnJSON(self):
         """
