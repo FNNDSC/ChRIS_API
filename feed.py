@@ -338,7 +338,7 @@ class FeedTree(object):
         self._log._b_syslog     = True
         self.__name             = "FeedTree"
 
-    def feed_existObjectName(self, astr_feedObjectName):
+    def branch_existObjectName(self, astr_feedObjectName):
         """Check if a feed exists.
 
         Simply checks if a given feed with passed feedObjectName exists. The
@@ -360,7 +360,7 @@ class FeedTree(object):
         else:
             return False
 
-    def feed_existFeedID(self, astr_feedID):
+    def branch_existFeedID(self, astr_feedID):
         """Check if a feed exists.
 
         Simply checks if a given feed with passed ID exists. This method needs
@@ -382,7 +382,7 @@ class FeedTree(object):
                 return True
         return False
 
-    def feed_GETURI(self, **kwargs):
+    def branch_GETURI(self, **kwargs):
         """
         The list of GET URIs at the current processing scope.
         :param kwargs:
@@ -442,7 +442,7 @@ class FeedTree(object):
             'URL_POST': []
         }
 
-    def feed_feedList_fromTreeGet(self, **kwargs):
+    def branch_branchList_fromTreeGet(self, **kwargs):
         """
         Process the main feedTree (i.e. the tree that has all the Feeds.
         :param kwargs: schema='name'|'id' -- how to return the list of Feeds.
@@ -450,7 +450,7 @@ class FeedTree(object):
         """
         str_searchType      = 'name'
         d_ret               = {
-            'debug':        'feed_feedList_fromTreeGet(): ',
+            'debug':        'branch_feedList_fromTreeGet(): ',
             'status':       False,
             'payload':      {},
             'URL_get':      []
@@ -460,7 +460,7 @@ class FeedTree(object):
             if key == 'searchType':     str_searchType      = val
             if key == 'd_ret':          d_ret               = val
 
-        d_ret['debug']  = 'feed_feedList_fromTreeGet(): '
+        d_ret['debug']  = 'branch_feedList_fromTreeGet(): '
         l_URI   = []
         l_keys  = []
 
@@ -483,7 +483,7 @@ class FeedTree(object):
 
         return d_ret
 
-    def feed_singleFeed_fromTreeGet(self, **kwargs):
+    def branch_singleBranch_fromTreeGet(self, **kwargs):
         """
         Graft a single target feed from the feed tree to internal storage.
 
@@ -508,7 +508,7 @@ class FeedTree(object):
             if key == 'schema':         str_schema          = val
             if key == 'd_ret':          d_ret               = val
 
-        d_ret['debug']  = 'feed_fromFeedTree_get():'
+        d_ret['debug']  = 'branch_fromFeedTree_get():'
         F               = self._feedTree
         F.cd('/feeds')
 
@@ -539,7 +539,7 @@ class FeedTree(object):
                         break
         return d_ret
 
-    def feed_singleFeed_process(self, **kwargs):
+    def branch_singleBranch_process(self, **kwargs):
         """
         Assuming a feed has been grafted from the tree space, process this
         feed's components.
@@ -549,7 +549,7 @@ class FeedTree(object):
 
         d_ret               = {
             'feed':         None,
-            'debug':        'feed_singleFeed_process(): ',
+            'debug':        'branch_singleBranch_process(): ',
             'path':         '',
             'status':       False,
             'payload':      {},
@@ -558,34 +558,34 @@ class FeedTree(object):
 
         for key,val in kwargs.iteritems():
             if key == 'VERB':           str_VERB            = val
-            if key == 'pathInFeed':     str_pathInFeed      = val
+            if key == 'pathInBranch':     str_pathInBranch      = val
             if key == 'd_ret':          d_ret               = val
 
         d_ret['b_returnTree']   = True
-        d_ret['debug']         += 'str_pathInFeed = %s ' % str_pathInFeed
+        d_ret['debug']         += 'str_pathInBranch = %s ' % str_pathInBranch
         s                       = d_ret['feed']
-        d_cd                    = s.cd(str_pathInFeed)
+        d_cd                    = s.cd(str_pathInBranch)
         if d_cd['status']:
             # We are retrieving a directory
             d_ret['status']     = d_cd['status']
-            d_ret['pathInFeed'] = d_cd['path']
+            d_ret['pathInBranch'] = d_cd['path']
             subTree             = C_snode.C_stree()
             if subTree.cd('/')['status']:
-                subTree.graft(s, str_pathInFeed)
+                subTree.graft(s, str_pathInBranch)
                 d_ret['feed']   = subTree
         else:
             d_ret['b_returnTree']   = False
             # Check if we are in fact processing a "file"
-            l_p                     = str_pathInFeed.split('/')
+            l_p                     = str_pathInBranch.split('/')
             str_dirUp               = '/'.join(l_p[0:-1])
             d_cd                    = s.cd(str_dirUp)
             if d_cd['status']:
                 d_ret['debug']     += '../ = %s, file = %s' % (str_dirUp, l_p[-1])
                 d_ret['status']     = d_cd['status']
-                d_ret['pathInFeed'] = d_cd['path']
+                d_ret['pathInBranch'] = d_cd['path']
                 str_fileName        = l_p[-1]
                 if str_VERB != "GET":
-                    self.feed_singleFeed_VERBprocess(**kwargs)
+                    self.branch_singleBranch_VERBprocess(**kwargs)
                     self.debug('%s\n' % l_p)
                 contents            = s.cat(l_p[-1])
                 if not contents:
@@ -600,7 +600,7 @@ class FeedTree(object):
     # data space and the external REST call.
     #
     # Processing of specific REST-like verbs are processed by appropriately named "sub" functions.
-    def feed_singleFeed_VERBprocess(self, **kwargs):
+    def branch_singleBranch_VERBprocess(self, **kwargs):
         """
         Process specific cases of REST VERBS
 
@@ -608,7 +608,7 @@ class FeedTree(object):
         """
 
         d_ret   = {
-            'debug':    'feed_singleFeed_VERBprocess(): '
+            'debug':    'branch_singleBranch_VERBprocess(): '
         }
 
         for key,val in kwargs.iteritems():
@@ -619,7 +619,7 @@ class FeedTree(object):
         d_ret['refreshREST']    = True
 
         if d_ret['VERB'] == 'POST':
-            self.debug('In feed_singleFeed_VERBprocess...\n')
+            self.debug('In branch_singleBranch_VERBprocess...\n')
             with open(d_ret['payloadFile']) as jf:
                 d_payload   = json.load(jf)
                 self.debug('Payload: %s\n' % d_payload)
@@ -637,25 +637,25 @@ class FeedTree(object):
                 d_ret['contents']   = str_contents
 
                 if action == 'post' and str_nodeType == 'file':
-                    self.feed_singleFeed_POSTprocess(   d_ret = d_ret)
+                    self.branch_singleBranch_POSTprocess(   d_ret = d_ret)
 
                 if action == 'del':
-                    self.feed_singleFeed_DELprocess(    d_ret = d_ret)
+                    self.branch_singleBranch_DELprocess(    d_ret = d_ret)
 
                 if action == 'clear':
-                    self.feed_singleFeed_CLEARprocess(  d_ret = d_ret)
+                    self.branch_singleBranch_CLEARprocess(  d_ret = d_ret)
 
                 if action == 'run':
-                    self.feed_singleFeed_RUNprocess(    d_ret = d_ret)
+                    self.branch_singleBranch_RUNprocess(    d_ret = d_ret)
 
-    def feed_singleFeed_POSTprocess(self, **kwargs):
+    def branch_singleBranch_POSTprocess(self, **kwargs):
         """
         Process the "run" command from client
 
         :return:
         """
         d_ret   = {
-            'debug':    'feed_singleFeed_POSTprocess(): '
+            'debug':    'branch_singleBranch_POSTprocess(): '
         }
 
         for key,val in kwargs.iteritems():
@@ -664,14 +664,14 @@ class FeedTree(object):
         self.debug('Pushing text contents into file %s\n' % d_ret['nodeName'])
         s.touch(d_ret['nodeName'],  d_ret['contents'])
 
-    def feed_singleFeed_DELprocess(self, **kwargs):
+    def branch_singleBranch_DELprocess(self, **kwargs):
         """
         Process the "run" command from client
 
         :return:
         """
         d_ret   = {
-            'debug':    'feed_singleFeed_DELprocess(): '
+            'debug':    'branch_singleBranch_DELprocess(): '
         }
         for key,val in kwargs.iteritems():
             if key == 'd_ret':          d_ret               = val
@@ -681,14 +681,14 @@ class FeedTree(object):
         s.rm(d_ret['nodeName'])
 
 
-    def feed_singleFeed_CLEARprocess(self, **kwargs):
+    def branch_singleBranch_CLEARprocess(self, **kwargs):
         """
         Process the "run" command from client
 
         :return:
         """
         d_ret   = {
-            'debug':    'feed_singleFeed_CLEARprocess(): '
+            'debug':    'branch_singleBranch_CLEARprocess(): '
         }
         for key,val in kwargs.iteritems():
             if key == 'd_ret':          d_ret               = val
@@ -698,14 +698,14 @@ class FeedTree(object):
         s.touch(d_ret['nodeName'], '')
 
 
-    def feed_singleFeed_RUNprocess(self, **kwargs):
+    def branch_singleBranch_RUNprocess(self, **kwargs):
         """
         Process the "run" command from client
 
         :return:
         """
         d_ret   = {
-            'debug':    'feed_singleFeed_RUNprocess(): '
+            'debug':    'branch_singleBranch_RUNprocess(): '
         }
         for key,val in kwargs.iteritems():
             if key == 'd_ret':          d_ret               = val
@@ -742,7 +742,7 @@ class FeedTree(object):
         s.touch('timestamp', str_timeStamp)
 
 
-    def feed_process(self, **kwargs):
+    def REST_process(self, **kwargs):
         """
         Get a feed based on various criteria
         :param kwargs: searchType = 'name' | 'id', target = <target>
@@ -752,15 +752,15 @@ class FeedTree(object):
 
         str_searchType      = ''
         str_searchTarget    = ''
-        str_pathInFeed      = ''
+        str_pathInBranch      = ''
 
         d_ret               = {
             'VERB':             'GET',
             'payloadFile':      '',
             'feed':             None,
-            'debug':            'feed_process(): ',
+            'debug':            'branch_process(): ',
             'path':             '',
-            'pathInFeed':       '',
+            'pathInBranch':       '',
             'b_status':         False,
             'payload':          {},
             'URL_get':          [],
@@ -773,7 +773,7 @@ class FeedTree(object):
             if key == 'returnAsDict':   b_returnAsDict          = val
             if key == 'searchType':     str_searchType          = val
             if key == 'searchTarget':   str_searchTarget        = val
-            if key == 'pathInFeed':     str_pathInFeed          = val
+            if key == 'pathInBranch':     str_pathInBranch          = val
             if key == 'schema':         str_schema              = val
 
         kwargs['d_ret'] = d_ret
@@ -785,28 +785,28 @@ class FeedTree(object):
 
         # Check if we want a list of all feeds for this user
         if not len(str_searchType) or not len(str_searchTarget) or str_searchTarget == '*':
-            d_ret           = self.feed_feedList_fromTreeGet(**kwargs)
+            d_ret           = self.branch_feedList_fromTreeGet(**kwargs)
             d_ret['debug'] += "Search for '%s' on type '%s'" % (str_searchTarget, str_searchType)
         else:
             # Or if we just want one specific feed
-            d_ret       = self.feed_singleFeed_fromTreeGet(**kwargs)
+            d_ret       = self.branch_singleBranch_fromTreeGet(**kwargs)
 
             # and now, check for any paths in the tree of this Feed
-            if len(str_pathInFeed) and str_pathInFeed != '/':
-                self.debug('Path in Feed: %s\n' % str_pathInFeed)
-                d_ret           = self.feed_singleFeed_process(**kwargs)
+            if len(str_pathInBranch) and str_pathInBranch != '/':
+                self.debug('Path in Feed: %s\n' % str_pathInBranch)
+                d_ret           = self.branch_singleBranch_process(**kwargs)
 
             # b_returnTree is always True, unless a "file" is being returned
             if b_returnAsDict and d_ret['b_returnTree']:
                 d_ret['feed']   = dict(d_ret['feed'].snode_root)
             d_ret['payload']    = d_ret['feed']
-            d_ret['URL_get']    = self.feed_GETURI(feedSpec = str_feedSpec, path = str_pathInFeed)
+            d_ret['URL_get']    = self.branch_GETURI(feedSpec = str_feedSpec, path = str_pathInBranch)
 
         # Pop the "temp" key 'feed' from the return stack
         if 'feed' in d_ret: d_ret.pop('feed')
 
         # Set the 'path'
-        d_ret['path']   = str_searchTarget + str_pathInFeed
+        d_ret['path']   = str_searchTarget + str_pathInBranch
         return d_ret
 
 
@@ -833,12 +833,12 @@ class FeedTree_chrisUser(FeedTree):
             F.cd('/feeds/%s' % node)
             F.touch("ID", id)
             # self.debug(f)
-            singleFeed  = Feed_FS(
+            singleBranch  = Feed_FS(
                 name    = node,
                 id      = id
             )
-            s = singleFeed._stree
-            # Graft explicit parts of this singleFeed (s) to the tree of
+            s = singleBranch._stree
+            # Graft explicit parts of this singleBranch (s) to the tree of
             # all Feeds (F) of this user, i.e.
             #   cd F:/feeds/Feed-<ID>
             #   ln -s s:/note .
