@@ -105,7 +105,7 @@ class Plugin(object):
 
     def __init__(self):
 
-        self._stree             = C_snode.C_stree()
+        self._pluginTree             = C_snode.C_stree()
 
         self._l_plugin          = []
         self.pluginName         = ""
@@ -135,6 +135,7 @@ class Plugin_FS(Plugin):
 
     '''
     _dict_plugin = {
+      'plugins': {
         'pacs_pull' : {
             'name':         {
                 'body': 'pacs_pull',
@@ -248,6 +249,7 @@ class Plugin_FS(Plugin):
                 }
             }
         }
+      }
     }
 
     def __init__(self, **kwargs):
@@ -290,11 +292,10 @@ class Plugin_FS(Plugin):
 
         """
 
-        s = self._stree
+        s = self._pluginTree
         s.cd('/')
         s.initFromDict(Plugin_FS._dict_plugin)
         s.tree_metaData_print(False)
-        print(s)
 
 class Plugin_homePage(Plugin):
     """Plugins specific to the homePage view
@@ -339,6 +340,8 @@ class pacs_pull(object):
 if __name__ == "__main__":
 
     pt  = Plugin_FS()
+
+    print(pt._pluginTree)
 
     p   = Plugin_homePage()
     p.debug._b_syslog   = False
