@@ -31,6 +31,7 @@ import  argparse
 import  json
 import  sys
 import  C_snode
+import  branch
 
 import  message
 
@@ -105,7 +106,8 @@ class Plugin(object):
 
     def __init__(self):
 
-        self._pluginTree             = C_snode.C_stree()
+        self._pluginTree        = C_snode.C_stree()
+        self.BR                 = branch.BranchTree()
 
         self._l_plugin          = []
         self.pluginName         = ""
@@ -115,6 +117,7 @@ class Plugin(object):
         self._log               = message.Message()
         self._log._b_syslog     = True
         self.__name             = "Plugin"
+
 
     def run(self, *args, **kwargs):
         d_info = {'container': str(self), 'plugin': str(self.plugin)}
@@ -296,6 +299,8 @@ class Plugin_FS(Plugin):
         s.cd('/')
         s.initFromDict(Plugin_FS._dict_plugin)
         s.tree_metaData_print(False)
+        self.BR._branchTree = self._pluginTree
+
 
 class Plugin_homePage(Plugin):
     """Plugins specific to the homePage view
@@ -342,6 +347,19 @@ if __name__ == "__main__":
     pt  = Plugin_FS()
 
     print(pt._pluginTree)
+
+    d_ret = {
+        'VERB':             'GET',
+        'ROOT':             'Plugin',
+        'payloadFile':      'action.json',
+        'searchType':       'NAME',
+        'searchTarget':     '*',
+        'returnAsDict':     True,
+        'pathInBranch':     '/',
+        'schema':           'void'
+    }
+
+    print(pt.BR.branch_branchList_fromTreeGet(d_ret = d_ret))
 
     p   = Plugin_homePage()
     p.debug._b_syslog   = False
