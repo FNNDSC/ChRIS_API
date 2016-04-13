@@ -32,6 +32,7 @@ import  note
 import  comment
 import  data
 import  plugin
+import  branch
 
 class Feed(object):
     """The summary line for a class docstring should fit on one line.
@@ -331,6 +332,9 @@ class FeedTree(object):
         """
         self._feedTree          = C_snode.C_stree()
         self.feed               = C_snode.C_stree()
+
+        self.BR                 = branch.BranchTree()
+
         self.plugin             = plugin.Plugin_homePage()
         self.debug              = message.Message(logTo = './debug.log')
         self.debug._b_syslog    = True
@@ -450,7 +454,7 @@ class FeedTree(object):
         """
         str_searchType      = 'name'
         d_ret               = {
-            'debug':        'branch_feedList_fromTreeGet(): ',
+            'debug':        'branch_branchList_fromTreeGet(): ',
             'status':       False,
             'payload':      {},
             'URL_get':      []
@@ -508,7 +512,7 @@ class FeedTree(object):
             if key == 'schema':         str_schema          = val
             if key == 'd_ret':          d_ret               = val
 
-        d_ret['debug']  = 'branch_fromFeedTree_get():'
+        d_ret['debug']  = 'branch_singleBranch_fromTreeGet():'
         F               = self._feedTree
         F.cd('/feeds')
 
