@@ -562,8 +562,8 @@
             for(var d=l_path.length-1; d>=0; d--) {
                 l_breadCrumb    = l_path.slice(0, d+1);
                 str_breadCrumb  = l_breadCrumb.join('/');
-                str_pathUp      = str_allFeedsBase + '_' + str_breadCrumb;
-                if (str_pathUp == 'Feeds/' + key_DOM.val() + '_') {
+                str_pathUp      = str_allFeedsBase + '__' + str_breadCrumb;
+                if (str_pathUp == 'Feeds/' + key_DOM.val() + '__') {
                     console.log('cleaning!!');
                     str_pathUp = 'Feeds/' + key_DOM.val();
                 }
@@ -579,7 +579,7 @@
         $.each(d_URLsFromChRIS, function (key, val) {
             if (!str_pathUp.length) {
                 str_allFeedsBase    = 'Feeds/' + key_DOM.val();
-                str_pathUp          = str_allFeedsBase + '_' + json_ChRISresp.return.path;
+                str_pathUp          = str_allFeedsBase + '__' + json_ChRISresp.return.path;
             }
             URLsFromChRIS_DOM.append(
                     $('<option></option>').val(key).html(val)
