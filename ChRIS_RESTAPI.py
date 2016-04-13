@@ -256,7 +256,7 @@ class ChRIS_RESTAPI(object):
                 str_path        = '/' + '/'.join(al_path[2:])
                 self.debug('str_path = %s\n' % str_path)
                 str_feedTarget  = al_path[1]        # e.g. NAME_Feed-1 or ID_0001
-                l_targetType    = str_feedTarget.split('_')
+                l_targetType    = str_feedTarget.split('__')
                 str_searchType  = l_targetType[0].lower()
                 if len(l_targetType) >=2:
                     str_searchTarget = l_targetType[1]
