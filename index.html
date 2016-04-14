@@ -522,11 +522,27 @@
         loginStatus_show(file_exist(str_loginURLtag));
     };
 
+
+    function sort_unique(arr) {
+        // From: http://stackoverflow.com/questions/4833651/javascript-array-sort-and-unique
+        arr = arr.sort(function (a, b) { return a*1 - b*1; });
+        var ret = [arr[0]];
+        for (var i = 1; i < arr.length; i++) { // start loop at 1 as element 0 can never be a duplicate
+            if (arr[i-1] !== arr[i]) {
+                ret.push(arr[i]);
+            }
+        }
+        return ret;
+    }
+
     function URLsFromChRIS_build(json_ChRISresp, a_URLsFromChRIS) {
         /*
         This function parses the URL component of the response to
         build a list of possible navigable links from this
-        point in the dataspace.
+        point in the data space.
+
+        It is important to always initialize this structure with the
+        ROOT paths, i.e. /Plugins and /Feeds
 
         ARGS
 
@@ -546,13 +562,22 @@
         debug.functionName  = "URLsFromChRIS_build";
         debug.entering();
 
+        var str_ROOT        = json_ChRISresp.return.ROOT;
+
         URLsFromChRIS_DOM.empty();
         if(typeof(a_URLsFromChRIS)==='object') {
             d_URLsFromChRIS = a_URLsFromChRIS.slice();
         } else {
             d_URLsFromChRIS = json_ChRISresp.return.URL_get.slice();
         }
-        // First, build a breadcrumb path back through the dataspace
+
+        // Push the ROOT URLs
+        d_URLsFromChRIS.push('Feeds/'   + key_DOM.val());
+        d_URLsFromChRIS.push('Plugins/' + key_DOM.val());
+
+        d_URLsFromChRIS = sort_unique(d_URLsFromChRIS);
+
+        // Now, build a breadcrumb path back through the data space
         if (str_pathUp.length) {
             str_path    = json_ChRISresp.return.path;
             debug.vlog({message: 'str_path', var: str_path});
@@ -562,23 +587,19 @@
             for(var d=l_path.length-1; d>=0; d--) {
                 l_breadCrumb    = l_path.slice(0, d+1);
                 str_breadCrumb  = l_breadCrumb.join('/');
-                str_pathUp      = str_allFeedsBase + '__' + str_breadCrumb;
-                if (str_pathUp == 'Feeds/' + key_DOM.val() + '__') {
-                    console.log('cleaning!!');
-                    str_pathUp = 'Feeds/' + key_DOM.val();
+                str_pathUp      = str_ROOT + '/' + key_DOM.val() + '__' + str_breadCrumb;
+                if (str_pathUp != str_ROOT + '/' + key_DOM.val() + '__') {
+                    if(d==l_path.length-1) {
+                        selectedIndex = d_URLsFromChRIS.length;
+                    }
+                    d_URLsFromChRIS.push(str_pathUp);
                 }
-                if(d==l_path.length-1) {
-                    selectedIndex = d_URLsFromChRIS.length;
-                }
-                d_URLsFromChRIS.push(str_pathUp);
             }
-            // Push the root URL
-            d_URLsFromChRIS.push('Feeds/' + key_DOM.val());
         }
         // Now build actual html about the d_URLsFromChRIS
         $.each(d_URLsFromChRIS, function (key, val) {
             if (!str_pathUp.length) {
-                str_allFeedsBase    = 'Feeds/' + key_DOM.val();
+                str_allFeedsBase    = str_ROOT + '/' + key_DOM.val();
                 str_pathUp          = str_allFeedsBase + '__' + json_ChRISresp.return.path;
             }
             URLsFromChRIS_DOM.append(
