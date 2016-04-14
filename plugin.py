@@ -104,10 +104,10 @@ class Plugin(object):
         self.debug_obj('plugin.set()');
         return {'success': True, 'pluginName': astr_pluginName, 'plugin': str(self.plugin), 'container': str(self)}
 
-    def __init__(self):
+    def __init__(self, **kwargs):
 
         self._pluginTree        = C_snode.C_stree()
-        self.BR                 = branch.BranchTree()
+        self.BR                 = branch.BranchTree(within = self)
 
         self._l_plugin          = []
         self.pluginName         = ""
@@ -117,6 +117,10 @@ class Plugin(object):
         self._log               = message.Message()
         self._log._b_syslog     = True
         self.__name             = "Plugin"
+        self.within             = None                      # The feed or plugin this branch is within
+
+        for key, val in kwargs.iteritems():
+            if key == 'within': self.within     = val
 
 
     def run(self, *args, **kwargs):
@@ -141,57 +145,30 @@ class Plugin_FS(Plugin):
       'plugins': {
         'pacs_pull' : {
             'name':         {
-                'body': 'pacs_pull',
-                'REST': {
-                    'PUSH': {
-                        'body':         'file',
-                        'timestamp':    'file'
-                    }
-                }
+                'body': 'pacs_pull'
             },
             'args': {
                 'query':    {
                     'MRN':          '<someMRN>',
-                    'Patient Name': '<someName>',
-                    'state':        'expanded',
-                    'REST': {
-                        'PUSH': {
-                            'MRN':              'file',
-                            'PatientName':      'file',
-                            'state':            'file',
-                            'timestamp':        'file'
-                        }
-                    }
+                    'PatientName':  '<someName>',
+                    'state':        'expanded'
                 },
                 'host': {
                     'PACShostIP':   '<someIP>',
                     'PACShostPort': '<somePort>',
                     'PACS_FQN':     ('0.0.0.0', '104'),
-                    'state':        'collapsed',
-                    'REST': {
-                        'PUSH': {
-                            'PACShostIP':       'file',
-                            'PACShostPort':     'file',
-                            'PACS_FQN':         'file',
-                            'state':            'file',
-                            'timestamp':        'file'
-                        }
-                    }
+                    'state':        'collapsed'
                 }
             },
             'icons': {
                 'thumbnail':        'thn.png',
                 'full':             'full.png'
             },
-            'executable':           'pacs_pull.bash',
+            'executable': {
+                'body':             'pacs_pull.bash'
+            },
             'note': {
-                'body':             'This plugin queries a PACS for image data.',
-                'REST': {
-                    'PUSH': {
-                        'body':         'file',
-                        'timestamp':    'file'
-                    }
-                }
+                'body':             'This plugin queries a PACS for image data.'
             }
         },
         'file_upload' : {
@@ -199,13 +176,6 @@ class Plugin_FS(Plugin):
             'args':         {
                 'directory':    '<someDirectory>',
                 'ls_args':      '<argsForls>',
-                'REST': {
-                    'PUSH': {
-                        'directory':        'file',
-                        'ls_args':          'file',
-                        'timestamp':        'file'
-                    }
-                }
             },
             'executable':   '<someAJAX>',
             'icons': {
@@ -214,12 +184,6 @@ class Plugin_FS(Plugin):
             },
             'note': {
                 'body':             'This plugin uploads from client to server.',
-                'REST': {
-                    'PUSH': {
-                        'body':         'file',
-                        'timestamp':    'file'
-                    }
-                }
             }
         },
         'file_browser' : {
@@ -227,15 +191,7 @@ class Plugin_FS(Plugin):
             'args':         {
                 'directory':    '<someDirectory>',
                 'ls_args':      ['-a', '-l', '-1d'],
-                'arg3':         'val3',
-                'REST': {
-                    'PUSH': {
-                        'directory':        'file',
-                        'ls_args':          'file',
-                        'arg3':             'file',
-                        'timestamp':        'file'
-                    }
-                }
+                'arg3':         'val3'
             },
             'executable':   'ls',
             'icons': {
@@ -244,12 +200,6 @@ class Plugin_FS(Plugin):
             },
             'note': {
                 'body':             'Generate a Feed anchored on a passed server directory.',
-                'REST': {
-                    'PUSH': {
-                        'body':         'file',
-                        'timestamp':    'file'
-                    }
-                }
             }
         }
       }
@@ -298,6 +248,106 @@ class Plugin_FS(Plugin):
         s = self._pluginTree
         s.cd('/')
         s.initFromDict(Plugin_FS._dict_plugin)
+
+        # Specify all the REST PUSH data files
+        if s.cd('/plugins/pacs_pull/note')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/pacs_pull/executable')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/pacs_pull/name')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/pacs_pull/args/query')['status']:
+            s.touch('REST',
+                    {'PUSH': {
+                            'MRN':              'file',
+                            'PatientName':      'file',
+                            'state':            'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/pacs_pull/args/host')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'PACShostIP':       'file',
+                            'PACShostPort':     'file',
+                            'PACS_FQN':         'file',
+                            'state':            'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/file_upload/note')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                            }
+                    }
+                    )
+
+        if s.cd('/plugins/file_upload/args')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'directory':        'file',
+                            'ls_args':          'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/file_browser/note')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/file_browser/args')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'directory':        'file',
+                            'ls_args':          'file',
+                            'arg3':             'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+
         s.tree_metaData_print(False)
         self.BR._branchTree = self._pluginTree
 
