@@ -243,7 +243,7 @@ class ChRIS_SMUserDB(object):
         # do this *ONCE* per session/replay.
         if not self.userTree:
             if self.b_createNewDB:
-                userTree                = user.UserTree_chrisUser(user = astr_user)
+                userTree                = user.UserTree_chrisUser(user = astr_user, constructAllFeeds = True)
                 u                       = userTree._userTree
                 # and attach it to the stree of this object
                 if self.DB.cd('/users/%s' % astr_user)['status']:
