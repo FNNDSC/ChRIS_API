@@ -101,6 +101,10 @@ class Feed(object):
         self.__name             = "Feed"
 
         self._name              = ""
+        self.within             = None                      # The feed or plugin this branch is within
+
+        for key, val in kwargs.iteritems():
+            if key == 'within': self.within     = val
 
     def __iter__(self):
         yield('Feed', dict(self._stree.snode_root))
@@ -333,7 +337,7 @@ class FeedTree(object):
         self._feedTree          = C_snode.C_stree()
         self.feed               = C_snode.C_stree()
 
-        self.BR                 = branch.BranchTree()
+        self.BR                 = branch.BranchTree(within = self)
 
         self.plugin             = plugin.Plugin_homePage()
         self.debug              = message.Message(logTo = './debug.log')
@@ -341,477 +345,6 @@ class FeedTree(object):
         self._log               = message.Message()
         self._log._b_syslog     = True
         self.__name             = "FeedTree"
-
-    def branch_existObjectName(self, astr_feedObjectName):
-        """Check if a feed exists.
-
-        Simply checks if a given feed with passed feedObjectName exists. The
-        feedObjectName is the actual object record name in the snode tree.
-        Searching on feed object name is much quicker than querying
-        each feed for its ID.
-
-        Args:
-            astr_feedObjectName (string): The Feed Object Name.
-
-        Returns:
-            exists (boolean): True if exists, False if not.
-
-        """
-        f = self._feedTree
-        f.cd('/')
-        if f.cd(astr_feedObjectName):
-            return True
-        else:
-            return False
-
-    def branch_existFeedID(self, astr_feedID):
-        """Check if a feed exists.
-
-        Simply checks if a given feed with passed ID exists. This method needs
-        to loop over all feeds and check their internal ID string.
-
-        Args:
-            astr_feedID (string): The Feed ID.
-
-        Returns:
-            exists (boolean): True if exists, False if not.
-
-        """
-        f = self._feedTree
-        l_feed = f.lstr_lsnode('/')
-        for feedNode in f.lstr_lsnode('/'):
-            f.cd('/%s' % feedNode)
-            str_ID = f.cat('ID')
-            if str_ID == astr_feedID:
-                return True
-        return False
-
-    def branch_GETURI(self, **kwargs):
-        """
-        The list of GET URIs at the current processing scope.
-        :param kwargs:
-        :return: The list of GET URIs at this scope referenced to current Feed context.
-        """
-
-        feedSpec    = ''
-        str_path    = '/'
-        for key,val in kwargs.iteritems():
-            if key == 'feedSpec':   feedSpec    = val
-            if key == 'path':       str_path    = val
-        # f           = self.feed.DB
-        f           = self.feed
-        f.cd(str_path)
-        str_path    = f.cwd()
-        if str_path == '/': str_path = ''
-        l_branch    = f.lstr_lsnode(str_path)
-        l_URI       = []
-        for node in l_branch:
-            l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, node))
-        # Need to check this conditional?
-        if not len(l_branch):
-            for terminus in f.lsf(str_path):
-                l_URI.append('Feeds/%s%s/%s' % (feedSpec, str_path, terminus))
-        return l_URI
-
-    def feeds_organize(self, **kwargs):
-        """Basically "gets" the feed tree, possibly (re)organized according
-        to kwargs.
-
-        :param kwargs:
-        :return:
-        """
-        b_returnAsDict  = False
-        str_schema      = "default"
-
-        for key,val in kwargs.iteritems():
-            if key == "returnAsDict":   b_returnAsDict  = val
-            if key == 'schema':         str_schema      = val
-
-        l_keys = []
-
-        # More logic needed here to possibly reorganize
-        if str_schema == "default":
-            # Generate a list of feed elements
-            d_tree = dict(self._feedTree.snode_root)
-            l_keys = d_tree.keys()
-
-        l_URL = []
-        for key in l_keys:
-            l_URL.append('Feeds/NAME_%s' % (key))
-
-        return {
-            'status':   True,
-            'payload':  {'list': l_keys},
-            'URL_GET':  l_URL,
-            'URL_POST': []
-        }
-
-    def branch_branchList_fromTreeGet(self, **kwargs):
-        """
-        Process the main feedTree (i.e. the tree that has all the Feeds.
-        :param kwargs: schema='name'|'id' -- how to return the list of Feeds.
-        :return: a list of "hits" in URI format
-        """
-        str_searchType      = 'name'
-        d_ret               = {
-            'debug':        'branch_branchList_fromTreeGet(): ',
-            'status':       False,
-            'payload':      {},
-            'URL_get':      []
-        }
-
-        for key,val in kwargs.iteritems():
-            if key == 'searchType':     str_searchType      = val
-            if key == 'd_ret':          d_ret               = val
-
-        d_ret['debug']  = 'branch_feedList_fromTreeGet(): '
-        l_URI   = []
-        l_keys  = []
-
-        F           = self._feedTree
-        if F.cd('/feeds')['status']:
-            if str_searchType.lower() == "name":
-                # Generate a list of feed elements
-                l_keys          = F.lstr_lsnode()
-                l_URI           = ['Feeds/NAME_' + name for name in l_keys]
-                d_ret['status'] = True
-            if str_searchType.lower() == 'id':
-                for feedNode in F.lstr_lsnode():
-                    F.cd('/feeds/%s' % feedNode)
-                    str_ID = F.cat('ID')
-                    l_keys.append(str_ID)
-                    l_URI.append('Feeds/ID_' + str_ID)
-                d_ret['status'] = True
-        d_ret['payload']    = l_keys
-        d_ret['URL_get']    = l_URI
-
-        return d_ret
-
-    def branch_singleBranch_fromTreeGet(self, **kwargs):
-        """
-        Graft a single target feed from the feed tree to internal storage.
-
-        This basically just "links" the feed to be processed to a convenience
-        variable.
-
-        :return:
-        d_ret:      dictionary      various values
-        """
-
-        # Initialize the d_ret return dictionary
-        d_ret           = {
-            'feed':         None,
-            'status':       False,
-            'payload':      {},
-            'URL_get':      []
-        }
-
-        for key,val in kwargs.iteritems():
-            if key == 'searchType':     str_searchType      = val
-            if key == 'searchTarget':   str_searchTarget    = val
-            if key == 'schema':         str_schema          = val
-            if key == 'd_ret':          d_ret               = val
-
-        d_ret['debug']  = 'branch_singleBranch_fromTreeGet():'
-        F               = self._feedTree
-        F.cd('/feeds')
-
-        self.feed   = C_snode.C_stree()
-        s           = self.feed
-        if str_searchType.lower() == 'name':
-            if F.cd(str_searchTarget)['status']:
-                Froot = F.cwd()
-                # s.graft(F, '%s/'      % F.cwd())
-                s.graft(F, '%s/title'   % Froot)
-                s.graft(F, '%s/note'    % Froot)
-                s.graft(F, '%s/data'    % Froot)
-                s.graft(F, '%s/comment' % Froot)
-                d_ret['status'] = True
-                d_ret['feed']   = s
-                s.tree_metaData_print(False)
-        if str_searchType.lower() == 'id':
-            for feedNode in f.lstr_lsnode('/'):
-                if F.cd('/feeds/%s' % feedNode)['status']:
-                    if str_searchTarget == F.cat('ID'):
-                        d_ret['status'] = True
-                        # s.graft(F, '%s/'      % F.cwd())
-                        s.graft(F, '%s/title'   % Froot)
-                        s.graft(F, '%s/note'    % Froot)
-                        s.graft(F, '%s/data'    % Froot)
-                        s.graft(F, '%s/comment' % Froot)
-                        d_ret['feed']   = s
-                        break
-        return d_ret
-
-    def branch_singleBranch_process(self, **kwargs):
-        """
-        Assuming a feed has been grafted from the tree space, process this
-        feed's components.
-
-        :return:
-        """
-
-        d_ret               = {
-            'feed':         None,
-            'debug':        'branch_singleBranch_process(): ',
-            'path':         '',
-            'status':       False,
-            'payload':      {},
-            'URL_get':      []
-        }
-
-        for key,val in kwargs.iteritems():
-            if key == 'VERB':           str_VERB            = val
-            if key == 'pathInBranch':     str_pathInBranch      = val
-            if key == 'd_ret':          d_ret               = val
-
-        d_ret['b_returnTree']   = True
-        d_ret['debug']         += 'str_pathInBranch = %s ' % str_pathInBranch
-        s                       = d_ret['feed']
-        d_cd                    = s.cd(str_pathInBranch)
-        if d_cd['status']:
-            # We are retrieving a directory
-            d_ret['status']     = d_cd['status']
-            d_ret['pathInBranch'] = d_cd['path']
-            subTree             = C_snode.C_stree()
-            if subTree.cd('/')['status']:
-                subTree.graft(s, str_pathInBranch)
-                d_ret['feed']   = subTree
-        else:
-            d_ret['b_returnTree']   = False
-            # Check if we are in fact processing a "file"
-            l_p                     = str_pathInBranch.split('/')
-            str_dirUp               = '/'.join(l_p[0:-1])
-            d_cd                    = s.cd(str_dirUp)
-            if d_cd['status']:
-                d_ret['debug']     += '../ = %s, file = %s' % (str_dirUp, l_p[-1])
-                d_ret['status']     = d_cd['status']
-                d_ret['pathInBranch'] = d_cd['path']
-                str_fileName        = l_p[-1]
-                if str_VERB != "GET":
-                    self.branch_singleBranch_VERBprocess(**kwargs)
-                    self.debug('%s\n' % l_p)
-                contents            = s.cat(l_p[-1])
-                if not contents:
-                    d_ret['feed']   = {str_fileName: ''}
-                else:
-                    d_ret['feed']   = {str_fileName: contents}
-                self.debug('Returning file contents in payload: "%s"\n' % d_ret)
-        d_ret['payload'] = d_ret['feed']
-        return d_ret
-
-    # This method is the only point of contact between the simulated machine and the internal
-    # data space and the external REST call.
-    #
-    # Processing of specific REST-like verbs are processed by appropriately named "sub" functions.
-    def branch_singleBranch_VERBprocess(self, **kwargs):
-        """
-        Process specific cases of REST VERBS
-
-        :return:
-        """
-
-        d_ret   = {
-            'debug':    'branch_singleBranch_VERBprocess(): '
-        }
-
-        for key,val in kwargs.iteritems():
-            if key == 'd_ret':          d_ret               = val
-
-        # This signals the client to 'refresh' the display since POST operations
-        # change GUI elements
-        d_ret['refreshREST']    = True
-
-        if d_ret['VERB'] == 'POST':
-            self.debug('In branch_singleBranch_VERBprocess...\n')
-            with open(d_ret['payloadFile']) as jf:
-                d_payload   = json.load(jf)
-                self.debug('Payload: %s\n' % d_payload)
-                s = d_ret['feed']
-                self.debug('location in feed tree: %s\n' % s.pwd() )
-                action      = d_payload['POST']['action']
-
-                # find the 'object' key (i.e. the key other than 'action')
-                for key in d_payload['POST'].keys():
-                    if key != 'action':
-                        str_nodeType = key
-                str_nodeName    = d_payload['POST'][str_nodeType].keys()[0]
-                str_contents    = d_payload['POST'][str_nodeType][str_nodeName]
-                d_ret['nodeName']   = str_nodeName
-                d_ret['contents']   = str_contents
-
-                if action == 'post' and str_nodeType == 'file':
-                    self.branch_singleBranch_POSTprocess(   d_ret = d_ret)
-
-                if action == 'del':
-                    self.branch_singleBranch_DELprocess(    d_ret = d_ret)
-
-                if action == 'clear':
-                    self.branch_singleBranch_CLEARprocess(  d_ret = d_ret)
-
-                if action == 'run':
-                    self.branch_singleBranch_RUNprocess(    d_ret = d_ret)
-
-    def branch_singleBranch_POSTprocess(self, **kwargs):
-        """
-        Process the "run" command from client
-
-        :return:
-        """
-        d_ret   = {
-            'debug':    'branch_singleBranch_POSTprocess(): '
-        }
-
-        for key,val in kwargs.iteritems():
-            if key == 'd_ret':          d_ret               = val
-        s               = d_ret['feed']
-        self.debug('Pushing text contents into file %s\n' % d_ret['nodeName'])
-        s.touch(d_ret['nodeName'],  d_ret['contents'])
-
-    def branch_singleBranch_DELprocess(self, **kwargs):
-        """
-        Process the "run" command from client
-
-        :return:
-        """
-        d_ret   = {
-            'debug':    'branch_singleBranch_DELprocess(): '
-        }
-        for key,val in kwargs.iteritems():
-            if key == 'd_ret':          d_ret               = val
-        s               = d_ret['feed']
-        self.debug('Deleting object %s\n' % d_ret['nodeName'])
-        self.debug('path in stree: %s\n' % s.pwd())
-        s.rm(d_ret['nodeName'])
-
-
-    def branch_singleBranch_CLEARprocess(self, **kwargs):
-        """
-        Process the "run" command from client
-
-        :return:
-        """
-        d_ret   = {
-            'debug':    'branch_singleBranch_CLEARprocess(): '
-        }
-        for key,val in kwargs.iteritems():
-            if key == 'd_ret':          d_ret               = val
-        s               = d_ret['feed']
-        self.debug('clearing object %s\n' % d_ret['nodeName'])
-        self.debug('path in stree: %s\n' % s.pwd())
-        s.touch(d_ret['nodeName'], '')
-
-
-    def branch_singleBranch_RUNprocess(self, **kwargs):
-        """
-        Process the "run" command from client
-
-        :return:
-        """
-        d_ret   = {
-            'debug':    'branch_singleBranch_RUNprocess(): '
-        }
-        for key,val in kwargs.iteritems():
-            if key == 'd_ret':          d_ret               = val
-        s               = d_ret['feed']
-        self.debug('Regenerating node %s\n' % d_ret['nodeName'])
-        # Generate a new feed tree -- this following call generates
-        # everything for a new feed! notes, title, comments, etc.
-        # It's probably overkill.
-        str_timeStamp   = str(datetime.datetime.now())
-        if d_ret['nodeName'] != 'timestamp':
-            s_regen         = Feed_FS()
-            sr              = s_regen._stree
-            str_path        = s.pwd()
-            self.debug('Path in stree = %s\n' % str_path)
-            if s.pwd(node=1) == 'title':
-                self.debug('Regenerating title...\n')
-                sr.cd('/title')
-                s.cd('/title')
-                s.rm('body')
-                s.touch('body', sr.cat('body'))
-            if s.pwd(node=1) == 'note':
-                self.debug('Regenerating note...\n')
-                sr.cd('/note')
-                s.cd('/note')
-                s.rm('body')
-                s.touch('body', sr.cat('body'))
-            if s.pwd(node=1) == 'comment':
-                self.debug('Regenerating comment %s at location %s...\n' % (d_ret['nodeName'], str_path))
-                sr.cd(str_path)
-                s.cd(str_path)
-                s.rm(d_ret['nodeName'])
-                s.touch(d_ret['nodeName'], sr.cat(d_ret['nodeName']))
-        self.debug('setting timeStamp to %s\n' % str_timeStamp)
-        s.touch('timestamp', str_timeStamp)
-
-
-    def REST_process(self, **kwargs):
-        """
-        Get a feed based on various criteria
-        :param kwargs: searchType = 'name' | 'id', target = <target>
-        :return: Feed conforming to search criteria
-        """
-        b_returnAsDict      = True
-
-        str_searchType      = ''
-        str_searchTarget    = ''
-        str_pathInBranch      = ''
-
-        d_ret               = {
-            'VERB':             'GET',
-            'payloadFile':      '',
-            'feed':             None,
-            'debug':            'branch_process(): ',
-            'path':             '',
-            'pathInBranch':       '',
-            'b_status':         False,
-            'payload':          {},
-            'URL_get':          [],
-            'b_returnTree':     True
-        }
-
-        for key,val in kwargs.iteritems():
-            if key == 'VERB':           d_ret['VERB']           = val
-            if key == 'payloadFile':    d_ret['payloadFile']    = val
-            if key == 'returnAsDict':   b_returnAsDict          = val
-            if key == 'searchType':     str_searchType          = val
-            if key == 'searchTarget':   str_searchTarget        = val
-            if key == 'pathInBranch':     str_pathInBranch          = val
-            if key == 'schema':         str_schema              = val
-
-        kwargs['d_ret'] = d_ret
-
-        # First get the feed itself from the tree of Feeds...
-        F               = self._feedTree
-        F.cd('/feeds')
-        str_feedSpec    = '%s_%s' % (str_searchType.upper(), str_searchTarget)
-
-        # Check if we want a list of all feeds for this user
-        if not len(str_searchType) or not len(str_searchTarget) or str_searchTarget == '*':
-            d_ret           = self.branch_feedList_fromTreeGet(**kwargs)
-            d_ret['debug'] += "Search for '%s' on type '%s'" % (str_searchTarget, str_searchType)
-        else:
-            # Or if we just want one specific feed
-            d_ret       = self.branch_singleBranch_fromTreeGet(**kwargs)
-
-            # and now, check for any paths in the tree of this Feed
-            if len(str_pathInBranch) and str_pathInBranch != '/':
-                self.debug('Path in Feed: %s\n' % str_pathInBranch)
-                d_ret           = self.branch_singleBranch_process(**kwargs)
-
-            # b_returnTree is always True, unless a "file" is being returned
-            if b_returnAsDict and d_ret['b_returnTree']:
-                d_ret['feed']   = dict(d_ret['feed'].snode_root)
-            d_ret['payload']    = d_ret['feed']
-            d_ret['URL_get']    = self.branch_GETURI(feedSpec = str_feedSpec, path = str_pathInBranch)
-
-        # Pop the "temp" key 'feed' from the return stack
-        if 'feed' in d_ret: d_ret.pop('feed')
-
-        # Set the 'path'
-        d_ret['path']   = str_searchTarget + str_pathInBranch
-        return d_ret
 
 
 class FeedTree_chrisUser(FeedTree):
@@ -827,34 +360,40 @@ class FeedTree_chrisUser(FeedTree):
         :return:
         """
         FeedTree.__init__(self, **kwargs)
-        F       = self._feedTree
-        l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
-        l_FID   = ['000001', '000002', '000003', '000004']
-        F.cd('/')
-        F.mkcd('feeds')
-        F.mknode(l_Feed)
-        for node, id in zip(l_Feed, l_FID):
-            F.cd('/feeds/%s' % node)
-            F.touch("ID", id)
-            # self.debug(f)
-            singleBranch  = Feed_FS(
-                name    = node,
-                id      = id
-            )
-            s = singleBranch._stree
-            # Graft explicit parts of this singleBranch (s) to the tree of
-            # all Feeds (F) of this user, i.e.
-            #   cd F:/feeds/Feed-<ID>
-            #   ln -s s:/note .
-            #   ln -s s:/title .
-            #       ... etc ...
-            F.graft(s, '/note')
-            F.graft(s, '/title')
-            F.graft(s, '/comment')
-            F.graft(s, '/data')
-        F.cd('/feeds')
-        F.tree_metaData_print(False)
-        # self.debug(F)
+
+        b_constructAllFeeds    = True
+        for key,val in kwargs.iteritems():
+            if key == 'constructAllFeeds': b_constructAllFeeds    = val
+
+        if b_constructAllFeeds:
+            F       = self._feedTree
+            l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
+            l_FID   = ['000001', '000002', '000003', '000004']
+            F.cd('/')
+            F.mkcd('feeds')
+            F.mknode(l_Feed)
+            for node, id in zip(l_Feed, l_FID):
+                F.cd('/feeds/%s' % node)
+                F.touch("ID", id)
+                # self.debug(f)
+                singleBranch  = Feed_FS(
+                    name    = node,
+                    id      = id
+                )
+                s = singleBranch._stree
+                # Graft explicit parts of this singleBranch (s) to the tree of
+                # all Feeds (F) of this user, i.e.
+                #   cd F:/feeds/Feed-<ID>
+                #   ln -s s:/note .
+                #   ln -s s:/title .
+                #       ... etc ...
+                F.graft(s, '/note')
+                F.graft(s, '/title')
+                F.graft(s, '/comment')
+                F.graft(s, '/data')
+            F.cd('/feeds')
+            F.tree_metaData_print(False)
+            # self.debug(F)
 
 if __name__ == "__main__":
     feed    = Feed_FS()
