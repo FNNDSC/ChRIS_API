@@ -72,6 +72,11 @@ class BranchTree(object):
         self._log               = message.Message()
         self._log._b_syslog     = True
         self.__name             = "BranchTree"
+        self.within             = None                      # The feed or plugin this branch is within
+
+        for key, val in kwargs.iteritems():
+            if key == 'within': self.within     = val
+
 
     def branch_existObjectName(self, astr_branchObjectName):
         """Check if a branch exists.
@@ -493,6 +498,19 @@ class BranchTree(object):
                     s.cd(str_path)
                     s.rm(d_ret['nodeName'])
                     s.touch(d_ret['nodeName'], sr.cat(d_ret['nodeName']))
+            if str_ROOT     == 'Plugins':
+                if s.pwd(node=1) == 'executable':
+                    str_name    = '%s-%s' % (d_ret['contents'], str_timeStamp.replace(' ',''))
+                    self.debug('Running executable %s...\n' % (str_name))
+                    F = self.within.within.FT._feedTree
+                    S = feed.Feed_FS()
+                    s = S._stree
+                    if F.cd('/feeds')['status']:
+                        F.mkcd('Feed-' + str_name)
+                        F.graft(s, '/note')
+                        F.graft(s, '/title')
+                        F.graft(s, '/comment')
+                        F.graft(s, '/data')
         self.debug('setting timeStamp to %s\n' % str_timeStamp)
         s.touch('timestamp', str_timeStamp)
 
