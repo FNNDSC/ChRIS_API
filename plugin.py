@@ -133,12 +133,10 @@ class Plugin(object):
 
 class Plugin_FS(Plugin):
     '''
-    Build a "FileSystem" analog container for the Plugin data structure.
+    Plugin Feed Synthesis
 
-    Based on some structured (JSON?) representation of plugins, this
-    class builds a "FS" or "stree" container for the plugins.
-
-    These plugins all create a new Feed at the root level.
+    These plugins create new feeds, and are typically housed at the "root" logical level and not
+    part of an existing data tree.
 
     '''
     _dict_plugin = {
@@ -350,6 +348,232 @@ class Plugin_FS(Plugin):
 
         s.tree_metaData_print(False)
         self.BR._branchTree = self._pluginTree
+
+class Plugin_DS(Plugin):
+    '''
+    Plugin Data Synthesis
+
+    These plugins create new data, and are embedded within a feed -- specifically within the dataView
+    component of a Feed. They create new dataViews down the tree as output.
+
+    '''
+    _dict_plugin = {
+        'plugins': {
+            'pacs_push' : {
+                'name':         {'body': 'pacs_push'},
+                'args': {
+                    'host': {
+                    'PACShostIP':       '<someIP>',
+                    'PACShostPort':     '<somePort>',
+                    'PACS_FQN':         ('0.0.0.0', '104'),
+                    'state':            'collapsed'
+                    }
+                },
+                'icons': {
+                    'thumbnail':        'thn.png',
+                    'full':             'full.png'
+                },
+                'executable': {
+                    'body':             'pacs_push.bash'
+                },
+                'note': {
+                    'body':             'This plugin pushes DICOM data to a remote PACS.'
+                }
+            },
+            'mri_convert' : {
+                'name':         {'body': 'mri_convert'},
+                'args':         {
+                    'directory':        '<someDirectory>',
+                    'file':             '<someFile>',
+                    'outputFormat':     'nii'
+                },
+                'executable': {
+                    'body':             'mri_convert'
+                },
+                'icons': {
+                    'thumbnail':        'thn.png',
+                    'full':             'full.png'
+                },
+                'note': {
+                    'body':             'Convert data from one format to another.',
+                }
+            },
+            'recon_all' : {
+                'name':         {'body': 'recon_all'},
+                'args':         {
+                    'directory':        '<someDirectory>',
+                    'file':             '<someFile>',
+                    'otherCLIA':        '<other command line args>',
+                },
+                'executable': {
+                    'body':             'recon_all'
+                },
+                'icons': {
+                    'thumbnail':        'thn.png',
+                    'full':             'full.png'
+                },
+                'note': {
+                    'body':             "Run FreeSurfer's recon-all on data",
+                }
+            },
+        }
+    }
+
+    def __init__(self, **kwargs):
+        """Constructor.
+
+        This essentially calls up the chain to the base constructor
+
+        Args:
+            astr_FeedRepo (string): A location on the file system that houses
+                all the feeds.
+
+        """
+        b_internalsCreate   = True
+        Plugin.__init__(self, **kwargs)
+        for key, val in kwargs.iteritems():
+            if key == 'internalsCreate':    b_internalsCreate   = val
+
+        if b_internalsCreate: self.create(**kwargs)
+
+    def create(self, **kwargs):
+        """Create a new plugin container.
+
+        A plugin "create" call.
+
+        Creating a Plugin entails building the directories and one-to-one
+        objects:
+            - name
+            - args
+            - executable
+            - note (aka help, freeform text, etc)
+
+
+        Args:
+          **kwargs (user=): The user creating the plugin.
+          **kwargs (str_ObjectID=): The string object reference used to access
+            the Feed
+
+        Returns:
+          True if successful, False otherwise.
+
+        """
+
+        s = self._pluginTree
+        s.cd('/')
+        s.initFromDict(Plugin_DS._dict_plugin)
+
+        # Specify all the REST PUSH data files
+        if s.cd('/plugins/pacs_push/note')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/pacs_push/executable')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/pacs_push/name')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/pacs_push/args/host')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'PACShostIP':       'file',
+                            'PACShostPort':     'file',
+                            'PACS_FQN':         'file',
+                            'state':            'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/mri_convert/note')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':             'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/mri_convert/args')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'directory':        'file',
+                            'file':             'file',
+                            'outputFormat':     'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/mri_convert/executable')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':             'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/recon-all/note')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':             'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/recon-all/executable')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':             'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+        if s.cd('/plugins/recon-all/args')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'directory':        'file',
+                            'file':             'file',
+                            'otherCLIA':        'file',
+                            'timestamp':        'file'
+                        }
+                    }
+                    )
+
+
+        s.tree_metaData_print(False)
+        self.BR._branchTree = self._pluginTree
+
 
 
 class Plugin_homePage(Plugin):
