@@ -30,6 +30,8 @@ import  dataTree
 
 import  C_snode
 
+import  plugin
+
 sys.path.append('components/faker')
 
 import faker
@@ -77,50 +79,10 @@ class data(object):
 
            o
             \
-            +--- fileView
-            \
-            +--- visualView
+            +--- dataView
             \
             +--- plugin
     """
-
-    _dict_plugin = {
-        'mri_convert' : {
-            'name':         'mri_convert',
-            'args':         {
-                                'convertTo':    'nii, mgh, img'
-                            },
-            'executable':   'mri_convert',
-            'resultTree':   'dataTree_convert'
-        },
-        'recon-all' : {
-            'name':         'recon-all',
-            'args':         {
-                'arg1':     'val1',
-                'arg2':     'val2'
-            },
-            'executable':   'recon-all',
-            'resultTree':   'dataTree_recon-all'
-        },
-        'zip' : {
-            'name':         'zip',
-            'args':         {
-                'arg1':     'val1',
-                'arg2':     'val2'
-            },
-            'executable':   'zip',
-            'resultTree':   'dataTree_convert'
-        },
-        'tractography' : {
-            'name':         'tractography',
-            'args':         {
-                'arg1':     'val1',
-                'arg2':     'val2'
-            },
-            'executable':   'dtk',
-            'resultTree':   'dataTree_tractography'
-        }
-    }
 
     __metaclass__   = abc.ABCMeta
 
@@ -128,9 +90,7 @@ class data(object):
 
         self.contents   = C_snode.C_stree()
         self.contents.cd('/')
-        # self.contents.mknode(['contents'])
         self.fake       = faker.Faker()
-
 
     def contents_build_1(self, **kwargs):
         """
@@ -148,22 +108,23 @@ class data(object):
 
         # First, build a PACS_pull tree
         self.dataComponent_build(
-            path                = '/',
-            plugin              = 'PACSPull',
-            SeriesFilesCount    = SeriesFilesCount
+                path                = '/',
+                plugin              = 'PACSPull',
+                SeriesFilesCount    = SeriesFilesCount
         )
 
         self.dataComponent_pluginBuild(
-            path                = '/plugin'
+                path                = '/plugins'
         )
 
 
         # Now "run" an mri_convert to nifi
-        self.dataComponent_pluginRun(
-            inputPath           = '/dataView/files',
-            outputPath          = '/plugin/run',
-            plugin              = 'mri_convert'
-        )
+        # self.dataComponent_pluginRun(
+        #         inputPath           = '/dataView/files',
+        #         outputPath          = '/plugin/run',
+        #         plugin              = 'mri_convert'
+        # )
+
 
     def dataComponent_build(self, **kwargs):
         """
@@ -174,12 +135,10 @@ class data(object):
         A data component consists of:
 
             * dataView
-                - "files" for visualizing
-            * fileView
-                - "files" in a traditional tree view
+                - actual "files" comprising dataView
             * plugin
-                - list of plugins to choose from for this data/fileView
-                - plugin that has been applied to the data/fileView
+                - list of plugins to choose from for this dataView
+                - plugin that has been applied to the dataView
         :param kwargs:
         :return:
         """
@@ -200,7 +159,7 @@ class data(object):
         s = self.contents
 
         if s.cd(str_path)['status']:
-            s.mknode(['dataView', 'fileView', 'plugin'])
+            s.mknode(['dataView', 'plugins'])
             if str_plugin.lower() == 'pacspull':
                 dataTree = self.dataTree_PACSPull_build(
                                 SeriesFilesCount   = SeriesFilesCount
@@ -218,8 +177,6 @@ class data(object):
                 dataTree    = self.dataTree_tractography()
             s.cd('dataView')
             s.graft(dataTree, '/files')
-            s.cd('../fileView')
-            s.graft(dataTree, '/files')
             s.cd('/')
             s.tree_metaData_print(False)
 
@@ -229,46 +186,105 @@ class data(object):
         :param kwargs: 'path'=<path>
         :return:
         """
-        str_path            = '/plugin'
+        str_path    = '/plugins'
+        self.PT     = plugin.Plugin_DS(within = self)
+        P           = self.PT._pluginTree
+
         for key,val in kwargs.iteritems():
             if key == 'path':               str_path            = val
 
-        s = self.contents
-
+        s           = self.contents
         if s.cd(str_path)['status']:
-            self.pluginList_withinFeed()
-
-    def pluginList_withinFeed(self, **kwargs):
-        """
-        Creates the "available" directory in the plugin directory within
-        the larger feed hierarchy.
-
-        This contains a list-ordered sub-tree, each with a plugin descriptor
-        dictionary.
-
-
-        :return:
-        """
-
-        str_path    = '/plugin'
-        for key,val in kwargs.iteritems():
-            if key == 'path':           str_path        = val
-
-        s = self.contents
-
-        if s.cd(str_path)['status']:
+            s.mknode(['run'])
             s.mkcd('available')
-            s.mknode(data._dict_plugin.keys())
-            for node in s.lstr_lsnode():
-                s.cd(node)
-                s.touch('detail', data._dict_plugin[node])
-                s.cd('../')
-            s.cd(str_path)
-            s.mkcd('run')
+            for d in P.lstr_lsnode('/plugins'):
+                s.graft(P, '/plugins/%s' % d)
+
+    # def pluginList_withinFeed(self, **kwargs):
+    #     """
+    #     Creates the "available" directory in the plugin directory within
+    #     the larger feed hierarchy.
+    #
+    #     This contains a list-ordered sub-tree, each with a plugin descriptor
+    #     dictionary.
+    #
+    #
+    #     :return:
+    #     """
+    #
+    #     str_path    = '/plugin'
+    #     for key,val in kwargs.iteritems():
+    #         if key == 'path':           str_path        = val
+    #
+    #     s = self.contents
+    #
+    #     if s.cd(str_path)['status']:
+    #         s.mkcd('available')
+    #         s.mknode(data._dict_plugin.keys())
+    #         for node in s.lstr_lsnode():
+    #             s.cd(node)
+    #             s.touch('detail', data._dict_plugin[node])
+    #             s.cd('../')
+    #         s.cd(str_path)
+    #         s.mkcd('run')
+
+    # def dataComponent_pluginRun(self, **kwargs):
+    #     """
+    #     'Run' a few fake plugins.
+    #     :param kwargs: 'path'=<path>
+    #     :return:
+    #     """
+    #     str_outputPath      = '/plugin'
+    #     str_inputPath       = '/dataView/files'
+    #
+    #     str_plugin          = 'mri_convert'
+    #     for key,val in kwargs.iteritems():
+    #         if key == 'plugin':             str_plugin          = val
+    #         if key == 'inputPath':          str_inputPath       = val
+    #         if key == 'outputPath':         str_outputPath      = val
+    #
+    #     s = self.contents
+    #
+    #     if s.cd(str_outputPath)['status']:
+    #         rand_date       = self.fake.date_time_this_decade()
+    #         str_timestamp   = rand_date.isoformat()
+    #         l_run           = s.lstr_lsnode()
+    #         str_newRun      = str(len(l_run))
+    #         s.mkcd(str_newRun)
+    #         s.touch('timestamp', str_timestamp)
+    #         s.mknode(['parameters', 'results', 'info'])
+    #         s.touch('info/detail', {
+    #             str_plugin: data._dict_plugin[str_plugin]
+    #         })
+    #         s.touch('parameters/input', {
+    #             str_plugin:    '<some dictionary of all input parameters>'
+    #         })
+    #         s.cd('results')
+    #         str_outputPath = s.cwd()
+    #         if str_plugin.lower() != 'pacspull' and str_plugin.lower() != 'mri_convert':
+    #             self.dataComponent_build(
+    #                 path    = s.cwd(),
+    #                 plugin  = str_plugin
+    #             )
+    #         if str_plugin.lower() == 'mri_convert':
+    #             inputTree   = C_snode.C_stree()
+    #             inputTree.cd('/')
+    #             inputTree.graft(s, str_inputPath)
+    #
+    #             self.dataComponent_build(
+    #                 path                = str_outputPath,
+    #                 plugin              = str_plugin,
+    #                 tree_convertFrom    = inputTree,
+    #                 type_convertTo      = "nii"
+    #             )
 
     def dataComponent_pluginRun(self, **kwargs):
         """
         'Run' a few fake plugins.
+
+        This basically builds a new "data" object and grafts to a specific location
+        on the current data object
+
         :param kwargs: 'path'=<path>
         :return:
         """
@@ -283,38 +299,53 @@ class data(object):
 
         s = self.contents
 
-        if s.cd(str_outputPath)['status']:
-            rand_date       = self.fake.date_time_this_decade()
-            str_timestamp   = rand_date.isoformat()
-            l_run           = s.lstr_lsnode()
-            str_newRun      = str(len(l_run))
-            s.mkcd(str_newRun)
-            s.touch('timestamp', str_timestamp)
-            s.mknode(['parameters', 'results', 'info'])
-            s.touch('info/detail', {
-                str_plugin: data._dict_plugin[str_plugin]
-            })
-            s.touch('parameters/input', {
-                str_plugin:    '<some dictionary of all input parameters>'
-            })
-            s.cd('results')
-            str_outputPath = s.cwd()
-            if str_plugin.lower() != 'pacspull' and str_plugin.lower() != 'mri_convert':
-                self.dataComponent_build(
-                    path    = s.cwd(),
-                    plugin  = str_plugin
-                )
-            if str_plugin.lower() == 'mri_convert':
-                inputTree   = C_snode.C_stree()
-                inputTree.cd('/')
-                inputTree.graft(s, str_inputPath)
+        s.cd('/plugins/run')
+        rand_date       = self.fake.date_time_this_decade()
+        str_timestamp   = rand_date.isoformat()
+        s.mkcd('%s-mri_convert' % str_timestamp)
 
-                self.dataComponent_build(
-                    path                = str_outputPath,
-                    plugin              = str_plugin,
-                    tree_convertFrom    = inputTree,
-                    type_convertTo      = "nii"
-                )
+        output          = data()
+        output.contents_build_1(SeriesFilesCount = 10)
+        o               = output.contents
+        s.graft(o, '/dataView')
+        s.graft(o, '/plugins')
+
+        # o.tree_metaData_print(False)
+        # print(o)
+
+        #
+        # if s.cd(str_outputPath)['status']:
+        #     rand_date       = self.fake.date_time_this_decade()
+        #     str_timestamp   = rand_date.isoformat()
+        #     l_run           = s.lstr_lsnode()
+        #     str_newRun      = str(len(l_run))
+        #     s.mkcd(str_newRun)
+        #     s.touch('timestamp', str_timestamp)
+        #     s.mknode(['parameters', 'results', 'info'])
+        #     s.touch('info/detail', {
+        #         str_plugin: data._dict_plugin[str_plugin]
+        #     })
+        #     s.touch('parameters/input', {
+        #         str_plugin:    '<some dictionary of all input parameters>'
+        #     })
+        #     s.cd('results')
+        #     str_outputPath = s.cwd()
+        #     if str_plugin.lower() != 'pacspull' and str_plugin.lower() != 'mri_convert':
+        #         self.dataComponent_build(
+        #                 path    = s.cwd(),
+        #                 plugin  = str_plugin
+        #         )
+        #     if str_plugin.lower() == 'mri_convert':
+        #         inputTree   = C_snode.C_stree()
+        #         inputTree.cd('/')
+        #         inputTree.graft(s, str_inputPath)
+        #
+        #         self.dataComponent_build(
+        #                 path                = str_outputPath,
+        #                 plugin              = str_plugin,
+        #                 tree_convertFrom    = inputTree,
+        #                 type_convertTo      = "nii"
+        #         )
 
     def dataTree_mriConvert_build(self, **kwargs):
         """
@@ -413,6 +444,8 @@ if __name__ == "__main__":
 
     container   = data()
     container.contents_build_1(SeriesFilesCount = args.SeriesFilesCount)
+
+    container.dataComponent_pluginRun()
 
     print(container.contents)
     print(json.dumps(dict(container.contents.snode_root)))
