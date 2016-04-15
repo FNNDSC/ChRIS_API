@@ -181,6 +181,7 @@ class Feed_FS(Feed):
 
         sample      = data.data()
         sample.contents_build_1(SeriesFilesCount = SeriesFilesCount)
+        sample.dataComponent_pluginRun()
 
         s.cd(str_root)
         l_data   = sample.contents.lstr_lsnode('/')
