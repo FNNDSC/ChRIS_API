@@ -533,14 +533,27 @@ class C_stree:
             if len(str_cwd)>1: str_cwd  = str_cwd[1:]
             return str_cwd
 
+        def path_has(self, **kwargs):
+            """
+            Checks if the current path has a node spec'd by kwargs
+            """
+            str_node    = "/" # This node will always be "False"
+            for key, val in kwargs.iteritems():
+                if key == 'node':   str_node = val
+            if str_node in self.l_cwd:
+                return { 'found':   True,
+                         'indices': [i for i, x in enumerate(self.l_cwd) if x == str_node]}
+            else:
+                return { 'found':   False,
+                         'indices': [-1]}
+
         def pwd(self, **kwargs):
             """
-            Prints the cwd
+            Returns the cwd
 
             Optional kwargs:
 
                 node = <node>
-
                 If specified, return only the directory name at depth <node>.
 
             """
