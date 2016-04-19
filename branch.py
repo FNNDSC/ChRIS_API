@@ -474,11 +474,14 @@ class BranchTree(object):
         # everything for a new branch! notes, title, comments, etc.
         # It's probably overkill.
         str_timeStamp   = str(datetime.datetime.now())
+        str_timeStamp   = str_timeStamp.replace(':', '-')
+        str_timeStamp   = str_timeStamp.replace(' ', '_')
         if d_ret['nodeName'] != 'timestamp':
             if str_ROOT     == 'Feeds':
                 s_regen         = feed.Feed_FS()
                 sr              = s_regen._stree
                 str_path        = s.pwd()
+
                 self.debug('Path in stree = %s\n' % str_path)
                 if s.pwd(node=1) == 'title':
                     self.debug('Regenerating title...\n')
@@ -498,9 +501,25 @@ class BranchTree(object):
                     s.cd(str_path)
                     s.rm(d_ret['nodeName'])
                     s.touch(d_ret['nodeName'], sr.cat(d_ret['nodeName']))
+                d_pluginRun = s.path_has(node = 'available')
+                if d_pluginRun['found']:
+                    nodeI               = d_pluginRun['indices'][-1]
+                    str_exec            = s.pwd(node = nodeI+1)
+                    l_path              = str_path.split('/')
+                    p_path              = l_path[0:nodeI]
+                    str_pathInFeedTree  = '/'.join(p_path)
+                    self.debug('Running plugin %s in %s...\n' % (str_exec, str_pathInFeedTree))
+                    if s.cd(str_pathInFeedTree + '/run')['status']:
+                        s.mkcd(str_exec + '-'+ str_timeStamp)
+                        newData         = data.data()
+                        newData.contents_build_1()
+                        n               = newData.contents
+                        s.graft(n, '/dataView')
+                        s.graft(n, '/plugins')
+
             if str_ROOT     == 'Plugins':
                 if s.pwd(node=1) == 'executable':
-                    str_name    = '%s-%s' % (d_ret['contents'], str_timeStamp.replace(' ',''))
+                    str_name    = '%s-%s' % (d_ret['contents'], str_timeStamp)
                     self.debug('Running executable %s...\n' % (str_name))
                     F = self.within.within.FT._feedTree
                     S = feed.Feed_FS()
