@@ -538,7 +538,7 @@ class Plugin_DS(Plugin):
                     }
                     )
 
-        if s.cd('/plugins/recon-all/note')['status']:
+        if s.cd('/plugins/recon_all/note')['status']:
             s.touch('REST',
                     {
                         'PUSH': {
@@ -548,7 +548,7 @@ class Plugin_DS(Plugin):
                     }
                     )
 
-        if s.cd('/plugins/recon-all/executable')['status']:
+        if s.cd('/plugins/recon_all/executable')['status']:
             s.touch('REST',
                     {
                         'PUSH': {
@@ -558,7 +558,7 @@ class Plugin_DS(Plugin):
                     }
                     )
 
-        if s.cd('/plugins/recon-all/args')['status']:
+        if s.cd('/plugins/recon_all/args')['status']:
             s.touch('REST',
                     {
                         'PUSH': {
