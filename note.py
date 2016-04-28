@@ -31,7 +31,7 @@ import  message
 
 sys.path.append('components/rikeripsum/rikeripsum')
 sys.path.append('components/names')
-import  rikeripsum
+from rikeripsum import  rikeripsum
 
 
 class note(object):
