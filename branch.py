@@ -262,11 +262,11 @@ class BranchTree(object):
             if str_searchType.lower() == 'name':
                 if F.cd(str_searchTarget)['status']:
                     Froot = F.cwd()
-                    # s.graft(F, '%s/'      % F.cwd())
-                    s.graft(F, '%s/title'   % Froot)
-                    s.graft(F, '%s/note'    % Froot)
-                    s.graft(F, '%s/data'    % Froot)
-                    s.graft(F, '%s/comment' % Froot)
+                    s.graft(F, '%s/'      % Froot)
+                    # s.graft(F, '%s/title'   % Froot)
+                    # s.graft(F, '%s/note'    % Froot)
+                    # s.graft(F, '%s/data'    % Froot)
+                    # s.graft(F, '%s/comment' % Froot)
                     d_ret['status'] = True
                     d_ret['branch']   = s
                     s.tree_metaData_print(False)
@@ -501,6 +501,20 @@ class BranchTree(object):
                     s.cd(str_path)
                     s.rm(d_ret['nodeName'])
                     s.touch(d_ret['nodeName'], sr.cat(d_ret['nodeName']))
+                # "FS" plugins...
+                if s.pwd(node=2) == 'executable':
+                    str_name    = '%s-%s' % (d_ret['contents'], str_timeStamp)
+                    self.debug('Running executable %s...\n' % (str_name))
+                    F = self.within._feedTree
+                    S = feed.Feed_FS()
+                    s = S._stree
+                    if F.cd('/feeds')['status']:
+                        F.mkcd('Feed-' + str_name)
+                        F.graft(s, '/note')
+                        F.graft(s, '/title')
+                        F.graft(s, '/comment')
+                        F.graft(s, '/data')
+                # "DS" plugins
                 d_pluginRun = s.path_has(node = 'available')
                 if d_pluginRun['found']:
                     nodeI               = d_pluginRun['indices'][-1]
