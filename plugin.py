@@ -175,7 +175,9 @@ class Plugin_FS(Plugin):
                 'directory':    '<someDirectory>',
                 'ls_args':      '<argsForls>',
             },
-            'executable':   '<someAJAX>',
+            'executable': {
+                'body':             '<Some AJAX>'
+            },
             'icons': {
                 'thumbnail':    'thn.png',
                 'full':         'full.png'
@@ -191,7 +193,9 @@ class Plugin_FS(Plugin):
                 'ls_args':      ['-a', '-l', '-1d'],
                 'arg3':         'val3'
             },
-            'executable':   'ls',
+            'executable': {
+                'body':             'ls'
+            },
             'icons': {
                 'thumbnail':    'thn.png',
                 'full':         'full.png'
@@ -302,6 +306,16 @@ class Plugin_FS(Plugin):
                     }
                     )
 
+        if s.cd('/plugins/file_upload/executable')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
+
         if s.cd('/plugins/file_upload/note')['status']:
             s.touch('REST',
                     {
@@ -323,6 +337,15 @@ class Plugin_FS(Plugin):
                     }
                     )
 
+        if s.cd('/plugins/file_browser/executable')['status']:
+            s.touch('REST',
+                    {
+                        'PUSH': {
+                            'body':         'file',
+                            'timestamp':    'file'
+                        }
+                    }
+                    )
         if s.cd('/plugins/file_browser/note')['status']:
             s.touch('REST',
                     {
