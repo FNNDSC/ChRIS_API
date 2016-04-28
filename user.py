@@ -236,6 +236,9 @@ class UserTree_chrisUser(UserTree):
         U.cd('/%s' % self.str_user)
         U.graft(F, '/feeds')
         U.graft(P, '/plugins')
+        U.cd('feeds')
+        U.mknode(['plugins'])
+        U.graft(P, '/plugins')
 
         F.tree_metaData_print(False)
         U.tree_metaData_print(False)
