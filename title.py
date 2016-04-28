@@ -29,7 +29,7 @@ import  argparse
 import  C_snode
 import  message
 
-sys.path.append('components/rikeripsum/rikeripsum')
+sys.path.append('components/rikeripsum')
 sys.path.append('components/names')
 from rikeripsum import  rikeripsum
 
