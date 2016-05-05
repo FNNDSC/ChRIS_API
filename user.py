@@ -100,12 +100,15 @@ class UserTree(object):
         self.str_user               = '<void>'
 
         self.b_constructAllFeeds    = True
+        self.numberOfFeeds          = 4
 
         for key,val in kwargs.iteritems():
             if key == 'user':                   self.str_user               = val
             if key == 'constructAllFeeds':      self.b_constructAllFeeds    = val
+            if key == 'numberOfFeeds':          self.numberOfFeeds          = val
 
         self.FT                 = feed.FeedTree_chrisUser(constructAllFeeds = self.b_constructAllFeeds,
+                                                          numberOfFeeds     = self.numberOfFeeds,
                                                           within = self)
         self.PT                 = plugin.Plugin_FS(within = self)
         if not self.b_constructAllFeeds:
