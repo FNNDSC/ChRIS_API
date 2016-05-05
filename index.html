@@ -219,6 +219,11 @@
                 background: rgb(223, 117, 20); /* this is an orange */
             }
 
+            .button-createNewDB-feedsLabel {
+                background: rgb(28, 184, 65); /* this is a green */
+            }
+
+
             .button-REST-delete {
                 background: rgb(223, 27, 15); /* this is an orange */
             }
@@ -249,6 +254,14 @@
             <button onclick="jsonSyntaxHightlight_toggle()" class="button-xsmall pure-button pure-button-primary button-jsonHighlight-on" id="JSON_status">JSON syntax highlight: ON</button>
             <button onclick="useFileDB_toggle()" class="button-xsmall pure-button pure-button-primary button-useFileDB-on" id="useFileDB_status">Use file DB: ON</button>
             <button onclick="createNewDB_toggle()" class="button-xsmall pure-button pure-button-primary button-createNewDB-off" id="createNewDB_status">Create new DB: OFF</button>
+
+            <div class="pure-control-group">
+                <label>
+                    <button class="button-xsmall pure-button pure-button-primary button-createNewDB-feedsLabel" style="visibility: hidden;" id="createNewDB_feedsLabel">Feeds</button>
+                </label>
+                <input style="width:30px;font-family:courier;font-size:90%;padding-top:0.5em;padding-left:0em;float:left;visibility:hidden;" type="text" maxlength="3" class="onlythree" id="createNewDB_feedsVal" value="4"/>
+            </div>
+
             <button class="button-xsmall button-help   pure-button"     id="opener">help</button>
             <br>
         </div>
@@ -434,16 +447,22 @@
         debug.functionName  = "createNewDB_toggle";
         debug.entering();
         fileDB_status_DOM = document.getElementById("createNewDB_status");
+        fileDB_label_DOM  = document.getElementById("createNewDB_feedsLabel");
+        fileDB_feeds_DOM  = document.getElementById("createNewDB_feedsVal");
         debug.vlog({message: 'before toggle: b_createNewDB_status', var: b_createNewDB_status});
         b_createNewDB_status = !b_createNewDB_status;
         debug.vlog({message: 'after  toggle: b_createNewDB_status', var: b_createNewDB_status});
         if(b_createNewDB_status) {
-            fileDB_status_DOM.innerHTML     = 'Create new DB: ON';
-            fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-createNewDB-on';
+            fileDB_status_DOM.innerHTML         = 'Create new DB: ON';
+            fileDB_status_DOM.className         = 'button-xsmall pure-button pure-button-primary button-createNewDB-on';
+            fileDB_label_DOM.style.visibility   = 'visible';
+            fileDB_feeds_DOM.style.visibility   = 'visible';
         }
         if(!b_createNewDB_status) {
-            fileDB_status_DOM.innerHTML     = 'Create new DB: OFF';
-            fileDB_status_DOM.className     = 'button-xsmall pure-button pure-button-primary button-createNewDB-off';
+            fileDB_status_DOM.innerHTML         = 'Create new DB: OFF';
+            fileDB_status_DOM.className         = 'button-xsmall pure-button pure-button-primary button-createNewDB-off';
+            fileDB_label_DOM.style.visibility   = 'hidden';
+            fileDB_feeds_DOM.style.visibility   = 'hidden';
         }
     }
 
@@ -798,7 +817,8 @@
         DBpath              = $('#DB');
 
         if(b_createNewDB_status) {
-            APIsuffix   = "&createNewDB=1";
+            var feeds	= $('#createNewDB_feedsVal').val();
+            APIsuffix   = "&createNewDB=" + feeds;
         }
         if(DBpath_DOM.value.length) {
             APIsuffix   = APIsuffix + "&DBpath="   + DBpath_DOM.value;
