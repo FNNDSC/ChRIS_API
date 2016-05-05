@@ -243,7 +243,9 @@ class ChRIS_SMUserDB(object):
         # do this *ONCE* per session/replay.
         if not self.userTree:
             if self.b_createNewDB:
-                userTree                = user.UserTree_chrisUser(user = astr_user, constructAllFeeds = True)
+                userTree                = user.UserTree_chrisUser(user              = astr_user,
+                                                                  constructAllFeeds = True,
+                                                                  numberOfFeeds     = self.b_createNewDB)
                 u                       = userTree._userTree
                 # and attach it to the stree of this object
                 if self.DB.cd('/users/%s' % astr_user)['status']:
@@ -256,6 +258,7 @@ class ChRIS_SMUserDB(object):
                 # Read from existing DB
                 # The DB has already been created (and initial access tested with DB_build()...
                 # we just need to add this user's feed and plugin tree to the base structure userFeed hook...
+                self.userTree           = user.UserTree(dummyInternalsBuild = False)
                 self.userTree           = user.UserTree(dummyInternalsBuild = False)
                 u                       = self.userTree._userTree
                 if u.cd('/')['status']:
@@ -410,7 +413,7 @@ class ChRIS_SMUserDB(object):
 
         self.chris                      = None
 
-        self.b_createNewDB              = False
+        self.b_createNewDB              = 0
         self.b_ignorePersistentDB       = False
         self.b_readDB                   = False
         self.DB                         = C_snode.C_stree()
@@ -418,7 +421,6 @@ class ChRIS_SMUserDB(object):
 
         for key,value in kwargs.iteritems():
             if key == "chris":              self.chris                  = value
-            if key == 'createNewDB':        self.b_createNewDB          = value
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = value
             if key == 'DB':                 self.str_DBpath             = value
             if key == 'createNewDB':        self.b_createNewDB          = value
@@ -442,7 +444,7 @@ class ChRIS_SMCore(object):
         self.chris                  = None
         self.str_DBpath             = ""
         self.b_ignorePersistentDB   = False
-        self.b_createNewDB          = False
+        self.b_createNewDB          = 0
         for key,value in kwargs.iteritems():
             if key == "chris":              self.chris                  = value
             if key == "DB":                 self.str_DBpath             = value
@@ -533,7 +535,7 @@ class ChRIS_SM(object):
 
         self.str_DBpath                 = ''
         self.b_ignorePersistentDB       = False
-        self.b_createNewDB              = False
+        self.b_createNewDB              = 0
         for key,val in kwargs.iteritems():
             if key == 'DB':                 self.str_DBpath             = val
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = val
@@ -742,7 +744,7 @@ def synopsis(ab_shortOnly = False):
                              --RPC --stateFile <stateFile>]                         \\
                             [--authority <clientSideAuthority>]                     \\
                             [--ignorePersistenDB]                                   \\
-                            [--createNewDB]                                         \\
+                            [--createNewDB <feeds>]                                 \\
                             [--DB <DBpath>]                                         \\
                             --APIcall <APIcall>
 
@@ -784,8 +786,8 @@ def synopsis(ab_shortOnly = False):
        --ignorePersistentDB
        If set, will ignore the file DB and create a new DB in memory.
 
-       --createNewDB
-       If set, will create a new DB from internals with each call.
+       --createNewDB <feeds>
+       If set, will create a new DB comprising <feeds> feeds from internals with each call.
 
        --DB <DBpath>
        The name of the fileDB to use for data state. If nonzero, will
@@ -864,12 +866,19 @@ if __name__ == "__main__":
         help    =   'Ignore the file DB and create a new DB for this call.',
         default =   False
     )
+    # parser.add_argument(
+    #     '--createNewDB',
+    #     action  =   'store_true',
+    #     dest    =   'b_createNewDB',
+    #     help    =   'Create a new file-based DB, erasing any existing DB.',
+    #     default =   False
+    # )
     parser.add_argument(
         '--createNewDB',
-        action  =   'store_true',
+        action  =   'store',
         dest    =   'b_createNewDB',
-        help    =   'Create a new file-based DB, erasing any existing DB.',
-        default =   False
+        help    =   'Create a new file-based DB, erasing any existing DB. An int argument denotes the number of feeds to autogenerate',
+        default =   0
     )
     parser.add_argument(
         '-d', '--DB',
