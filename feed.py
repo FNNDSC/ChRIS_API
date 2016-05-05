@@ -362,14 +362,23 @@ class FeedTree_chrisUser(FeedTree):
         """
         FeedTree.__init__(self, **kwargs)
 
-        b_constructAllFeeds    = True
+        b_constructAllFeeds     = True
+        numberOfFeeds           = 4
         for key,val in kwargs.iteritems():
-            if key == 'constructAllFeeds': b_constructAllFeeds    = val
+            if key == 'constructAllFeeds':  b_constructAllFeeds     = val
+            if key == 'numberOfFeeds':      numberOfFeeds           = int(val)
 
         if b_constructAllFeeds:
             F       = self._feedTree
-            l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
-            l_FID   = ['000001', '000002', '000003', '000004']
+            # l_Feed  = ['Feed-1', 'Feed-2', 'Feed-3', 'Feed-4']
+            # l_FID   = ['000001', '000002', '000003', '000004']
+
+            l_Feed  = []
+            l_FID   = []
+            for i in range(1, numberOfFeeds+1):
+                l_Feed.append('Feed-%d' % i)
+                l_FID.append('%06d' % i)
+
             F.cd('/')
             F.mkcd('feeds')
             F.mknode(l_Feed)
