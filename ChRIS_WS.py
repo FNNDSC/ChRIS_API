@@ -290,6 +290,7 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
         self.d_error                    = {}
         self.d_component                = {}
         self.str_createNewDB            = ''
+        self.str_feedsToCreate          = ''
         self.str_DBpath                 = ''
         self.path                       = ''
 
@@ -300,6 +301,8 @@ class TCPServerHandler(SocketServer.BaseRequestHandler):
 
         if 'createNewDB' in self.d_component.keys():
             self.str_createNewDB        = '--createNewDB'
+            self.str_feedsToCreate      = self.d_component['createNewDB'][0]
+            self.str_createNewDB       += " %s" % self.str_feedsToCreate
             if 'DBpath' in self.d_component.keys():
                 str_DBpath                  = self.d_component['DBpath'][0]
                 try:
