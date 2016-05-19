@@ -50,6 +50,7 @@ import  ChRIS_RPCAPI
 import  ChRIS_RESTAPI
 import  plugin
 import  serverInfo
+import  ChRIS_DB_client
 
 class ChRIS_SMUserDB(object):
     """A "DB" of users and passwords.
@@ -143,12 +144,26 @@ class ChRIS_SMUserDB(object):
                 error.fatal(self, 'no_DBPath')
             if not os.path.isdir(self.str_DBpath):
                 error.fatal(self, 'no_validDBPath')
+            self.debug('Reading data from DB...')
+            client = ChRIS_DB_client.ChRIS_DB_client(
+                id          = "1",
+                request     = "GET http://"  + self.str_APIcall,
+                saveTo      = "",
+                loadFrom    = "",
+                stdout      = False
+            )
+            client.start()
+            # Wait for response
+            while not client.b_dataReady:
+                pass
+            self.DB         = client.stree
+
             # Load the whole tree (including feeds) from disk
-            self.debug('Reading tree from disk... %s' % self.str_DBpath)
-            self.DB = C_snode.C_stree.tree_load(
-                    pathDiskRoot    = self.str_DBpath,
-                    loadJSON        = False,
-                    loadPickle      = True)
+            # self.debug('Reading tree from disk... %s' % self.str_DBpath)
+            # self.DB = C_snode.C_stree.tree_load(
+            #         pathDiskRoot    = self.str_DBpath,
+            #         loadJSON        = False,
+            #         loadPickle      = True)
             self.b_readDB   = True
 
     def user_checkAPIcanCall(self, **kwargs):
@@ -270,46 +285,6 @@ class ChRIS_SMUserDB(object):
                     if not self.userTree.PT._pluginTree.graft(self.DB, '/users/%s/plugins' % astr_user):
                         error.fatal(self, 'no_main2pluginTree')
 
-    # def user_attachUserTree(self, **kwargs):
-    #     """
-    #     Attaches the feed tree of the given user to a convenience member variable,
-    #     self.userTree.
-    #
-    #     If the DB is dynamic or newly created, then a baseline user feed is generated;
-    #     otherwise, the user feed from a disk DB is "grafted" to self.userTree.
-    #
-    #     :param kwargs:
-    #     :return:
-    #     """
-    #
-    #     """Attach the feed tree for this user"""
-    #     for key, val in kwargs.iteritems():
-    #         if key == 'user':   astr_user   = val.translate(None, '\'\"')
-    #
-    #     # Get the user's feed tree structure -- we only need to
-    #     # do this *ONCE* per session/replay.
-    #     if not self.userTree:
-    #         if self.b_createNewDB:
-    #             feedTree                = feed.FeedTree_chrisUser()
-    #             # and attach it to the stree of this object
-    #             if self.DB.cd('/users/%s' % astr_user)['status']:
-    #                 # self.DB.touch('tree', feedTree)
-    #                 self.DB.graft(feedTree._feedTree, '/feeds')
-    #                 self.userTree          = feedTree
-    #                 # self.debug('\nFeed Tree from user %s\n%s' % (astr_user, feedTree._userTree))
-    #             else:
-    #                 error.fatal(self, 'no_userInTree')
-    #         else:
-    #             # Read from existing DB
-    #             # The DB has already been created (and initial access tested with DB_build()...
-    #             # we just need to add this user's feed to the base structure userFeed hook...
-    #             ft                         = C_snode.C_stree()
-    #             self.userTree              = feed.FeedTree()
-    #             self.userTree._feedTree.cd('/')
-    #             self.userTree._feedTree.graft(self.DB, '/users/%s/feeds' % astr_user)
-    #             # self.debug('\nUser Feed Tree:\n%s' % self.userTree._userTree)
-    #             # self.debug('\nWhole DB:\n%s' % self.DB)
-
     def user_logout(self, **kwargs):
         """
         Log the current user out -- essentially remove the persistent
@@ -410,6 +385,8 @@ class ChRIS_SMUserDB(object):
         self.__name                     = "ChRIS_SMUserDB"
 
         self.str_DBpath                 = '/tmp'
+        self.str_VERB                   = ""
+        self.str_APIcall                = ""
 
         self.chris                      = None
 
@@ -424,6 +401,9 @@ class ChRIS_SMUserDB(object):
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = value
             if key == 'DB':                 self.str_DBpath             = value
             if key == 'createNewDB':        self.b_createNewDB          = value
+            if key == 'VERB':               self.str_VERB               = value
+            if key == 'APIcall':            self.str_APIcall            = value
+
         self.debug                      = message.Message(logTo = "./debug.log")
         self.debug._b_syslog            = True
         self._md5                       = hashlib
@@ -445,17 +425,25 @@ class ChRIS_SMCore(object):
         self.str_DBpath             = ""
         self.b_ignorePersistentDB   = False
         self.b_createNewDB          = 0
+        self.str_VERB               = ""
+        self.str_API                = ""
+
         for key,value in kwargs.iteritems():
             if key == "chris":              self.chris                  = value
             if key == "DB":                 self.str_DBpath             = value
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = value
             if key == 'createNewDB':        self.b_createNewDB          = value
+            if key == 'VERB':               self.str_VERB               = value
+            if key == 'APIcall':            self.str_API                = value
+
         self.s_tree     = C_snode.C_stree()
         self._userDB    = ChRIS_SMUserDB(
                                 chris               = self.chris,
                                 DB                  = self.str_DBpath,
                                 ignorePersistentDB  = self.b_ignorePersistentDB,
-                                createNewDB         = self.b_createNewDB
+                                createNewDB         = self.b_createNewDB,
+                                VERB                = self.str_VERB,
+                                APIcall             = self.str_API
                             )
 
     def login(self, **kwargs):
@@ -536,17 +524,24 @@ class ChRIS_SM(object):
         self.str_DBpath                 = ''
         self.b_ignorePersistentDB       = False
         self.b_createNewDB              = 0
+        self.str_VERB                   = ""
+        self.str_API                    = ""
+
         for key,val in kwargs.iteritems():
             if key == 'DB':                 self.str_DBpath             = val
             if key == 'ignorePersistentDB': self.b_ignorePersistentDB   = val
             if key == 'createNewDB':        self.b_createNewDB          = val
+            if key == 'APIcall':            self.str_API                = val
+            if key == 'VERB':               self.str_VERB               = val
 
         self._userTree                  = C_snode.C_stree()
         self._SMCore                    = ChRIS_SMCore(
                                             chris               = self,
                                             DB                  = self.str_DBpath,
                                             ignorePersistentDB  = self.b_ignorePersistentDB,
-                                            createNewDB         = self.b_createNewDB
+                                            createNewDB         = self.b_createNewDB,
+                                            VERB                = self.str_VERB,
+                                            APIcall             = self.str_API
                                         )
         self._name                      = ""
         self._log                       = message.Message()
@@ -712,13 +707,16 @@ class ChRIS_authenticate(object):
         Returns:
             Whatever is returned by the call is returned back.
         """
-        db = self.chris._SMCore._userDB
+        db              = self.chris._SMCore._userDB
+        str_APIcall     = db.str_APIcall
+        str_VERB        = db.str_VERB
+        b_createNewDB   = db.b_createNewDB
 
         d_ret = db.user_checkAPIcanCall(**kwargs)
         if not d_ret['status'] and d_ret['code'] == 1:
             error.fatal(self, 'no_loginFound')
         ret = f()
-        if len(self.chris.str_DBpath):
+        if b_createNewDB:
             # If a path DB has been specified (and assuming it's a valid path!)
             # save the DB tree to that path.
             if os.path.isdir(self.chris.str_DBpath):
@@ -728,6 +726,18 @@ class ChRIS_authenticate(object):
                             failOnDirExist  = False,
                             saveJSON        = False,
                             savePickle      = True)
+
+        if len(self.chris.str_DBpath) and str_VERB != 'GET':
+            client = ChRIS_DB_client.ChRIS_DB_client(
+                id          = "1",
+                request     = "PUSH http://" + str_APIcall,
+                data        = dict(db.DB.snode_root)
+            )
+            client.start()
+            # Wait for response
+            while not client.b_dataReady:
+                pass
+
         return ret
 
 
@@ -925,7 +935,8 @@ if __name__ == "__main__":
                             authority           = args.str_authority,
                             ignorePersistentDB  = args.b_ignorePersistentDB,
                             createNewDB         = args.b_createNewDB,
-                            DB                  = args.str_DBpath
+                            DB                  = args.str_DBpath,
+                            APIcall             = args.str_apiCall
                       )
     chris.API.auth  = ChRIS_authenticate(
                             chris               = chris,
