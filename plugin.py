@@ -167,6 +167,13 @@ class Plugin_FS(Plugin):
             },
             'note': {
                 'body':             'This plugin queries a PACS for image data.'
+            },
+            'summary' :{
+                'runview':     '../../data/pacs_pull/pacs_pull-runview.html',
+                'dataview':    '../../data/pacs_pull/pacs_pull-dataview.html',
+                'label':       'Pacs pull',
+                'color':       'blue',
+                'icon':        'icons:cloud-download'
             }
         },
         'file_upload' : {
@@ -184,6 +191,13 @@ class Plugin_FS(Plugin):
             },
             'note': {
                 'body':             'This plugin uploads from client to server.',
+            },
+            'summary' :{
+                'runview':     '../../data/file_upload/file_upload-runview.html',
+                'dataview':    '../../data/file_upload/file_upload-dataview.html',
+                'label':       'File upload',
+                'color':       'amber',
+                'icon':        'icons:cloud-upload'
             }
         },
         'file_browser' : {
@@ -202,6 +216,38 @@ class Plugin_FS(Plugin):
             },
             'note': {
                 'body':             'Generate a Feed anchored on a passed server directory.',
+            },
+            'summary' :{
+                'runview':     '../../data/file_browser/file_browser-runview.html',
+                'dataview':    '../../data/file_browser/file_browser-dataview.html',
+                'label':       'File browser',
+                'color':       'green',
+                'icon':        'icons:folder-open'
+            }
+        },
+        'search' : {
+            'name':         'search',
+            'args':         {
+                'directory':    '<someDirectory>',
+                'ls_args':      ['-a', '-l', '-1d'],
+                'arg3':         'val3'
+            },
+            'executable': {
+                'body':             'ls'
+            },
+            'icons': {
+                'thumbnail':    'thn.png',
+                'full':         'full.png'
+            },
+            'note': {
+                'body':             'Generate a Feed anchored on a passed server directory.',
+            },
+            'summary' :{
+                'runview':     '../../data/search/search-runview.html',
+                'dataview':    '../../data/search/search-dataview.html',
+                'label':       'Search',
+                'color':       'red',
+                'icon':        'icons:search'
             }
         }
       }
