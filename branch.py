@@ -140,11 +140,13 @@ class BranchTree(object):
         str_path    = f.cwd()
         if str_path == '/': str_path = ''
         l_branch    = f.lstr_lsnode(str_path)
+        l_files     = f.lsf(str_path)
+        l_elements  = l_branch + l_files
         l_URI       = []
-        for node in l_branch:
+        for node in l_elements:
             l_URI.append('%s/%s%s/%s' %     (str_ROOT, str_branchSpec, str_path, node))
         # Need to check this conditional?
-        if not len(l_branch):
+        if not len(l_elements):
             for terminus in f.lsf(str_path):
                 l_URI.append('%s/%s%s/%s' % (str_ROOT, str_branchSpec, str_path, terminus))
         return l_URI
