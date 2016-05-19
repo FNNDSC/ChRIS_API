@@ -178,18 +178,18 @@ class C_snode:
             #+ described by all the 'mustInclude' and 'mustNotInclude' traits of
             #+ each higher level.
 
-            self.meta                   = C_meta()
+            # self.meta                   = C_meta()
             self.snode_parent           = None
             self.d_nodes                = {}
             self.d_data                 = {}
-            self.b_printMetaData        = True
+            # self.b_printMetaData        = True
             self.b_printContents        = True
             self.b_printPre             = False
             self.str_nodeName           = astr_nodeName
             self.b_printPre             = False
 
         def __iter__(self):
-            yield('meta', dict(self.meta))
+            # yield('meta', dict(self.meta))
             if len(self.d_data):
                 for key in self.d_data.keys():
                     yield(key, self.d_data[key])
@@ -200,20 +200,23 @@ class C_snode:
         # Getters and setters
 
         def metaData_print(self, *args):
-            if len(args):
-                self.b_printMetaData    = args[0]
-                return True
-            else:
-                return self.b_printMetaData
+            return True
+            # if len(args):
+            #     self.b_printMetaData    = args[0]
+            #     return True
+            # else:
+            #     return self.b_printMetaData
 
         def depth(self, *args):
             """
             Get/set the depth of this node.
             """
             if len(args):
-                self.meta.depth(args[0])
+                pass
+                # self.meta.depth(args[0])
             else:
-                return self.meta.depth()
+                # return self.meta.depth()
+                return 0
 
         def printPre(self, *args):
             """
@@ -267,8 +270,8 @@ class C_snode:
                 str_pre = "|"
             else:
                 str_pre = " "
-            self.meta.pre(str_pre)
-            if self.b_printMetaData: self.sCore.write('%s' % self.meta)
+            # self.meta.pre(str_pre)
+            # if self.b_printMetaData: self.sCore.write('%s' % self.meta)
 
             for key, value in self.d_data.iteritems():
                 self.sCore.write('%s   +--%-17s %s\n' % (str_pre, key, value))
@@ -401,10 +404,11 @@ class C_stree:
 
         def metaData_print(self, *args):
             if len(args):
-                self.b_printMetaData    = args[0]
+                # self.b_printMetaData    = args[0]
                 return True
             else:
-                return self.b_printMetaData
+                # return self.b_printMetaData
+                return True
 
         def __init__(self, **kwargs):
             """
@@ -473,6 +477,7 @@ class C_stree:
             for k, v in d.items():
                 new_key = parent_key + sep + k if parent_key else k
                 if isinstance(v, collections.MutableMapping):
+                    if v == {}: v = {'contents': None}
                     items.extend(C_stree.flatten(v, new_key, sep=sep).items())
                 else:
                     items.append((sep + new_key, v))
@@ -567,7 +572,9 @@ class C_stree:
             
             str_path = self.cwd()
             if b_node:
-                str_path    = str_path.split('/')[node]
+                l_path      = str_path.split('/')
+                if len(l_path) >= node+1:
+                    str_path    = str_path.split('/')[node]
             return str_path
 
         def ptree(self):
