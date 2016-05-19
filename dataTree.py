@@ -30,7 +30,7 @@ import  os
 
 sys.path.append('components/faker')
 
-import faker
+from faker import Faker
 
 class dataTree(object):
     """
@@ -42,7 +42,7 @@ class dataTree(object):
 
     def __init__(self, **kwargs):
 
-        self.fake       = faker.Faker()
+        self.fake       = Faker()
         self.contents   = ""
         self.FS         = C_snode.C_stree()
         self.numFiles   = 10
