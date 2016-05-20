@@ -285,6 +285,10 @@ class Worker(threading.Thread):
                 self._stree.cd('/users/chris/feeds')
                 l_feeds = self._stree.lstr_lsnode()
                 s.mknode(l_feeds)
+                for f in l_feeds:
+                    s.cd(f)
+                    s.graft(self._stree, '/users/chris/feeds/%s/detail' % f)
+                    s.cd('../')
 
         if str_verb == 'PUSH':
             if len(l_path) >= 2 and len(str_feed):
