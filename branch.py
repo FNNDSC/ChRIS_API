@@ -209,6 +209,8 @@ class BranchTree(object):
         l_URI   = []
         l_keys  = []
 
+        s       = C_snode.C_stree()
+
         F           = self._branchTree
         if F.cd('/%s' % str_ROOT.lower())['status']:
             if str_searchType.lower() == "name":
@@ -223,7 +225,11 @@ class BranchTree(object):
                     l_keys.append(str_ID)
                     l_URI.append(str_ROOT + '/ID__' + str_ID)
                 d_ret['status'] = True
-        d_ret['payload']    = l_keys
+            s.cd('/')
+            for feed in l_keys:
+                s.graft(F, '/%s/%s' % (str_ROOT.lower(), feed) )
+        # d_ret['payload']    = l_keys
+        d_ret['payload']    = dict(s.snode_root)
         d_ret['URL_get']    = l_URI
 
         return d_ret
@@ -282,6 +288,7 @@ class BranchTree(object):
                             s.graft(F, '%s/note'    % Froot)
                             s.graft(F, '%s/data'    % Froot)
                             s.graft(F, '%s/comment' % Froot)
+                            s.graft(F, '%s/detail'  % Froot)
                             d_ret['branch']   = s
                             break
         if d_ret['ROOT'] == 'Plugins':
@@ -516,6 +523,7 @@ class BranchTree(object):
                         F.graft(s, '/title')
                         F.graft(s, '/comment')
                         F.graft(s, '/data')
+                        F.graft(s, '/detail')
                 # "DS" plugins
                 d_pluginRun = s.path_has(node = 'available')
                 if d_pluginRun['found']:
@@ -546,6 +554,7 @@ class BranchTree(object):
                         F.graft(s, '/title')
                         F.graft(s, '/comment')
                         F.graft(s, '/data')
+                        F.graft(s, '/detail')
         self.debug('setting timeStamp to %s\n' % str_timeStamp)
         s.touch('timestamp', str_timeStamp)
 
