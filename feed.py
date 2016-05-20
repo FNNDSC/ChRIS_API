@@ -159,9 +159,13 @@ class Feed_FS(Feed):
 
         """
         b_internalsCreate   = True
+        self.str_name       = ""
+        self.str_id         = ""
         Feed.__init__(self, **kwargs)
         for key, val in kwargs.iteritems():
             if key == 'internalsCreate':    b_internalsCreate   = val
+            if key == 'name':               self.str_name       = val
+            if key == 'id':                 self.str_id         = val
 
         if b_internalsCreate: self.create(**kwargs)
 
@@ -269,6 +273,33 @@ class Feed_FS(Feed):
 
         return(dict(sample.contents.snode_root))
 
+    def detailElement_create(self, **kwargs):
+        """
+        Some overview detail about the feed
+        """
+        s = self._stree
+        str_root    = '/'
+        for key, val in kwargs.iteritems():
+            if key == 'root':           str_root        = val
+
+        s.cd(str_root)
+        d_detail = {
+            'name':         self.str_name,
+            'id':           self.str_id,
+            'color':        '#00ff00',
+            'favorite':     False,
+            'status':       0,
+            'timestamp':    '',
+            'shared':       0
+        }
+        s.touch('meta', d_detail)
+        s.mkcd('tags')
+        for loop in range(0, 5):
+            s.mkcd(str(loop))
+            s.touch('tagname', 'someName')
+            s.touch('tagcolor', '#00ff00')
+            s.cd('../')
+
     def create(self, **kwargs):
         """Create a new feed.
 
@@ -296,13 +327,14 @@ class Feed_FS(Feed):
 
         s = self._stree
         s.cd('/')
-        s.mknode(['title', 'note', 'data', 'comment'])
+        s.mknode(['title', 'note', 'data', 'comment', 'detail'])
         s.touch('status',       'Status of this Feed')
         s.touch('timestamp',    'DD-MM-YYYY HH:MM:SS')
         self.titleElement_create(   root='/title',      words=10)
         self.noteElement_create(    root='/note',       paragraphs=4)
         self.commentElement_create( root='/comment',    conversations=7)
         self.dataElement_create(    root='/data')
+        self.detailElement_create(  root='/detail')
 
 class FeedTree(object):
     """
@@ -401,6 +433,7 @@ class FeedTree_chrisUser(FeedTree):
                 F.graft(s, '/title')
                 F.graft(s, '/comment')
                 F.graft(s, '/data')
+                F.graft(s, '/detail')
             F.cd('/feeds')
             F.tree_metaData_print(False)
             # self.debug(F)
