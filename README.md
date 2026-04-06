@@ -1,4 +1,6 @@
-# ChRIS_API
+# Obsolete
+
+Please see https://github.com/FNNDSC/ChRIS_ultron_backEnd
 
 ## The API specification of ChRIS
 
